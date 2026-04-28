@@ -1,14 +1,14 @@
 export async function POST(request) {
-  const { spaceId, token, endpoint, method, body } = await request.json();
+  const { domain, token, query } = await request.json();
 
   try {
-    const res = await fetch(`https://api.contentful.com/spaces/${spaceId}${endpoint}`, {
-      method: method || 'GET',
+    const res = await fetch(`https://${domain}/api/2024-01/graphql.json`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'X-Shopify-Storefront-Access-Token': token,
         'Content-Type': 'application/json'
       },
-      body: body ? JSON.stringify(body) : undefined
+      body: JSON.stringify({ query })
     });
 
     const data = await res.json();
