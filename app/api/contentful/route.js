@@ -2,7 +2,10 @@ export const runtime = 'edge'
 
 export async function POST(request) {
   try {
-    const { spaceId, token, endpoint, method, body } = await request.json()
+    const { endpoint, method, body } = await request.json()
+
+    const spaceId = process.env.CONTENTFUL_SPACE_ID
+    const token = process.env.CONTENTFUL_CMA_TOKEN
 
     const res = await fetch(`https://api.contentful.com/spaces/${spaceId}${endpoint}`, {
       method: method || 'GET',
