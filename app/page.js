@@ -131,4 +131,171 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
           </div>
-          <h1 style={{ fontSize: 42, fo
+          <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            CMS Migration<br />Intelligence
+          </h1>
+          <p style={{ color: '#475569', fontSize: 14, marginTop: 10, fontFamily: 'JetBrains Mono, monospace' }}>
+            // Shopify → Contentful · AI-powered
+          </p>
+        </div>
+
+        <div className="fade-up" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, animationDelay: '0.1s' }}>
+          {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                color: i === 0 ? '#6366f1' : '#334155',
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase'
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${i === 0 ? '#6366f1' : '#334155'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                  background: i === 0 ? '#6366f1' : 'transparent', color: i === 0 ? '#fff' : '#334155'
+                }}>{i + 1}</div>
+                {s}
+              </div>
+              {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          {[
+            { key: 'shopify', label: 'Shopify', sub: 'Quellsystem', icon: '🛍️', status: shopifyStatus, action: testShopify },
+            { key: 'contentful', label: 'Contentful', sub: 'Zielsystem', icon: '📦', status: contentfulStatus, action: testContentful },
+          ].map((sys, i) => (
+            <div key={sys.key} className="fade-up" style={{
+              background: '#0f1623', border: `1px solid ${sys.status === 'connected' ? '#166534' : sys.status === 'error' ? '#7f1d1d' : '#1e293b'}`,
+              borderRadius: 14, padding: 24, animationDelay: `${0.2 + i * 0.1}s`, transition: 'border-color 0.3s',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{sys.sub}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>{sys.icon} {sys.label}</div>
+                </div>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%', marginTop: 4,
+                  background: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : sys.status === 'loading' ? '#f59e0b' : '#334155',
+                  boxShadow: sys.status === 'connected' ? '0 0 8px #22c55e' : 'none',
+                  ...(sys.status === 'loading' ? { animation: 'pulse 1s infinite' } : {})
+                }} />
+              </div>
+              <button onClick={sys.action} style={{
+                width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                background: sys.status === 'connected' ? 'rgba(34,197,94,0.15)' : sys.status === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b',
+                color: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : '#94a3b8',
+                transition: 'all 0.2s',
+              }}>
+                {sys.status === 'loading' ? '⏳ Verbinde...' : sys.status === 'connected' ? '✓ Verbunden' : sys.status === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {bothConnected && !inventory && !analyzing && (
+          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
+            <button onClick={analyze} style={{
+              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              color: '#fff', marginBottom: 20, animation: 'glow 2s ease infinite',
+            }}>
+              🔍 Shopify Inventar analysieren
+            </button>
+          </div>
+        )}
+
+        {analyzing && (
+          <div className="fade-up" style={{
+            background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center'
+          }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>
+              {steps[analyzeStep]}
+            </div>
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              {steps.map((_, i) => (
+                <div key={i} style={{
+                  width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2,
+                  background: i <= analyzeStep ? '#6366f1' : '#1e293b',
+                  transition: 'all 0.3s ease'
+                }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {inventory && (
+          <div className="fade-up">
+            <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>📊 {inventory.shopName}</h2>
+                </div>
+                <button onClick={reset} style={{
+                  padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent',
+                  color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600
+                }}>↺ Reset</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: 'Produkte', value: inventory.productCount, icon: '📦', delay: '0s' },
+                  { label: 'Pages', value: inventory.pages.length, icon: '📄', delay: '0.1s' },
+                  { label: 'Blogs', value: inventory.blogs.length, icon: '✍️', delay: '0.2s' },
+                  { label: 'Metafields', value: inventory.metafields.length, icon: '🔧', delay: '0.3s' },
+                ].map(s => (
+                  <div key={s.label} className="count-up" style={{
+                    background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center',
+                    animationDelay: s.delay
+                  }}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {inventory.pages.length > 0 && (
+                <div style={{ marginBottom: 10, fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
+                  {inventory.pages.map(p => (
+                    <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>
+                  ))}
+                </div>
+              )}
+              {inventory.blogs.length > 0 && (
+                <div style={{ marginBottom: 10, fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
+                  {inventory.blogs.map(b => (
+                    <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>
+                  ))}
+                </div>
+              )}
+              {inventory.metafields.length > 0 && (
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metafields: </span>
+                  {inventory.metafields.slice(0, 10).map(m => (
+                    <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>
+                  ))}
+                  {inventory.metafields.length > 10 && <span style={{ color: '#475569', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
+                </div>
+              )}
+            </div>
+
+            <button style={{
+              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff',
+            }}
+              onClick={() => alert('Schritt 2: KI Content Mapping – coming soon!')}>
+              🤖 KI Content Mapping starten →
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
