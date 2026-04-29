@@ -8,6 +8,8 @@ export default function Home() {
   const [inventory, setInventory] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
+  const [mapping, setMapping] = useState(null)
+  const [mappingLoading, setMappingLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -97,8 +99,65 @@ export default function Home() {
     setAnalyzing(false)
   }
 
+  async function startMapping() {
+    setMappingLoading(true)
+    try {
+      const prompt = `Du bist ein CMS-Migrationsexperte. Analysiere diese Shopify-Struktur und schlage ein optimales Contentful Content Model vor.
+
+SHOPIFY INVENTAR:
+- Shop: ${inventory.shopName}
+- Produkte: ${inventory.productCount}
+- Pages (${inventory.pages.length}): ${inventory.pages.map(p => p.title).join(', ')}
+- Blogs (${inventory.blogs.length}): ${inventory.blogs.map(b => b.title).join(', ')}
+- Metafields (${inventory.metafields.length}): ${inventory.metafields.slice(0, 20).map(m => `${m.namespace}.${m.key} (${m.type || m.value_type || 'string'})`).join(', ')}
+
+Erstelle ein JSON mit folgendem Format:
+{
+  "summary": "Kurze Zusammenfassung der Migration in 2-3 Sätzen auf Deutsch",
+  "contentTypes": [
+    {
+      "id": "eindeutige_id",
+      "name": "Content Type Name",
+      "description": "Wofür dieser Content Type gedacht ist",
+      "sourceType": "Woher die Daten kommen",
+      "fields": [
+        { "id": "field_id", "name": "Feldname", "type": "Symbol|Text|RichText|Integer|Boolean|Date|Asset|Link", "required": true }
+      ],
+      "estimatedEntries": 0
+    }
+  ],
+  "migrationSteps": ["Schritt 1", "Schritt 2"]
+}
+
+Antworte NUR mit dem JSON, ohne Markdown-Backticks oder anderen Text.`
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      })
+
+      const data = await response.json()
+      const text = data.content[0].text
+      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+      setMapping(parsed)
+    } catch (e) {
+      console.error(e)
+    }
+    setMappingLoading(false)
+  }
+
   function reset() {
     setInventory(null)
+    setMapping(null)
     setShopifyStatus('idle')
     setContentfulStatus('idle')
     setAnalyzeStep(0)
@@ -120,8 +179,6 @@ export default function Home() {
         @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
         @keyframes countUp { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
-        .pulse { animation: pulse 1.5s ease infinite; }
-        .spin { animation: spin 0.8s linear infinite; }
         .count-up { animation: countUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
       `}</style>
 
@@ -140,23 +197,26 @@ export default function Home() {
         </div>
 
         <div className="fade-up" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, animationDelay: '0.1s' }}>
-          {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => (
-            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                color: i === 0 ? '#6366f1' : '#334155',
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase'
-              }}>
+          {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => {
+            const active = i === 0 || (i === 1 && inventory) || (i === 2 && mapping)
+            return (
+              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${i === 0 ? '#6366f1' : '#334155'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
-                  background: i === 0 ? '#6366f1' : 'transparent', color: i === 0 ? '#fff' : '#334155'
-                }}>{i + 1}</div>
-                {s}
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  color: active ? '#6366f1' : '#334155',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase'
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${active ? '#6366f1' : '#334155'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                    background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#334155'
+                  }}>{i + 1}</div>
+                  {s}
+                </div>
+                {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
               </div>
-              {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -226,7 +286,7 @@ export default function Home() {
           </div>
         )}
 
-        {inventory && (
+        {inventory && !mapping && (
           <div className="fade-up">
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -285,14 +345,91 @@ export default function Home() {
               )}
             </div>
 
-            <button style={{
+            <button onClick={startMapping} disabled={mappingLoading} style={{
               width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
               fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff',
-            }}
-              onClick={() => alert('Schritt 2: KI Content Mapping – coming soon!')}>
-              🤖 KI Content Mapping starten →
+              background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              color: mappingLoading ? '#475569' : '#fff',
+            }}>
+              {mappingLoading ? '🤖 KI analysiert...' : '🤖 KI Content Mapping starten →'}
             </button>
+          </div>
+        )}
+
+        {mapping && (
+          <div className="fade-up" style={{ marginTop: 16 }}>
+            <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI Content Mapping</div>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>🤖 Content Model Vorschlag</h2>
+              
+              <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Types</div>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {mapping.contentTypes?.map((ct, i) => (
+                    <div key={ct.id} className="fade-up" style={{
+                      background: '#080b12', border: '1px solid #1e293b', borderRadius: 10, padding: 16,
+                      animationDelay: `${i * 0.1}s`
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ct.name}</div>
+                          <div style={{ fontSize: 12, color: '#475569' }}>{ct.description}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 11, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{ct.id}</div>
+                          <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>~{ct.estimatedEntries} Entries</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                        {ct.fields?.map(f => (
+                          <span key={f.id} style={{
+                            background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11,
+                            color: f.required ? '#a5b4fc' : '#64748b',
+                            border: f.required ? '1px solid #312e81' : '1px solid transparent'
+                          }}>
+                            {f.name} <span style={{ color: '#475569' }}>({f.type})</span>
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
+                        Quelle: <span style={{ color: '#94a3b8' }}>{ct.sourceType}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {mapping.migrationSteps && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Migrations-Plan</div>
+                  {mapping.migrationSteps.map((step, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'flex-start' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#312e81', color: '#a5b4fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                      <div style={{ fontSize: 13, color: '#94a3b8', paddingTop: 3 }}>{step}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <button onClick={reset} style={{
+                padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent',
+                color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600
+              }}>↺ Von vorne</button>
+              <button style={{
+                padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff',
+              }}
+                onClick={() => alert('Schritt 4: Content Migration – coming soon!')}>
+                🚀 Content Model in Contentful anlegen →
+              </button>
+            </div>
           </div>
         )}
       </div>
