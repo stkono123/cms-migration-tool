@@ -1,30 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function Home() {
-  const [shopifyDomain, setShopifyDomain] = useState('')
-  const [shopifyToken, setShopifyToken] = useState('')
-  const [contentfulSpace, setContentfulSpace] = useState('')
-  const [contentfulToken, setContentfulToken] = useState('')
   const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [contentfulStatus, setContentfulStatus] = useState('idle')
   const [inventory, setInventory] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeStep, setAnalyzeStep] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
-  async function shopifyQuery(query) {
-    const res = await fetch('/api/shopify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: shopifyDomain, token: shopifyToken, query })
-    })
-    return res.json()
-  }
+  useEffect(() => { setMounted(true) }, [])
+
+  const steps = [
+    '🔍 Verbinde mit Shopify...',
+    '📦 Lade Produkte...',
+    '📄 Analysiere Pages & Blogs...',
+    '🔧 Erkenne Metafeld-Strukturen...',
+    '🎨 Untersuche Theme & Sections...',
+    '🤖 KI bereitet Content Mapping vor...',
+  ]
 
   async function testShopify() {
     setShopifyStatus('loading')
     try {
-      const data = await shopifyQuery(`{ shop { name } }`)
+      const res = await fetch('/api/shopify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: '{ shop { name } }' })
+      })
+      const data = await res.json()
       if (data.data?.shop?.name) setShopifyStatus('connected')
       else setShopifyStatus('error')
     } catch {
@@ -38,7 +43,7 @@ export default function Home() {
       const res = await fetch('/api/contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spaceId: contentfulSpace, token: contentfulToken, endpoint: '' })
+        body: JSON.stringify({ endpoint: '' })
       })
       const data = await res.json()
       if (data.name) setContentfulStatus('connected')
@@ -50,98 +55,263 @@ export default function Home() {
 
   async function analyze() {
     setAnalyzing(true)
+    setAnalyzeStep(0)
+
+    const stepInterval = setInterval(() => {
+      setAnalyzeStep(s => {
+        if (s >= steps.length - 1) { clearInterval(stepInterval); return s }
+        return s + 1
+      })
+    }, 600)
+
     try {
-      const data = await shopifyQuery(`{
-        shop { name }
-        products(first: 10) { edges { node { id title } } }
-        pages(first: 50) { edges { node { id title body } } }
-        blogs(first: 20) { edges { node { id title articles(first: 5) { edges { node { id title } } } } } }
-        metaobjectDefinitions(first: 20) { edges { node { name fieldDefinitions { name type { name } } } } }
-      }`)
+      const res = await fetch('/api/shopify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: `{
+          shop { name }
+          products(first: 10) { edges { node { id title } } }
+          pages(first: 50) { edges { node { id title body } } }
+          blogs(first: 20) { edges { node { id title articles(first: 5) { edges { node { id title } } } } } }
+          metaobjectDefinitions(first: 20) { edges { node { name fieldDefinitions { name type { name } } } } }
+        }` })
+      })
+      const data = await res.json()
+      clearInterval(stepInterval)
+      setAnalyzeStep(steps.length - 1)
 
-      const shop = data.data?.shop
-      const products = data.data?.products?.edges || []
-      const pages = data.data?.pages?.edges || []
-      const blogs = data.data?.blogs?.edges || []
-      const metaobjects = data.data?.metaobjectDefinitions?.edges || []
+      await new Promise(r => setTimeout(r, 800))
 
-      setInventory({ shop, products, pages, blogs, metaobjects })
+      setInventory({
+        shop: data.data?.shop,
+        products: data.data?.products?.edges || [],
+        pages: data.data?.pages?.edges || [],
+        blogs: data.data?.blogs?.edges || [],
+        metaobjects: data.data?.metaobjectDefinitions?.edges || []
+      })
     } catch (e) {
+      clearInterval(stepInterval)
       console.error(e)
     }
     setAnalyzing(false)
   }
 
+  function reset() {
+    setInventory(null)
+    setShopifyStatus('idle')
+    setContentfulStatus('idle')
+    setAnalyzeStep(0)
+  }
+
   const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
 
-  const inputStyle = {
-    width: '100%', padding: '8px 12px', marginBottom: 8,
-    borderRadius: 6, border: '1px solid #ddd', fontSize: 14
-  }
-
-  const btnStyle = {
-    background: '#000', color: '#fff', padding: '8px 16px',
-    borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14
-  }
+  if (!mounted) return null
 
   return (
-    <main style={{ maxWidth: 800, margin: '0 auto', padding: 40, fontFamily: 'sans-serif' }}>
-      <h1 style={{ marginBottom: 4 }}>CMS Migration Tool</h1>
-      <p style={{ color: '#666', marginBottom: 32 }}>Shopify → Contentful · AI-powered</p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #080b12; color: #e2e8f0; font-family: 'Inter', sans-serif; min-height: 100vh; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
+        @keyframes countUp { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+        .fade-up { animation: fadeUp 0.5s ease both; }
+        .pulse { animation: pulse 1.5s ease infinite; }
+        .spin { animation: spin 0.8s linear infinite; }
+        .count-up { animation: countUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+      `}</style>
 
-      <div style={{ background: '#f5f5f5', borderRadius: 12, padding: 24, marginBottom: 16 }}>
-        <h2 style={{ marginBottom: 16 }}>🛍️ Shopify</h2>
-        <input style={inputStyle} placeholder="mein-shop.myshopify.com" value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} />
-        <input style={inputStyle} type="password" placeholder="Storefront Access Token" value={shopifyToken} onChange={e => setShopifyToken(e.target.value)} />
-        <button style={{ ...btnStyle, background: shopifyStatus === 'connected' ? '#16a34a' : '#000' }} onClick={testShopify}>
-          {shopifyStatus === 'loading' ? 'Verbinde...' : shopifyStatus === 'connected' ? '✓ Verbunden' : 'Verbindung testen'}
-        </button>
-        {shopifyStatus === 'error' && <p style={{ color: 'red', marginTop: 8, fontSize: 13 }}>Verbindung fehlgeschlagen. Token oder Domain prüfen.</p>}
-      </div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
 
-      <div style={{ background: '#f5f5f5', borderRadius: 12, padding: 24, marginBottom: 16 }}>
-        <h2 style={{ marginBottom: 16 }}>📦 Contentful</h2>
-        <input style={inputStyle} placeholder="Space ID" value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} />
-        <input style={inputStyle} type="password" placeholder="CFPAT-xxx" value={contentfulToken} onChange={e => setContentfulToken(e.target.value)} />
-        <button style={{ ...btnStyle, background: contentfulStatus === 'connected' ? '#16a34a' : '#000' }} onClick={testContentful}>
-          {contentfulStatus === 'loading' ? 'Verbinde...' : contentfulStatus === 'connected' ? '✓ Verbunden' : 'Verbindung testen'}
-        </button>
-        {contentfulStatus === 'error' && <p style={{ color: 'red', marginTop: 8, fontSize: 13 }}>Verbindung fehlgeschlagen. Space ID oder Token prüfen.</p>}
-      </div>
-
-      {bothConnected && (
-        <button onClick={analyze} disabled={analyzing} style={{ width: '100%', background: '#16a34a', color: '#fff', padding: '14px 24px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 600, marginBottom: 24 }}>
-          {analyzing ? 'Analysiere...' : '🔍 Inventar analysieren'}
-        </button>
-      )}
-
-      {inventory && (
-        <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 24 }}>
-          <h2 style={{ marginBottom: 16 }}>📊 {inventory.shop?.name} – Inventar</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-            {[
-              { label: 'Produkte', value: inventory.products.length + '+' },
-              { label: 'Pages', value: inventory.pages.length },
-              { label: 'Blogs', value: inventory.blogs.length },
-              { label: 'Metaobjekte', value: inventory.metaobjects.length },
-            ].map(s => (
-              <div key={s.label} style={{ background: '#fff', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: '#16a34a' }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{s.label}</div>
-              </div>
-            ))}
+        {/* Header */}
+        <div className="fade-up" style={{ marginBottom: 48 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
           </div>
-          {inventory.pages.length > 0 && (
-            <p><strong>Pages:</strong> {inventory.pages.map(p => p.node.title).join(', ')}</p>
-          )}
-          {inventory.blogs.length > 0 && (
-            <p style={{ marginTop: 8 }}><strong>Blogs:</strong> {inventory.blogs.map(b => b.node.title).join(', ')}</p>
-          )}
-          {inventory.metaobjects.length > 0 && (
-            <p style={{ marginTop: 8 }}><strong>Metaobjekte:</strong> {inventory.metaobjects.map(m => m.node.name).join(', ')}</p>
-          )}
+          <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            CMS Migration<br />Intelligence
+          </h1>
+          <p style={{ color: '#475569', fontSize: 14, marginTop: 10, fontFamily: 'JetBrains Mono, monospace' }}>
+            // Shopify → Contentful · AI-powered
+          </p>
         </div>
-      )}
-    </main>
+
+        {/* Step Indicator */}
+        <div className="fade-up" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, animationDelay: '0.1s' }}>
+          {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                color: i === 0 ? '#6366f1' : '#334155',
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase'
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${i === 0 ? '#6366f1' : '#334155'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                  background: i === 0 ? '#6366f1' : 'transparent', color: i === 0 ? '#fff' : '#334155'
+                }}>{i + 1}</div>
+                {s}
+              </div>
+              {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
+            </div>
+          ))}
+        </div>
+
+        {/* Connection Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          {[
+            { key: 'shopify', label: 'Shopify', sub: 'Quellsystem', icon: '🛍️', status: shopifyStatus, action: testShopify },
+            { key: 'contentful', label: 'Contentful', sub: 'Zielsystem', icon: '📦', status: contentfulStatus, action: testContentful },
+          ].map((sys, i) => (
+            <div key={sys.key} className="fade-up" style={{
+              background: '#0f1623', border: `1px solid ${sys.status === 'connected' ? '#166534' : sys.status === 'error' ? '#7f1d1d' : '#1e293b'}`,
+              borderRadius: 14, padding: 24, animationDelay: `${0.2 + i * 0.1}s`,
+              transition: 'border-color 0.3s',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{sys.sub}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>{sys.icon} {sys.label}</div>
+                </div>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%', marginTop: 4,
+                  background: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : sys.status === 'loading' ? '#f59e0b' : '#334155',
+                  boxShadow: sys.status === 'connected' ? '0 0 8px #22c55e' : 'none',
+                  ...(sys.status === 'loading' ? { animation: 'pulse 1s infinite' } : {})
+                }} />
+              </div>
+              <button
+                onClick={sys.action}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                  background: sys.status === 'connected' ? 'rgba(34,197,94,0.15)' : sys.status === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b',
+                  color: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : '#94a3b8',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {sys.status === 'loading' ? '⏳ Verbinde...' : sys.status === 'connected' ? '✓ Verbunden' : sys.status === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Analyze Button */}
+        {bothConnected && !inventory && !analyzing && (
+          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
+            <button
+              onClick={analyze}
+              style={{
+                width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                color: '#fff', marginBottom: 20,
+                animation: 'glow 2s ease infinite',
+              }}
+            >
+              🔍 Shopify Inventar analysieren
+            </button>
+          </div>
+        )}
+
+        {/* Analysis Loading */}
+        {analyzing && (
+          <div className="fade-up" style={{
+            background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center'
+          }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>
+              {steps[analyzeStep]}
+            </div>
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              {steps.map((_, i) => (
+                <div key={i} style={{
+                  width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2,
+                  background: i <= analyzeStep ? '#6366f1' : '#1e293b',
+                  transition: 'all 0.3s ease'
+                }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Inventory Results */}
+        {inventory && (
+          <div className="fade-up">
+            <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>📊 {inventory.shop?.name}</h2>
+                </div>
+                <button onClick={reset} style={{
+                  padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent',
+                  color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600
+                }}>↺ Reset</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: 'Produkte', value: inventory.products.length + '+', icon: '📦', delay: '0s' },
+                  { label: 'Pages', value: inventory.pages.length, icon: '📄', delay: '0.1s' },
+                  { label: 'Blogs', value: inventory.blogs.length, icon: '✍️', delay: '0.2s' },
+                  { label: 'Metaobjekte', value: inventory.metaobjects.length, icon: '🔧', delay: '0.3s' },
+                ].map(s => (
+                  <div key={s.label} className="count-up" style={{
+                    background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center',
+                    animationDelay: s.delay
+                  }}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {inventory.pages.length > 0 && (
+                <div style={{ marginBottom: 10, fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
+                  {inventory.pages.map(p => (
+                    <span key={p.node.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.node.title}</span>
+                  ))}
+                </div>
+              )}
+              {inventory.blogs.length > 0 && (
+                <div style={{ marginBottom: 10, fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
+                  {inventory.blogs.map(b => (
+                    <span key={b.node.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.node.title}</span>
+                  ))}
+                </div>
+              )}
+              {inventory.metaobjects.length > 0 && (
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metaobjects: </span>
+                  {inventory.metaobjects.map(m => (
+                    <span key={m.node.name} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{m.node.name}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              style={{
+                width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                color: '#fff',
+              }}
+              onClick={() => alert('Schritt 2: KI Content Mapping – coming soon!')}
+            >
+              🤖 KI Content Mapping starten →
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
