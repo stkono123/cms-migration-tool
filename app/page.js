@@ -102,52 +102,12 @@ export default function Home() {
   async function startMapping() {
     setMappingLoading(true)
     try {
-      const prompt = `Du bist ein CMS-Migrationsexperte. Analysiere diese Shopify-Struktur und schlage ein optimales Contentful Content Model vor.
-
-SHOPIFY INVENTAR:
-- Shop: ${inventory.shopName}
-- Produkte: ${inventory.productCount}
-- Pages (${inventory.pages.length}): ${inventory.pages.map(p => p.title).join(', ')}
-- Blogs (${inventory.blogs.length}): ${inventory.blogs.map(b => b.title).join(', ')}
-- Metafields (${inventory.metafields.length}): ${inventory.metafields.slice(0, 20).map(m => `${m.namespace}.${m.key} (${m.type || m.value_type || 'string'})`).join(', ')}
-
-Erstelle ein JSON mit folgendem Format:
-{
-  "summary": "Kurze Zusammenfassung der Migration in 2-3 Sätzen auf Deutsch",
-  "contentTypes": [
-    {
-      "id": "eindeutige_id",
-      "name": "Content Type Name",
-      "description": "Wofür dieser Content Type gedacht ist",
-      "sourceType": "Woher die Daten kommen",
-      "fields": [
-        { "id": "field_id", "name": "Feldname", "type": "Symbol|Text|RichText|Integer|Boolean|Date|Asset|Link", "required": true }
-      ],
-      "estimatedEntries": 0
-    }
-  ],
-  "migrationSteps": ["Schritt 1", "Schritt 2"]
-}
-
-Antworte NUR mit dem JSON, ohne Markdown-Backticks oder anderen Text.`
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/ai-mapping', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventory })
       })
-
-      const data = await response.json()
-      const text = data.content[0].text
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+      const parsed = await res.json()
       setMapping(parsed)
     } catch (e) {
       console.error(e)
@@ -346,12 +306,12 @@ Antworte NUR mit dem JSON, ohne Markdown-Backticks oder anderen Text.`
             </div>
 
             <button onClick={startMapping} disabled={mappingLoading} style={{
-              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer',
               fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
               background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
               color: mappingLoading ? '#475569' : '#fff',
             }}>
-              {mappingLoading ? '🤖 KI analysiert...' : '🤖 KI Content Mapping starten →'}
+              {mappingLoading ? '🤖 KI analysiert Struktur...' : '🤖 KI Content Mapping starten →'}
             </button>
           </div>
         )}
@@ -361,7 +321,7 @@ Antworte NUR mit dem JSON, ohne Markdown-Backticks oder anderen Text.`
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI Content Mapping</div>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>🤖 Content Model Vorschlag</h2>
-              
+
               <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
               </div>
