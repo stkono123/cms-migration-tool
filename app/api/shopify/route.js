@@ -2,8 +2,10 @@ export const runtime = 'edge'
 
 export async function POST(request) {
   try {
-    const body = await request.json()
-    const { domain, token, query } = body
+    const { query } = await request.json()
+    
+    const domain = process.env.SHOPIFY_DOMAIN
+    const token = process.env.SHOPIFY_STOREFRONT_TOKEN
 
     const res = await fetch(`https://${domain}/api/2024-01/graphql.json`, {
       method: 'POST',
