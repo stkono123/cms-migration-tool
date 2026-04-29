@@ -2,18 +2,16 @@ export const runtime = 'edge'
 
 export async function POST(request) {
   try {
-    const { query } = await request.json()
-    
-    const domain = process.env.SHOPIFY_DOMAIN
-    const token = process.env.SHOPIFY_STOREFRONT_TOKEN
+    const { endpoint } = await request.json()
 
-    const res = await fetch(`https://${domain}/api/2024-01/graphql.json`, {
-      method: 'POST',
+    const domain = process.env.SHOPIFY_DOMAIN
+    const token = process.env.SHOPIFY_ADMIN_TOKEN
+
+    const res = await fetch(`https://${domain}/admin/api/2024-01/${endpoint}`, {
       headers: {
-        'X-Shopify-Storefront-Access-Token': token,
+        'X-Shopify-Access-Token': token,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query })
+      }
     })
 
     const data = await res.json()
