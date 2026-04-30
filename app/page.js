@@ -2,7 +2,41 @@
 
 import { useState, useEffect } from 'react'
 
+const ShopifyLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg">
+    <path d="M223.773 57.334c-.226-1.68-1.698-2.578-2.914-2.692-1.209-.12-26.69-1.98-26.69-1.98s-17.811-17.698-19.718-19.605c-1.907-1.907-5.608-1.335-7.065-.904-.21.061-3.886 1.196-10.02 3.09C151.693 23.961 141.254 8 124.076 8c-.452 0-.904.015-1.363.045C118.6 2.699 113.37 0 108.84 0 73.255 0 56.16 44.567 50.69 67.184c-13.883 4.299-23.72 7.34-24.895 7.717-7.718 2.428-7.958 2.669-8.968 9.946C15.889 90.748 0 211.688 0 211.688l165.973 31.16L256 218.109S223.999 59.013 223.773 57.334zm-67.754-17.061c-4.794 1.483-10.185 3.151-15.997 4.953V42.67c0-6.535-1.139-11.86-2.97-16.098 7.347 1.02 12.27 9.3 18.967 13.701zM128.74 28.22c2.036 4.088 3.387 9.977 3.387 17.888v1.12c-8.139 2.518-17.012 5.265-25.9 8.02 4.99-19.22 14.356-28.557 22.513-27.028zm-15.33-12.1c1.454 0 2.908.498 4.302 1.454-10.862 5.114-22.483 18.028-27.388 43.795l-20.676 6.4C74.762 48.02 90.083 16.12 113.41 16.12z" fill="#95BF47"/>
+    <path d="M220.859 54.642c-1.209-.12-26.69-1.98-26.69-1.98s-17.811-17.698-19.718-19.605c-.694-.694-1.649-1.049-2.653-1.169l-5.826 118.638 61.114-14.256S224 59.013 223.773 57.334c-.226-1.68-1.698-2.578-2.914-2.692z" fill="#5E8E3E"/>
+    <path d="M124.076 96.18l-7.512 22.334s-8.304-4.424-18.484-4.424c-14.904 0-15.661 9.354-15.661 11.715 0 12.862 33.534 17.797 33.534 47.968 0 23.74-15.056 39.025-35.358 39.025-24.345 0-36.766-15.163-36.766-15.163l6.513-21.534s12.784 10.98 23.578 10.98c7.046 0 9.897-5.554 9.897-9.612 0-16.78-27.513-17.527-27.513-45.118 0-23.217 16.666-45.705 50.31-45.705 12.952 0 19.462 3.534 19.462 3.534z" fill="#fff"/>
+  </svg>
+)
+
+const ContentfulLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="64" cy="64" r="64" fill="#FAE501"/>
+    <path d="M48.9 88.1c-8.5-8.5-8.5-22.3 0-30.8 4.1-4.1 9.5-6.4 15.4-6.4s11.3 2.3 15.4 6.4l9.2-9.2c-6.6-6.6-15.4-10.3-24.6-10.3S47.1 41.5 40.5 48.1c-13.6 13.6-13.6 35.7 0 49.3 6.6 6.6 15.4 10.3 24.6 10.3s18-3.7 24.6-10.3l-9.2-9.2c-4.1 4.1-9.5 6.4-15.4 6.4s-11.3-2.3-15.2-6.5z" fill="#2478CC"/>
+    <circle cx="43.5" cy="43.5" r="8.5" fill="#E5422B"/>
+    <circle cx="84.5" cy="84.5" r="8.5" fill="#219D6E"/>
+  </svg>
+)
+
+const SOURCE_SYSTEMS = [
+  { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
+  { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
+  { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
+  { id: 'wordpress', label: 'WordPress', logo: null, available: false },
+]
+
 export default function Home() {
+  const [sourceSystem, setSourceSystem] = useState('shopify')
+  const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
+  const [shopifyDomain, setShopifyDomain] = useState('sanitaetshaus24-shop.myshopify.com')
+  const [shopifyToken, setShopifyToken] = useState('••••••••••••••••••••••••')
+  const [shopifyTokenEditing, setShopifyTokenEditing] = useState(false)
+  const [shopifyTokenReal, setShopifyTokenReal] = useState('')
+  const [contentfulSpace, setContentfulSpace] = useState('1ub4n2ex18h8')
+  const [contentfulToken, setContentfulToken] = useState('••••••••••••••••••••••••')
+  const [contentfulTokenEditing, setContentfulTokenEditing] = useState(false)
+  const [contentfulTokenReal, setContentfulTokenReal] = useState('')
   const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [contentfulStatus, setContentfulStatus] = useState('idle')
   const [inventory, setInventory] = useState(null)
@@ -10,24 +44,31 @@ export default function Home() {
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [mapping, setMapping] = useState(null)
   const [mappingLoading, setMappingLoading] = useState(false)
+  const [deploying, setDeploying] = useState(false)
+  const [deployResults, setDeployResults] = useState(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
   const steps = [
-    '🔍 Verbinde mit Shopify...',
-    '📦 Lade Produkte...',
-    '📄 Analysiere Pages & Blogs...',
-    '🔧 Erkenne Metafeld-Strukturen...',
-    '🎨 Untersuche Theme & Sections...',
-    '🤖 KI bereitet Content Mapping vor...',
+    'Verbinde mit Shopify...',
+    'Lade Produkte...',
+    'Analysiere Pages & Blogs...',
+    'Erkenne Metafeld-Strukturen...',
+    'Untersuche Theme & Sections...',
+    'KI bereitet Content Mapping vor...',
   ]
 
   async function shopifyFetch(endpoint) {
+    const body = { endpoint }
+    if (shopifyTokenEditing && shopifyTokenReal) {
+      body.domain = shopifyDomain
+      body.token = shopifyTokenReal
+    }
     const res = await fetch('/api/shopify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint })
+      body: JSON.stringify(body)
     })
     return res.json()
   }
@@ -46,10 +87,15 @@ export default function Home() {
   async function testContentful() {
     setContentfulStatus('loading')
     try {
+      const body = { endpoint: '' }
+      if (contentfulTokenEditing && contentfulTokenReal) {
+        body.spaceId = contentfulSpace
+        body.token = contentfulTokenReal
+      }
       const res = await fetch('/api/contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: '' })
+        body: JSON.stringify(body)
       })
       const data = await res.json()
       if (data.name) setContentfulStatus('connected')
@@ -62,14 +108,12 @@ export default function Home() {
   async function analyze() {
     setAnalyzing(true)
     setAnalyzeStep(0)
-
     const stepInterval = setInterval(() => {
       setAnalyzeStep(s => {
         if (s >= steps.length - 1) { clearInterval(stepInterval); return s }
         return s + 1
       })
     }, 600)
-
     try {
       const [shop, products, pages, blogs, metafields, themes] = await Promise.all([
         shopifyFetch('shop.json'),
@@ -79,11 +123,9 @@ export default function Home() {
         shopifyFetch('metafields.json?limit=250'),
         shopifyFetch('themes.json'),
       ])
-
       clearInterval(stepInterval)
       setAnalyzeStep(steps.length - 1)
       await new Promise(r => setTimeout(r, 800))
-
       setInventory({
         shopName: shop.shop?.name,
         productCount: products.count || 0,
@@ -115,17 +157,41 @@ export default function Home() {
     setMappingLoading(false)
   }
 
+  async function deployToContentful() {
+    setDeploying(true)
+    try {
+      const res = await fetch('/api/create-content-model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentTypes: mapping.contentTypes })
+      })
+      const data = await res.json()
+      setDeployResults(data.results)
+    } catch (e) {
+      console.error(e)
+    }
+    setDeploying(false)
+  }
+
   function reset() {
     setInventory(null)
     setMapping(null)
+    setDeployResults(null)
     setShopifyStatus('idle')
     setContentfulStatus('idle')
     setAnalyzeStep(0)
   }
 
   const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
+  const selectedSource = SOURCE_SYSTEMS.find(s => s.id === sourceSystem)
 
   if (!mounted) return null
+
+  const inputStyle = {
+    width: '100%', background: '#080b12', border: '1px solid #1e293b',
+    borderRadius: 6, padding: '8px 12px', color: '#e2e8f0',
+    fontFamily: 'JetBrains Mono, monospace', fontSize: 12, outline: 'none'
+  }
 
   return (
     <>
@@ -140,10 +206,13 @@ export default function Home() {
         @keyframes countUp { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
         .count-up { animation: countUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+        input:focus { border-color: #6366f1 !important; }
+        .dropdown-item:hover { background: #1e293b; }
       `}</style>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
 
+        {/* Header */}
         <div className="fade-up" style={{ marginBottom: 48 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
@@ -152,25 +221,18 @@ export default function Home() {
             CMS Migration<br />Intelligence
           </h1>
           <p style={{ color: '#475569', fontSize: 14, marginTop: 10, fontFamily: 'JetBrains Mono, monospace' }}>
-            // Shopify → Contentful · AI-powered
+            // {selectedSource?.label} → Contentful · AI-powered
           </p>
         </div>
 
+        {/* Step Indicator */}
         <div className="fade-up" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, animationDelay: '0.1s' }}>
           {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => {
-            const active = i === 0 || (i === 1 && inventory) || (i === 2 && mapping)
+            const active = i === 0 || (i === 1 && inventory) || (i === 2 && mapping) || (i === 3 && deployResults)
             return (
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  color: active ? '#6366f1' : '#334155',
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase'
-                }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${active ? '#6366f1' : '#334155'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
-                    background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#334155'
-                  }}>{i + 1}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: active ? '#6366f1' : '#334155', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${active ? '#6366f1' : '#334155'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#334155' }}>{i + 1}</div>
                   {s}
                 </div>
                 {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
@@ -179,161 +241,186 @@ export default function Home() {
           })}
         </div>
 
+        {/* Connection Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-          {[
-            { key: 'shopify', label: 'Shopify', sub: 'Quellsystem', icon: '🛍️', status: shopifyStatus, action: testShopify },
-            { key: 'contentful', label: 'Contentful', sub: 'Zielsystem', icon: '📦', status: contentfulStatus, action: testContentful },
-          ].map((sys, i) => (
-            <div key={sys.key} className="fade-up" style={{
-              background: '#0f1623', border: `1px solid ${sys.status === 'connected' ? '#166534' : sys.status === 'error' ? '#7f1d1d' : '#1e293b'}`,
-              borderRadius: 14, padding: 24, animationDelay: `${0.2 + i * 0.1}s`, transition: 'border-color 0.3s',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{sys.sub}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{sys.icon} {sys.label}</div>
-                </div>
-                <div style={{
-                  width: 10, height: 10, borderRadius: '50%', marginTop: 4,
-                  background: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : sys.status === 'loading' ? '#f59e0b' : '#334155',
-                  boxShadow: sys.status === 'connected' ? '0 0 8px #22c55e' : 'none',
-                  ...(sys.status === 'loading' ? { animation: 'pulse 1s infinite' } : {})
-                }} />
-              </div>
-              <button onClick={sys.action} style={{
-                width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                background: sys.status === 'connected' ? 'rgba(34,197,94,0.15)' : sys.status === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b',
-                color: sys.status === 'connected' ? '#22c55e' : sys.status === 'error' ? '#ef4444' : '#94a3b8',
-                transition: 'all 0.2s',
-              }}>
-                {sys.status === 'loading' ? '⏳ Verbinde...' : sys.status === 'connected' ? '✓ Verbunden' : sys.status === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
-              </button>
+
+          {/* Source System Card */}
+          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : shopifyStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: shopifyStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(shopifyStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
             </div>
-          ))}
+
+            {/* Source Dropdown */}
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {selectedSource?.logo && <selectedSource.logo />}
+                  {selectedSource?.label}
+                </div>
+                <span style={{ color: '#475569', fontSize: 10 }}>▼</span>
+              </button>
+              {sourceDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0f1623', border: '1px solid #1e293b', borderRadius: 8, marginTop: 4, zIndex: 10, overflow: 'hidden' }}>
+                  {SOURCE_SYSTEMS.map(sys => (
+                    <div key={sys.id} className="dropdown-item" onClick={() => { if (sys.available) { setSourceSystem(sys.id); setSourceDropdownOpen(false) } }} style={{ padding: '10px 14px', cursor: sys.available ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: sys.available ? 1 : 0.4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500 }}>
+                        {sys.logo && <sys.logo />}
+                        {sys.label}
+                      </div>
+                      {!sys.available && <span style={{ fontSize: 10, color: '#475569', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Shopify Fields */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
+              <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  style={{ ...inputStyle, flex: 1 }}
+                  value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken}
+                  onChange={e => setShopifyTokenReal(e.target.value)}
+                  onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }}
+                  onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }}
+                  placeholder="Token eingeben..."
+                  type={shopifyTokenEditing ? 'text' : 'password'}
+                />
+              </div>
+            </div>
+
+            <button onClick={testShopify} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: shopifyStatus === 'connected' ? 'rgba(34,197,94,0.15)' : shopifyStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
+              {shopifyStatus === 'loading' ? 'Verbinde...' : shopifyStatus === 'connected' ? '✓ Verbunden' : shopifyStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+            </button>
+          </div>
+
+          {/* Contentful Card */}
+          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Zielsystem</div>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : contentfulStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: contentfulStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(contentfulStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #1e293b' }}>
+              <ContentfulLogo />
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Contentful</span>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
+              <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
+              <input
+                style={inputStyle}
+                value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken}
+                onChange={e => setContentfulTokenReal(e.target.value)}
+                onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }}
+                onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }}
+                placeholder="CFPAT-xxx"
+                type={contentfulTokenEditing ? 'text' : 'password'}
+              />
+            </div>
+
+            <button onClick={testContentful} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: contentfulStatus === 'connected' ? 'rgba(34,197,94,0.15)' : contentfulStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
+              {contentfulStatus === 'loading' ? 'Verbinde...' : contentfulStatus === 'connected' ? '✓ Verbunden' : contentfulStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+            </button>
+          </div>
         </div>
 
+        {/* Analyze Button */}
         {bothConnected && !inventory && !analyzing && (
           <div className="fade-up" style={{ animationDelay: '0.1s' }}>
-            <button onClick={analyze} style={{
-              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
-              fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              color: '#fff', marginBottom: 20, animation: 'glow 2s ease infinite',
-            }}>
-              🔍 Shopify Inventar analysieren
+            <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 20, animation: 'glow 2s ease infinite' }}>
+              Inventar analysieren
             </button>
           </div>
         )}
 
+        {/* Loading */}
         {analyzing && (
-          <div className="fade-up" style={{
-            background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center'
-          }}>
+          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
             <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>
-              {steps[analyzeStep]}
-            </div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>{steps[analyzeStep]}</div>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
               {steps.map((_, i) => (
-                <div key={i} style={{
-                  width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2,
-                  background: i <= analyzeStep ? '#6366f1' : '#1e293b',
-                  transition: 'all 0.3s ease'
-                }} />
+                <div key={i} style={{ width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2, background: i <= analyzeStep ? '#6366f1' : '#1e293b', transition: 'all 0.3s ease' }} />
               ))}
             </div>
           </div>
         )}
 
+        {/* Inventory */}
         {inventory && !mapping && (
           <div className="fade-up">
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>📊 {inventory.shopName}</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
                 </div>
-                <button onClick={reset} style={{
-                  padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent',
-                  color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600
-                }}>↺ Reset</button>
+                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                 {[
-                  { label: 'Produkte', value: inventory.productCount, icon: '📦', delay: '0s' },
-                  { label: 'Pages', value: inventory.pages.length, icon: '📄', delay: '0.1s' },
-                  { label: 'Blogs', value: inventory.blogs.length, icon: '✍️', delay: '0.2s' },
-                  { label: 'Metafields', value: inventory.metafields.length, icon: '🔧', delay: '0.3s' },
+                  { label: 'Produkte', value: inventory.productCount, delay: '0s' },
+                  { label: 'Pages', value: inventory.pages.length, delay: '0.1s' },
+                  { label: 'Blogs', value: inventory.blogs.length, delay: '0.2s' },
+                  { label: 'Metafields', value: inventory.metafields.length, delay: '0.3s' },
                 ].map(s => (
-                  <div key={s.label} className="count-up" style={{
-                    background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center',
-                    animationDelay: s.delay
-                  }}>
-                    <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                  <div key={s.label} className="count-up" style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center', animationDelay: s.delay }}>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</div>
                     <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                   </div>
                 ))}
               </div>
-
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
                   <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
-                  {inventory.pages.map(p => (
-                    <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>
-                  ))}
+                  {inventory.pages.map(p => <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>)}
                 </div>
               )}
               {inventory.blogs.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
                   <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
-                  {inventory.blogs.map(b => (
-                    <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>
-                  ))}
+                  {inventory.blogs.map(b => <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>)}
                 </div>
               )}
               {inventory.metafields.length > 0 && (
                 <div style={{ fontSize: 13 }}>
                   <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metafields: </span>
-                  {inventory.metafields.slice(0, 10).map(m => (
-                    <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>
-                  ))}
+                  {inventory.metafields.slice(0, 10).map(m => <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>)}
                   {inventory.metafields.length > 10 && <span style={{ color: '#475569', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
                 </div>
               )}
             </div>
-
-            <button onClick={startMapping} disabled={mappingLoading} style={{
-              width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer',
-              fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-              background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              color: mappingLoading ? '#475569' : '#fff',
-            }}>
-              {mappingLoading ? '🤖 KI analysiert Struktur...' : '🤖 KI Content Mapping starten →'}
+            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
+              {mappingLoading ? 'KI analysiert Struktur...' : 'KI Content Mapping starten →'}
             </button>
           </div>
         )}
 
+        {/* Mapping Results */}
         {mapping && (
           <div className="fade-up" style={{ marginTop: 16 }}>
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI Content Mapping</div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>🤖 Content Model Vorschlag</h2>
-
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>Content Model Vorschlag</h2>
               <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
               </div>
-
               <div style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Types</div>
                 <div style={{ display: 'grid', gap: 12 }}>
                   {mapping.contentTypes?.map((ct, i) => (
-                    <div key={ct.id} className="fade-up" style={{
-                      background: '#080b12', border: '1px solid #1e293b', borderRadius: 10, padding: 16,
-                      animationDelay: `${i * 0.1}s`
-                    }}>
+                    <div key={ct.id} className="fade-up" style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 10, padding: 16, animationDelay: `${i * 0.1}s` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ct.name}</div>
@@ -346,11 +433,7 @@ export default function Home() {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                         {ct.fields?.map(f => (
-                          <span key={f.id} style={{
-                            background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11,
-                            color: f.required ? '#a5b4fc' : '#64748b',
-                            border: f.required ? '1px solid #312e81' : '1px solid transparent'
-                          }}>
+                          <span key={f.id} style={{ background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11, color: f.required ? '#a5b4fc' : '#64748b', border: f.required ? '1px solid #312e81' : '1px solid transparent' }}>
                             {f.name} <span style={{ color: '#475569' }}>({f.type})</span>
                           </span>
                         ))}
@@ -362,7 +445,6 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-
               {mapping.migrationSteps && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Migrations-Plan</div>
@@ -376,18 +458,26 @@ export default function Home() {
               )}
             </div>
 
+            {/* Deploy Results */}
+            {deployResults && (
+              <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+                <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Contentful Deployment</div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#22c55e' }}>Content Model angelegt</h2>
+                {deployResults.map(r => (
+                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
+                    <span>{r.name}</span>
+                    <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+                      {r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <button onClick={reset} style={{
-                padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent',
-                color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600
-              }}>↺ Von vorne</button>
-              <button style={{
-                padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff',
-              }}
-                onClick={() => alert('Schritt 4: Content Migration – coming soon!')}>
-                🚀 Content Model in Contentful anlegen →
+              <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>↺ Von vorne</button>
+              <button onClick={deployToContentful} disabled={deploying} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deploying ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deploying ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: deploying ? '#475569' : '#fff' }}>
+                {deploying ? 'Wird angelegt...' : 'Content Model in Contentful anlegen →'}
               </button>
             </div>
           </div>
