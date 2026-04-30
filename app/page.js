@@ -266,60 +266,67 @@ export default function Home() {
         .dropdown-item:hover { background: #1e293b; }
       `}</style>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
-
-        {/* Header */}
-        <div className="fade-up" style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
+      {/* Sticky Header */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                CMS Migration Intelligence
+              </h1>
+              <p style={{ color: '#475569', fontSize: 12, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
+                // {selectedSource?.label} → Contentful · AI-powered
+              </p>
+            </div>
           </div>
-          <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            CMS Migration<br />Intelligence
-          </h1>
-          <p style={{ color: '#475569', fontSize: 14, marginTop: 10, fontFamily: 'JetBrains Mono, monospace' }}>
-            // {selectedSource?.label} → Contentful · AI-powered
-          </p>
-        </div>
 
-        {/* Pipeline Status */}
-        <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: '16px 24px', marginBottom: 24, animationDelay: '0.05s' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {PIPELINE_STEPS.map((step, i) => {
-              const status = getStepStatus(step.id)
-              return (
-                <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 700,
-                      background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b',
-                      color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#475569',
-                      border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent',
-                      boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none',
-                      transition: 'all 0.3s',
-                      ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {})
-                    }}>
-                      {status === 'done' ? '✓' : i + 1}
+          {/* Pipeline Status */}
+          <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 12, padding: '14px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {PIPELINE_STEPS.map((step, i) => {
+                const status = getStepStatus(step.id)
+                return (
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700,
+                        background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b',
+                        color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#475569',
+                        border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent',
+                        boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none',
+                        transition: 'all 0.3s',
+                        ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {})
+                      }}>
+                        {status === 'done' ? '✓' : i + 1}
+                      </div>
+                      <div style={{
+                        fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
+                        color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155',
+                        whiteSpace: 'nowrap', transition: 'color 0.3s'
+                      }}>{step.label}</div>
                     </div>
-                    <div style={{
-                      fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
-                      color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155',
-                      whiteSpace: 'nowrap', transition: 'color 0.3s'
-                    }}>{step.label}</div>
+                    {i < PIPELINE_STEPS.length - 1 && (
+                      <div style={{
+                        flex: 1, height: 2, margin: '0 6px', marginBottom: 16,
+                        background: getStepStatus(PIPELINE_STEPS[i + 1].id) === 'pending' ? '#1e293b' : '#166534',
+                        transition: 'background 0.5s'
+                      }} />
+                    )}
                   </div>
-                  {i < PIPELINE_STEPS.length - 1 && (
-                    <div style={{
-                      flex: 1, height: 2, margin: '0 6px', marginBottom: 18,
-                      background: getStepStatus(PIPELINE_STEPS[i + 1].id) === 'pending' ? '#1e293b' : '#166534',
-                      transition: 'background 0.5s'
-                    }} />
-                  )}
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 48px' }}>
 
         {/* Connection Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -339,228 +346,4 @@ export default function Home() {
               {sourceDropdownOpen && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0f1623', border: '1px solid #1e293b', borderRadius: 8, marginTop: 4, zIndex: 10, overflow: 'hidden' }}>
                   {SOURCE_SYSTEMS.map(sys => (
-                    <div key={sys.id} className="dropdown-item" onClick={() => { if (sys.available) { setSourceSystem(sys.id); setSourceDropdownOpen(false) } }} style={{ padding: '10px 14px', cursor: sys.available ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: sys.available ? 1 : 0.4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500 }}>
-                        {sys.logo && <sys.logo />}
-                        {sys.label}
-                      </div>
-                      {!sys.available && <span style={{ fontSize: 10, color: '#475569', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
-              <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
-              <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
-            </div>
-            <button onClick={testShopify} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: shopifyStatus === 'connected' ? 'rgba(34,197,94,0.15)' : shopifyStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
-              {shopifyStatus === 'loading' ? 'Verbinde...' : shopifyStatus === 'connected' ? '✓ Verbunden' : shopifyStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
-            </button>
-          </div>
-
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Zielsystem</div>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : contentfulStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: contentfulStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(contentfulStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #1e293b' }}>
-              <ContentfulLogo />
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Contentful</span>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
-              <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
-              <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
-            </div>
-            <button onClick={testContentful} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: contentfulStatus === 'connected' ? 'rgba(34,197,94,0.15)' : contentfulStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
-              {contentfulStatus === 'loading' ? 'Verbinde...' : contentfulStatus === 'connected' ? '✓ Verbunden' : contentfulStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
-            </button>
-          </div>
-        </div>
-
-        {/* Analyze + Reset Buttons */}
-        {bothConnected && !inventory && !analyzing && (
-          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
-            <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
-              Inventar analysieren
-            </button>
-            <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', marginBottom: 20 }}>
-              {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
-            </button>
-          </div>
-        )}
-
-        {/* Analyzing */}
-        {analyzing && (
-          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>{steps[analyzeStep]}</div>
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-              {steps.map((_, i) => (
-                <div key={i} style={{ width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2, background: i <= analyzeStep ? '#6366f1' : '#1e293b', transition: 'all 0.3s ease' }} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Inventory */}
-        {inventory && !mapping && (
-          <div className="fade-up">
-            <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <div>
-                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
-                </div>
-                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-                {[
-                  { label: 'Produkte', value: inventory.productCount, delay: '0s' },
-                  { label: 'Pages', value: inventory.pages.length, delay: '0.1s' },
-                  { label: 'Blogs', value: inventory.blogs.length, delay: '0.2s' },
-                  { label: 'Metafields', value: inventory.metafields.length, delay: '0.3s' },
-                ].map(s => (
-                  <div key={s.label} className="count-up" style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center', animationDelay: s.delay }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              {inventory.pages.length > 0 && (
-                <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
-                  {inventory.pages.map(p => <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>)}
-                </div>
-              )}
-              {inventory.blogs.length > 0 && (
-                <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
-                  {inventory.blogs.map(b => <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>)}
-                </div>
-              )}
-              {inventory.metafields.length > 0 && (
-                <div style={{ fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metafields: </span>
-                  {inventory.metafields.slice(0, 10).map(m => <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>)}
-                  {inventory.metafields.length > 10 && <span style={{ color: '#475569', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
-                </div>
-              )}
-            </div>
-            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
-              {mappingLoading ? 'KI analysiert Struktur...' : 'KI Content Mapping starten →'}
-            </button>
-          </div>
-        )}
-
-        {/* Mapping */}
-        {mapping && (
-          <div className="fade-up" style={{ marginTop: 16 }}>
-            <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI Content Mapping</div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>Content Model Vorschlag</h2>
-              <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
-              </div>
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Types</div>
-                <div style={{ display: 'grid', gap: 12 }}>
-                  {mapping.contentTypes?.map((ct, i) => (
-                    <div key={ct.id} className="fade-up" style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 10, padding: 16, animationDelay: `${i * 0.1}s` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ct.name}</div>
-                          <div style={{ fontSize: 12, color: '#475569' }}>{ct.description}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 11, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{ct.id}</div>
-                          <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>~{ct.estimatedEntries} Entries</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                        {ct.fields?.map(f => (
-                          <span key={f.id} style={{ background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11, color: f.required ? '#a5b4fc' : '#64748b', border: f.required ? '1px solid #312e81' : '1px solid transparent' }}>
-                            {f.name} <span style={{ color: '#475569' }}>({f.type})</span>
-                          </span>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
-                        Quelle: <span style={{ color: '#94a3b8' }}>{ct.sourceType}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {mapping.migrationSteps && (
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Migrations-Plan</div>
-                  {mapping.migrationSteps.map((step, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'flex-start' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#312e81', color: '#a5b4fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-                      <div style={{ fontSize: 13, color: '#94a3b8', paddingTop: 3 }}>{step}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {deployResults && (
-              <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Content Model Deployment</div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#22c55e' }}>Content Types angelegt</h2>
-                {deployResults.map(r => (
-                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
-                    <span>{r.name}</span>
-                    <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
-                      {r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {migrateResults && (
-              <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Content Migration</div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#22c55e' }}>
-                  Pages migriert: {migrateResults.filter(r => r.status === 'success').length}/{migrateResults.length}
-                </h2>
-                {migrateResults.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
-                    <span>{r.title}</span>
-                    <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
-                      {r.status === 'success' ? '✓ migriert' : `✗ ${r.error}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
-                ↺ Von vorne
-              </button>
-              <button onClick={deployToContentful} disabled={deploying} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deploying ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deploying ? '#1e293b' : deployResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: deploying ? '#475569' : deployResults ? '#22c55e' : '#fff' }}>
-                {deploying ? 'Wird angelegt...' : deployResults ? '✓ Model angelegt' : 'Content Model anlegen →'}
-              </button>
-              <button onClick={migrateContent} disabled={migrating || !deployResults} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (migrating || !deployResults) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migrating ? '#1e293b' : !deployResults ? '#1e293b' : migrateResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: (migrating || !deployResults) ? '#475569' : migrateResults ? '#22c55e' : '#fff' }}>
-                {migrating ? 'Migriere...' : migrateResults ? '✓ Pages migriert' : 'Pages migrieren →'}
-              </button>
-              <button onClick={resetContentful} disabled={resetting} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', gridColumn: '1 / -1' }}>
-                {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </>
-  )
-}
+                    <div key={sys.id} className="dropdown-item" onClick={() => { if (sys.available) { setSourceSystem(sys.id); setSourceDropdownOpen(false) } }} style={{ padding: '10px 14px', cursor: sys.available ? 'pointer' : 'not-allowed', dis
