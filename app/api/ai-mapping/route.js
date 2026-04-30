@@ -19,41 +19,8 @@ REGELN FÜR DIE VERTEILUNG:
 
 WICHTIG für Namen: Verwende EXAKT die Namen aus dem Shopify-Inventar. Erfinde keine neuen Namen.
 
-Antworte NUR mit folgendem JSON-Format ohne Markdown oder Backticks:
-{
-  "summary": "Kurze Zusammenfassung der MACH-Architektur auf Deutsch",
-  "commercetools": {
-    "description": "Was nach commercetools migriert wird",
-    "contentTypes": [
-      {
-        "id": "eindeutige_id",
-        "name": "Name exakt aus Shopify",
-        "description": "Beschreibung",
-        "sourceType": "Shopify-Quelle",
-        "fields": [
-          { "id": "field_id", "name": "Feldname", "type": "String", "required": true }
-        ],
-        "estimatedEntries": 0
-      }
-    ]
-  },
-  "contentful": {
-    "description": "Was nach Contentful migriert wird",
-    "contentTypes": [
-      {
-        "id": "eindeutige_id",
-        "name": "Name exakt aus Shopify",
-        "description": "Beschreibung",
-        "sourceType": "Shopify-Quelle",
-        "fields": [
-          { "id": "field_id", "name": "Feldname", "type": "Symbol", "required": true }
-        ],
-        "estimatedEntries": 0
-      }
-    ]
-  },
-  "migrationSteps": ["Schritt 1", "Schritt 2"]
-}`
+Antworte NUR mit einem einzigen JSON-Objekt. Kein Text davor oder danach. Keine Markdown-Backticks. Nur das JSON:
+{"summary":"...","commercetools":{"description":"...","contentTypes":[{"id":"...","name":"...","description":"...","sourceType":"...","fields":[{"id":"...","name":"...","type":"String","required":true}],"estimatedEntries":0}]},"contentful":{"description":"...","contentTypes":[{"id":"...","name":"...","description":"...","sourceType":"...","fields":[{"id":"...","name":"...","type":"Symbol","required":true}],"estimatedEntries":0}]},"migrationSteps":["Schritt 1","Schritt 2"]}`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -80,8 +47,20 @@ Antworte NUR mit folgendem JSON-Format ohne Markdown oder Backticks:
 
     const data = JSON.parse(responseText)
     const text = data.content[0].text
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
+
+    // Robustes Parsing: erstes { bis letztes } extrahieren
+    const firstBrace = text.indexOf('{')
+    const lastBrace = text.lastIndexOf('}')
+
+    if (firstBrace === -1 || lastBrace === -1) {
+      return Response.json({
+        error: 'Kein JSON in der KI-Antwort gefunden',
+        raw: text
+      }, { status: 500 })
+    }
+
+    const jsonString = text.substring(firstBrace, lastBrace + 1)
+    const parsed = JSON.parse(jsonString)
 
     return Response.json(parsed)
 
