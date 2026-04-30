@@ -28,6 +28,7 @@ const PIPELINE_STEPS = [
   { id: 'connect', label: 'Verbinden' },
   { id: 'analyse', label: 'Analysieren' },
   { id: 'mapping', label: 'KI Mapping' },
+  { id: 'review', label: 'Review' },
   { id: 'model', label: 'Model anlegen' },
   { id: 'migrate', label: 'Migrieren' },
   { id: 'done', label: 'Fertig' },
@@ -58,6 +59,13 @@ export default function Home() {
   const [resetting, setResetting] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // NEW: model mode toggle — 'create' = Content Model aus Quellsystem anlegen, 'existing' = bestehendes Model verwenden
+  const [modelMode, setModelMode] = useState('create')
+
+  // NEW: review step state — editierbare Kopie der Content Types vor dem Deployment
+  const [reviewedContentTypes, setReviewedContentTypes] = useState(null)
+  const [reviewConfirmed, setReviewConfirmed] = useState(false)
+
   useEffect(() => { setMounted(true) }, [])
 
   const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
@@ -67,7 +75,9 @@ export default function Home() {
     if (migrating) return 'migrate'
     if (deployResults) return 'migrate'
     if (deploying) return 'model'
-    if (mapping) return 'model'
+    if (reviewConfirmed) return 'model'
+    if (reviewedContentTypes) return 'review'
+    if (mapping) return 'review'
     if (mappingLoading) return 'mapping'
     if (inventory) return 'mapping'
     if (analyzing) return 'analyse'
@@ -86,7 +96,7 @@ export default function Home() {
     return 'pending'
   }
 
-  const steps = [
+  const analyzeSteps = [
     'Verbinde mit Shopify...',
     'Lade Produkte...',
     'Analysiere Pages & Blogs...',
@@ -142,7 +152,7 @@ export default function Home() {
     setAnalyzeStep(0)
     const stepInterval = setInterval(() => {
       setAnalyzeStep(s => {
-        if (s >= steps.length - 1) { clearInterval(stepInterval); return s }
+        if (s >= analyzeSteps.length - 1) { clearInterval(stepInterval); return s }
         return s + 1
       })
     }, 600)
@@ -156,7 +166,7 @@ export default function Home() {
         shopifyFetch('themes.json'),
       ])
       clearInterval(stepInterval)
-      setAnalyzeStep(steps.length - 1)
+      setAnalyzeStep(analyzeSteps.length - 1)
       await new Promise(r => setTimeout(r, 800))
       setInventory({
         shopName: shop.shop?.name,
@@ -183,8 +193,19 @@ export default function Home() {
       })
       const parsed = await res.json()
       setMapping(parsed)
+      // Review-Schritt: Kopie der Content Types für die Bearbeitung anlegen
+      setReviewedContentTypes(parsed.contentTypes ? parsed.contentTypes.map(ct => ({ ...ct })) : [])
+      setReviewConfirmed(false)
     } catch (e) { console.error(e) }
     setMappingLoading(false)
+  }
+
+  function updateReviewedContentType(index, field, value) {
+    setReviewedContentTypes(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
+  }
+
+  function confirmReview() {
+    setReviewConfirmed(true)
   }
 
   async function deployToContentful() {
@@ -193,7 +214,7 @@ export default function Home() {
       const res = await fetch('/api/create-content-model', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentTypes: mapping.contentTypes })
+        body: JSON.stringify({ contentTypes: reviewedContentTypes || mapping.contentTypes })
       })
       const data = await res.json()
       setDeployResults(data.results)
@@ -232,6 +253,8 @@ export default function Home() {
   function reset() {
     setInventory(null)
     setMapping(null)
+    setReviewedContentTypes(null)
+    setReviewConfirmed(false)
     setDeployResults(null)
     setMigrateResults(null)
     setShopifyStatus('idle')
@@ -249,6 +272,13 @@ export default function Home() {
     fontFamily: 'JetBrains Mono, monospace', fontSize: 12, outline: 'none'
   }
 
+  const reviewInputStyle = {
+    background: '#080b12', border: '1px solid #312e81',
+    borderRadius: 6, padding: '6px 10px', color: '#e2e8f0',
+    fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
+    outline: 'none', width: '100%'
+  }
+
   return (
     <>
       <style>{`
@@ -264,18 +294,16 @@ export default function Home() {
         .count-up { animation: countUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
         input:focus { border-color: #6366f1 !important; }
         .dropdown-item:hover { background: #1e293b; }
+        .mode-btn { transition: all 0.2s; cursor: pointer; border: none; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
+        .review-input:focus { border-color: #6366f1 !important; }
       `}</style>
 
       {/* Sticky Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
             </div>
           </div>
 
@@ -326,6 +354,8 @@ export default function Home() {
 
         {/* Connection Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+          {/* Shopify Card */}
           <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
@@ -366,6 +396,7 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Contentful Card */}
           <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Zielsystem</div>
@@ -389,8 +420,47 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── MODEL MODE TOGGLE ─────────────────────────────────────────────── */}
+        {bothConnected && (
+          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20, animationDelay: '0.1s' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="mode-btn"
+                onClick={() => setModelMode('create')}
+                style={{
+                  flex: 1,
+                  background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b',
+                  color: modelMode === 'create' ? '#fff' : '#64748b',
+                  boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none',
+                }}
+              >
+                ✦ Content Model anlegen
+              </button>
+              <button
+                className="mode-btn"
+                onClick={() => setModelMode('existing')}
+                style={{
+                  flex: 1,
+                  background: modelMode === 'existing' ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : '#1e293b',
+                  color: modelMode === 'existing' ? '#fff' : '#64748b',
+                  boxShadow: modelMode === 'existing' ? '0 0 16px rgba(6,182,212,0.35)' : 'none',
+                }}
+              >
+                ↗ Bestehendes Model verwenden
+              </button>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: '#475569' }}>
+              {modelMode === 'create'
+                ? 'Das Tool analysiert die Shopify-Struktur und legt passende Content Types in Contentful an. Du prüfst die Namen vor dem Anlegen.'
+                : 'Das Tool liest bestehende Content Types aus Contentful und mappt die Quelldaten darauf. Kein neues Model wird erstellt.'}
+            </div>
+          </div>
+        )}
+
+        {/* ── ANALYSE BUTTON ────────────────────────────────────────────────── */}
         {bothConnected && !inventory && !analyzing && (
-          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
+          <div className="fade-up" style={{ animationDelay: '0.15s' }}>
             <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
               Inventar analysieren
             </button>
@@ -400,18 +470,20 @@ export default function Home() {
           </div>
         )}
 
+        {/* ── ANALYSE LOADING ───────────────────────────────────────────────── */}
         {analyzing && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
             <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>{steps[analyzeStep]}</div>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>{analyzeSteps[analyzeStep]}</div>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-              {steps.map((_, i) => (
+              {analyzeSteps.map((_, i) => (
                 <div key={i} style={{ width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2, background: i <= analyzeStep ? '#6366f1' : '#1e293b', transition: 'all 0.3s ease' }} />
               ))}
             </div>
           </div>
         )}
 
+        {/* ── INVENTAR ──────────────────────────────────────────────────────── */}
         {inventory && !mapping && (
           <div className="fade-up">
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
@@ -461,6 +533,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* ── KI MAPPING ERGEBNIS + REVIEW ──────────────────────────────────── */}
         {mapping && (
           <div className="fade-up" style={{ marginTop: 16 }}>
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
@@ -469,35 +542,89 @@ export default function Home() {
               <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
               </div>
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Types</div>
-                <div style={{ display: 'grid', gap: 12 }}>
-                  {mapping.contentTypes?.map((ct, i) => (
-                    <div key={ct.id} className="fade-up" style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 10, padding: 16, animationDelay: `${i * 0.1}s` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ct.name}</div>
-                          <div style={{ fontSize: 12, color: '#475569' }}>{ct.description}</div>
+
+              {/* ── REVIEW BEREICH ── */}
+              {!reviewConfirmed && reviewedContentTypes && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>⚠ Review: Namen prüfen und bestätigen</div>
+                  </div>
+                  <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
+                    Bitte prüfe die vorgeschlagenen Namen für die Content Types. Du kannst Name und ID direkt bearbeiten. Erst nach deiner Bestätigung wird das Model in Contentful angelegt.
+                  </div>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {reviewedContentTypes.map((ct, i) => (
+                      <div key={i} style={{ background: '#0a0e1a', border: '1px solid #312e81', borderRadius: 10, padding: 16 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#6366f1', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Name (Anzeige)</div>
+                            <input
+                              className="review-input"
+                              style={reviewInputStyle}
+                              value={ct.name}
+                              onChange={e => updateReviewedContentType(i, 'name', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#6366f1', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>ID (technisch)</div>
+                            <input
+                              className="review-input"
+                              style={{ ...reviewInputStyle, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+                              value={ct.id}
+                              onChange={e => updateReviewedContentType(i, 'id', e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 11, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{ct.id}</div>
-                          <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>~{ct.estimatedEntries} Entries</div>
+                        <div style={{ fontSize: 11, color: '#475569' }}>
+                          Quelle: <span style={{ color: '#64748b' }}>{ct.sourceType}</span>
+                          <span style={{ marginLeft: 12 }}>~{ct.estimatedEntries} Entries</span>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                        {ct.fields?.map(f => (
-                          <span key={f.id} style={{ background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11, color: f.required ? '#a5b4fc' : '#64748b', border: f.required ? '1px solid #312e81' : '1px solid transparent' }}>
-                            {f.name} <span style={{ color: '#475569' }}>({f.type})</span>
-                          </span>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
-                        Quelle: <span style={{ color: '#94a3b8' }}>{ct.sourceType}</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <button
+                    onClick={confirmReview}
+                    style={{ width: '100%', marginTop: 16, padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', color: '#000', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}
+                  >
+                    ✓ Namen bestätigen und weiter
+                  </button>
                 </div>
-              </div>
+              )}
+
+              {/* ── BESTÄTIGTE CONTENT TYPES (read-only nach Review) ── */}
+              {reviewConfirmed && reviewedContentTypes && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✓ Content Types bestätigt</div>
+                    <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#475569', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
+                  </div>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {reviewedContentTypes.map((ct, i) => (
+                      <div key={i} className="fade-up" style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, animationDelay: `${i * 0.08}s` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ct.name}</div>
+                            <div style={{ fontSize: 12, color: '#475569' }}>{ct.description}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 11, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{ct.id}</div>
+                            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>~{ct.estimatedEntries} Entries</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                          {ct.fields?.map(f => (
+                            <span key={f.id} style={{ background: '#1e293b', borderRadius: 4, padding: '3px 8px', fontSize: 11, color: f.required ? '#a5b4fc' : '#64748b', border: f.required ? '1px solid #312e81' : '1px solid transparent' }}>
+                              {f.name} <span style={{ color: '#475569' }}>({f.type})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Migrations-Plan */}
               {mapping.migrationSteps && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Migrations-Plan</div>
@@ -511,6 +638,7 @@ export default function Home() {
               )}
             </div>
 
+            {/* Deploy Results */}
             {deployResults && (
               <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Content Model Deployment</div>
@@ -526,6 +654,7 @@ export default function Home() {
               </div>
             )}
 
+            {/* Migrate Results */}
             {migrateResults && (
               <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Content Migration</div>
@@ -543,14 +672,23 @@ export default function Home() {
               </div>
             )}
 
+            {/* Action Buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
                 ↺ Von vorne
               </button>
-              <button onClick={deployToContentful} disabled={deploying} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deploying ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deploying ? '#1e293b' : deployResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: deploying ? '#475569' : deployResults ? '#22c55e' : '#fff' }}>
-                {deploying ? 'Wird angelegt...' : deployResults ? '✓ Model angelegt' : 'Content Model anlegen →'}
+              <button
+                onClick={deployToContentful}
+                disabled={deploying || !reviewConfirmed}
+                style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (deploying || !reviewConfirmed) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deploying ? '#1e293b' : !reviewConfirmed ? '#1e293b' : deployResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: (deploying || !reviewConfirmed) ? '#475569' : deployResults ? '#22c55e' : '#fff' }}
+              >
+                {deploying ? 'Wird angelegt...' : !reviewConfirmed ? '⚠ Erst Review bestätigen' : deployResults ? '✓ Model angelegt' : 'Content Model anlegen →'}
               </button>
-              <button onClick={migrateContent} disabled={migrating || !deployResults} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (migrating || !deployResults) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migrating ? '#1e293b' : !deployResults ? '#1e293b' : migrateResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: (migrating || !deployResults) ? '#475569' : migrateResults ? '#22c55e' : '#fff' }}>
+              <button
+                onClick={migrateContent}
+                disabled={migrating || !deployResults}
+                style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (migrating || !deployResults) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migrating ? '#1e293b' : !deployResults ? '#1e293b' : migrateResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: (migrating || !deployResults) ? '#475569' : migrateResults ? '#22c55e' : '#fff' }}
+              >
                 {migrating ? 'Migriere...' : migrateResults ? '✓ Pages migriert' : 'Pages migrieren →'}
               </button>
               <button onClick={resetContentful} disabled={resetting} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', gridColumn: '1 / -1' }}>
@@ -563,4 +701,3 @@ export default function Home() {
     </>
   )
 }
-
