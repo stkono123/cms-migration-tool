@@ -340,12 +340,15 @@ export default function Home() {
         </div>
 
         {bothConnected && !inventory && !analyzing && (
-          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
-            <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 20, animation: 'glow 2s ease infinite' }}>
-              Inventar analysieren
-            </button>
-          </div>
-        )}
+  <div className="fade-up" style={{ animationDelay: '0.1s' }}>
+    <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
+      Inventar analysieren
+    </button>
+    <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', marginBottom: 20 }}>
+      {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
+    </button>
+  </div>
+)}
 
         {analyzing && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
