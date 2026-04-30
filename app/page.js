@@ -46,6 +46,7 @@ export default function Home() {
   const [deployResults, setDeployResults] = useState(null)
   const [migrating, setMigrating] = useState(false)
   const [migrateResults, setMigrateResults] = useState(null)
+  const [resetting, setResetting] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -189,6 +190,22 @@ export default function Home() {
     setMigrating(false)
   }
 
+  async function resetContentful() {
+    if (!confirm('Alle Contentful Entries und Content Types löschen? Das kann nicht rückgängig gemacht werden.')) return
+    setResetting(true)
+    try {
+      await fetch('/api/reset-contentful', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      setDeployResults(null)
+      setMigrateResults(null)
+    } catch (e) {
+      console.error(e)
+    }
+    setResetting(false)
+  }
+
   function reset() {
     setInventory(null)
     setMapping(null)
@@ -292,7 +309,7 @@ export default function Home() {
             </div>
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
-              <input style={{ ...inputStyle }} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
+              <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
             </div>
             <button onClick={testShopify} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: shopifyStatus === 'connected' ? 'rgba(34,197,94,0.15)' : shopifyStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
               {shopifyStatus === 'loading' ? 'Verbinde...' : shopifyStatus === 'connected' ? '✓ Verbunden' : shopifyStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
@@ -474,12 +491,17 @@ export default function Home() {
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>↺ Von vorne</button>
+              <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                ↺ Von vorne
+              </button>
               <button onClick={deployToContentful} disabled={deploying} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deploying ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deploying ? '#1e293b' : deployResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: deploying ? '#475569' : deployResults ? '#22c55e' : '#fff' }}>
                 {deploying ? 'Wird angelegt...' : deployResults ? '✓ Model angelegt' : 'Content Model anlegen →'}
               </button>
               <button onClick={migrateContent} disabled={migrating || !deployResults} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (migrating || !deployResults) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migrating ? '#1e293b' : !deployResults ? '#1e293b' : migrateResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: (migrating || !deployResults) ? '#475569' : migrateResults ? '#22c55e' : '#fff' }}>
                 {migrating ? 'Migriere...' : migrateResults ? '✓ Pages migriert' : 'Pages migrieren →'}
+              </button>
+              <button onClick={resetContentful} disabled={resetting} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', gridColumn: '1 / -1' }}>
+                {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
               </button>
             </div>
           </div>
