@@ -4,7 +4,7 @@ export async function POST(request) {
   try {
     const { inventory } = await request.json()
 
-    const prompt = `Du bist ein CMS-Migrationsexperte. Analysiere diese Shopify-Struktur und schlage ein optimales Contentful Content Model vor.
+    const prompt = `Du bist ein MACH-Architektur-Experte. Analysiere diese Shopify-Struktur und verteile die Inhalte optimal auf zwei Zielsysteme: commercetools (Commerce-Daten) und Contentful (Content-Daten).
 
 SHOPIFY INVENTAR:
 - Shop: ${inventory.shopName}
@@ -13,21 +13,45 @@ SHOPIFY INVENTAR:
 - Blogs (${inventory.blogs.length}): ${inventory.blogs.map(b => b.title).join(', ')}
 - Metafields (${inventory.metafields.length}): ${inventory.metafields.slice(0, 20).map(m => `${m.namespace}.${m.key}`).join(', ')}
 
-Erstelle ein JSON mit folgendem Format und antworte NUR mit dem JSON:
+REGELN FÜR DIE VERTEILUNG:
+- commercetools: Produkte, Kategorien, Preise, Inventar, Bestellungen, Kundendaten
+- Contentful: Pages, Blogs, redaktionelle Inhalte, Marketing-Texte, Metafield-Inhalte die nicht commerce-relevant sind
+
+WICHTIG für Namen: Verwende EXAKT die Namen aus dem Shopify-Inventar. Erfinde keine neuen Namen.
+
+Antworte NUR mit folgendem JSON-Format ohne Markdown oder Backticks:
 {
-  "summary": "Kurze Zusammenfassung auf Deutsch",
-  "contentTypes": [
-    {
-      "id": "eindeutige_id",
-      "name": "Name",
-      "description": "Beschreibung",
-      "sourceType": "Quelle",
-      "fields": [
-        { "id": "field_id", "name": "Feldname", "type": "Symbol", "required": true }
-      ],
-      "estimatedEntries": 0
-    }
-  ],
+  "summary": "Kurze Zusammenfassung der MACH-Architektur auf Deutsch",
+  "commercetools": {
+    "description": "Was nach commercetools migriert wird",
+    "contentTypes": [
+      {
+        "id": "eindeutige_id",
+        "name": "Name exakt aus Shopify",
+        "description": "Beschreibung",
+        "sourceType": "Shopify-Quelle",
+        "fields": [
+          { "id": "field_id", "name": "Feldname", "type": "String", "required": true }
+        ],
+        "estimatedEntries": 0
+      }
+    ]
+  },
+  "contentful": {
+    "description": "Was nach Contentful migriert wird",
+    "contentTypes": [
+      {
+        "id": "eindeutige_id",
+        "name": "Name exakt aus Shopify",
+        "description": "Beschreibung",
+        "sourceType": "Shopify-Quelle",
+        "fields": [
+          { "id": "field_id", "name": "Feldname", "type": "Symbol", "required": true }
+        ],
+        "estimatedEntries": 0
+      }
+    ]
+  },
   "migrationSteps": ["Schritt 1", "Schritt 2"]
 }`
 
@@ -46,11 +70,11 @@ Erstelle ein JSON mit folgendem Format und antworte NUR mit dem JSON:
     })
 
     const responseText = await response.text()
-    
+
     if (!response.ok) {
-      return Response.json({ 
-        error: `Anthropic Error ${response.status}`, 
-        details: responseText 
+      return Response.json({
+        error: `Anthropic Error ${response.status}`,
+        details: responseText
       }, { status: 500 })
     }
 
@@ -58,7 +82,7 @@ Erstelle ein JSON mit folgendem Format und antworte NUR mit dem JSON:
     const text = data.content[0].text
     const clean = text.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(clean)
-    
+
     return Response.json(parsed)
 
   } catch (error) {
