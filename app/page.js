@@ -272,14 +272,10 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
               </div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                CMS Migration Intelligence
-              </h1>
-              <p style={{ color: '#475569', fontSize: 12, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
-                // {selectedSource?.label} → Contentful · AI-powered
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <img src="/logo.svg" alt="MigrateIQ" style={{ height: 32 }} />
+              </div>
             </div>
           </div>
 
