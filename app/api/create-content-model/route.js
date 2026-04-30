@@ -3,11 +3,9 @@ export const runtime = 'nodejs'
 export async function POST(request) {
   try {
     const { contentTypes } = await request.json()
-
     const spaceId = process.env.CONTENTFUL_SPACE_ID
     const token = process.env.CONTENTFUL_CMA_TOKEN
     const environment = 'master'
-
     const results = []
 
     for (const ct of contentTypes) {
@@ -31,7 +29,6 @@ export async function POST(request) {
           validations: []
         }))
 
-        // Title Feld finden
         const titleFieldId = ct.fields.find(f =>
           f.id.toLowerCase().includes('title') ||
           f.id.toLowerCase().includes('titel') ||
@@ -78,7 +75,6 @@ export async function POST(request) {
     }
 
     return Response.json({ results })
-
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 })
   }
