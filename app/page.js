@@ -274,7 +274,7 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <img src="/logo.svg" alt="MigrateIQ" style={{ height: 32 }} />
+                <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
               </div>
             </div>
           </div>
