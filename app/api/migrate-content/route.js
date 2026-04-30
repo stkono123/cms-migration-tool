@@ -19,15 +19,15 @@ export async function POST(request) {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/vnd.contentful.management.v1+json',
-              'X-Contentful-Content-Type': 'page'
+              'X-Contentful-Content-Type': 'staticPage'
             },
             body: JSON.stringify({
               fields: {
                 title: { 'en-US': page.title },
-                slug: { 'en-US': page.handle || page.title.toLowerCase().replace(/\s+/g, '-') },
-                body: { 'en-US': page.body_html || '' },
+                slug: { 'en-US': page.handle || page.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') },
+                content: { 'en-US': { nodeType: 'document', data: {}, content: [{ nodeType: 'paragraph', data: {}, content: [{ nodeType: 'text', value: page.body_html ? page.body_html.replace(/<[^>]*>/g, '') : '', marks: [], data: {} }] }] } },
                 seoTitle: { 'en-US': page.title },
-                noIndexFlag: { 'en-US': false }
+                noindex: { 'en-US': false }
               }
             })
           }
