@@ -24,6 +24,15 @@ const SOURCE_SYSTEMS = [
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
 ]
 
+const PIPELINE_STEPS = [
+  { id: 'connect', label: 'Verbinden' },
+  { id: 'analyse', label: 'Analysieren' },
+  { id: 'mapping', label: 'KI Mapping' },
+  { id: 'model', label: 'Model anlegen' },
+  { id: 'migrate', label: 'Migrieren' },
+  { id: 'done', label: 'Fertig' },
+]
+
 export default function Home() {
   const [sourceSystem, setSourceSystem] = useState('shopify')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
@@ -50,6 +59,32 @@ export default function Home() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
+
+  const currentStep = () => {
+    if (migrateResults && migrateResults.filter(r => r.status === 'success').length > 0) return 'done'
+    if (migrating) return 'migrate'
+    if (deployResults) return 'migrate'
+    if (deploying) return 'model'
+    if (mapping) return 'model'
+    if (mappingLoading) return 'mapping'
+    if (inventory) return 'mapping'
+    if (analyzing) return 'analyse'
+    if (bothConnected) return 'analyse'
+    return 'connect'
+  }
+
+  const getStepStatus = (stepId) => {
+    const order = PIPELINE_STEPS.map(s => s.id)
+    const current = currentStep()
+    const currentIdx = order.indexOf(current)
+    const stepIdx = order.indexOf(stepId)
+    if (stepId === 'done' && migrateResults && migrateResults.filter(r => r.status === 'success').length > 0) return 'done'
+    if (stepIdx < currentIdx) return 'done'
+    if (stepIdx === currentIdx) return 'active'
+    return 'pending'
+  }
 
   const steps = [
     'Verbinde mit Shopify...',
@@ -80,9 +115,7 @@ export default function Home() {
       const data = await shopifyFetch('shop.json')
       if (data.shop) setShopifyStatus('connected')
       else setShopifyStatus('error')
-    } catch {
-      setShopifyStatus('error')
-    }
+    } catch { setShopifyStatus('error') }
   }
 
   async function testContentful() {
@@ -101,9 +134,7 @@ export default function Home() {
       const data = await res.json()
       if (data.name) setContentfulStatus('connected')
       else setContentfulStatus('error')
-    } catch {
-      setContentfulStatus('error')
-    }
+    } catch { setContentfulStatus('error') }
   }
 
   async function analyze() {
@@ -152,9 +183,7 @@ export default function Home() {
       })
       const parsed = await res.json()
       setMapping(parsed)
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error(e) }
     setMappingLoading(false)
   }
 
@@ -168,9 +197,7 @@ export default function Home() {
       })
       const data = await res.json()
       setDeployResults(data.results)
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error(e) }
     setDeploying(false)
   }
 
@@ -184,14 +211,12 @@ export default function Home() {
       })
       const data = await res.json()
       setMigrateResults(data.results)
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error(e) }
     setMigrating(false)
   }
 
   async function resetContentful() {
-    if (!confirm('Alle Contentful Entries und Content Types löschen? Das kann nicht rückgängig gemacht werden.')) return
+    if (!confirm('Alle Contentful Entries und Content Types löschen?')) return
     setResetting(true)
     try {
       await fetch('/api/reset-contentful', {
@@ -200,9 +225,7 @@ export default function Home() {
       })
       setDeployResults(null)
       setMigrateResults(null)
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error(e) }
     setResetting(false)
   }
 
@@ -216,7 +239,6 @@ export default function Home() {
     setAnalyzeStep(0)
   }
 
-  const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
   const selectedSource = SOURCE_SYSTEMS.find(s => s.id === sourceSystem)
 
   if (!mounted) return null
@@ -246,7 +268,8 @@ export default function Home() {
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
 
-        <div className="fade-up" style={{ marginBottom: 48 }}>
+        {/* Header */}
+        <div className="fade-up" style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ background: '#6366f1', borderRadius: 4, padding: '3px 8px', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Beta</div>
           </div>
@@ -258,28 +281,53 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="fade-up" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, animationDelay: '0.1s' }}>
-          {['Connect', 'Analyse', 'AI Mapping', 'Migrate'].map((s, i) => {
-            const active = i === 0 || (i === 1 && inventory) || (i === 2 && mapping) || (i === 3 && deployResults)
-            return (
-              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: active ? '#6366f1' : '#334155', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', border: `1.5px solid ${active ? '#6366f1' : '#334155'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, background: active ? '#6366f1' : 'transparent', color: active ? '#fff' : '#334155' }}>{i + 1}</div>
-                  {s}
+        {/* Pipeline Status */}
+        <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: '16px 24px', marginBottom: 24, animationDelay: '0.05s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {PIPELINE_STEPS.map((step, i) => {
+              const status = getStepStatus(step.id)
+              return (
+                <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700,
+                      background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b',
+                      color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#475569',
+                      border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent',
+                      boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none',
+                      transition: 'all 0.3s',
+                      ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {})
+                    }}>
+                      {status === 'done' ? '✓' : i + 1}
+                    </div>
+                    <div style={{
+                      fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
+                      color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155',
+                      whiteSpace: 'nowrap', transition: 'color 0.3s'
+                    }}>{step.label}</div>
+                  </div>
+                  {i < PIPELINE_STEPS.length - 1 && (
+                    <div style={{
+                      flex: 1, height: 2, margin: '0 6px', marginBottom: 18,
+                      background: getStepStatus(PIPELINE_STEPS[i + 1].id) === 'pending' ? '#1e293b' : '#166534',
+                      transition: 'background 0.5s'
+                    }} />
+                  )}
                 </div>
-                {i < 3 && <div style={{ width: 32, height: 1, background: '#1e293b' }} />}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
 
+        {/* Connection Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
           <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : shopifyStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: shopifyStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(shopifyStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
             </div>
-
             <div style={{ position: 'relative', marginBottom: 16 }}>
               <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -302,7 +350,6 @@ export default function Home() {
                 </div>
               )}
             </div>
-
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
               <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
@@ -339,17 +386,19 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Analyze + Reset Buttons */}
         {bothConnected && !inventory && !analyzing && (
-  <div className="fade-up" style={{ animationDelay: '0.1s' }}>
-    <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
-      Inventar analysieren
-    </button>
-    <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', marginBottom: 20 }}>
-      {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
-    </button>
-  </div>
-)}
+          <div className="fade-up" style={{ animationDelay: '0.1s' }}>
+            <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
+              Inventar analysieren
+            </button>
+            <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', marginBottom: 20 }}>
+              {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
+            </button>
+          </div>
+        )}
 
+        {/* Analyzing */}
         {analyzing && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
             <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
@@ -362,6 +411,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Inventory */}
         {inventory && !mapping && (
           <div className="fade-up">
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
@@ -411,6 +461,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* Mapping */}
         {mapping && (
           <div className="fade-up" style={{ marginTop: 16 }}>
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
