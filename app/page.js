@@ -250,7 +250,7 @@ export default function Home() {
   async function migrateProductsToCT() {
     setMigratingCT(true)
     try {
-      const res = await fetch('/api/migrate-products', {
+      const res = await fetch('/api/migrate-products-ct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit: productLimit })
