@@ -65,6 +65,9 @@ Antworte NUR mit einem einzigen JSON-Objekt. Kein Text davor oder danach. Keine 
     return Response.json(parsed)
 
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
-  }
+  return Response.json({ 
+    error: error.message, 
+    stack: error.stack 
+  }, { status: 500 })
+}
 }
