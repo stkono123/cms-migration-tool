@@ -48,12 +48,18 @@ export default function Home() {
   const [shopifyToken, setShopifyToken] = useState('••••••••••••••••••••••••')
   const [shopifyTokenEditing, setShopifyTokenEditing] = useState(false)
   const [shopifyTokenReal, setShopifyTokenReal] = useState('')
+
+  // Separate CT connection state
+  const [ctStatus, setCtStatus] = useState('idle')
+
+  // Contentful connection state
   const [contentfulSpace, setContentfulSpace] = useState('1ub4n2ex18h8')
   const [contentfulToken, setContentfulToken] = useState('••••••••••••••••••••••••')
   const [contentfulTokenEditing, setContentfulTokenEditing] = useState(false)
   const [contentfulTokenReal, setContentfulTokenReal] = useState('')
-  const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [contentfulStatus, setContentfulStatus] = useState('idle')
+
+  const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [inventory, setInventory] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
@@ -71,13 +77,14 @@ export default function Home() {
   const [productLimit, setProductLimit] = useState(10)
   const [migratingContentful, setMigratingContentful] = useState(false)
   const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
-  const [resetting, setResetting] = useState(false)
+  const [resettingContentful, setResettingContentful] = useState(false)
+  const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
-  const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
+  const allConnected = shopifyStatus === 'connected' && ctStatus === 'connected' && contentfulStatus === 'connected'
   const bothDeployed = deployResultsCT && deployResultsContentful
   const bothMigrated = migrateResultsCT && migrateResultsContentful
 
@@ -92,7 +99,7 @@ export default function Home() {
     if (mappingLoading) return 'mapping'
     if (inventory) return 'mapping'
     if (analyzing) return 'analyse'
-    if (bothConnected) return 'analyse'
+    if (allConnected) return 'analyse'
     return 'connect'
   }
 
@@ -137,6 +144,19 @@ export default function Home() {
       if (data.shop) setShopifyStatus('connected')
       else setShopifyStatus('error')
     } catch { setShopifyStatus('error') }
+  }
+
+  async function testCT() {
+    setCtStatus('loading')
+    try {
+      const res = await fetch('/api/test-commercetools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.ok) setCtStatus('connected')
+      else setCtStatus('error')
+    } catch { setCtStatus('error') }
   }
 
   async function testContentful() {
@@ -277,15 +297,24 @@ export default function Home() {
 
   async function resetContentful() {
     if (!confirm('Alle Contentful Entries und Content Types löschen?')) return
-    setResetting(true)
+    setResettingContentful(true)
     try {
       await fetch('/api/reset-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       setDeployResultsContentful(null)
-      setDeployResultsCT(null)
-      setMigrateResultsCT(null)
       setMigrateResultsContentful(null)
     } catch (e) { console.error(e) }
-    setResetting(false)
+    setResettingContentful(false)
+  }
+
+  async function resetCT() {
+    if (!confirm('Alle commercetools Produkte und Product Types löschen?')) return
+    setResettingCT(true)
+    try {
+      await fetch('/api/reset-commercetools', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      setDeployResultsCT(null)
+      setMigrateResultsCT(null)
+    } catch (e) { console.error(e) }
+    setResettingCT(false)
   }
 
   function reset() {
@@ -299,6 +328,7 @@ export default function Home() {
     setMigrateResultsCT(null)
     setMigrateResultsContentful(null)
     setShopifyStatus('idle')
+    setCtStatus('idle')
     setContentfulStatus('idle')
     setAnalyzeStep(0)
   }
@@ -318,6 +348,16 @@ export default function Home() {
     fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
     outline: 'none', width: '100%'
   }
+
+  const StatusDot = ({ status }) => (
+    <div style={{ width: 10, height: 10, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : status === 'loading' ? '#f59e0b' : '#334155', boxShadow: status === 'connected' ? '0 0 8px #22c55e' : 'none', ...(status === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
+  )
+
+  const ConnectButton = ({ status, onClick, label }) => (
+    <button onClick={onClick} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: status === 'connected' ? 'rgba(34,197,94,0.15)' : status === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
+      {status === 'loading' ? 'Verbinde...' : status === 'connected' ? `✓ ${label} verbunden` : status === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+    </button>
+  )
 
   const ReviewSection = ({ title, color, items, onUpdate, logo: Logo }) => (
     <div style={{ marginBottom: 20 }}>
@@ -368,7 +408,7 @@ export default function Home() {
 
       {/* Sticky Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 0' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
             <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
           </div>
@@ -395,15 +435,16 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 48px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 48px' }}>
 
-        {/* Connection Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-          {/* Shopify Card */}
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
+        {/* ── CONNECTION CARDS: 3 columns ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+          {/* Shopify */}
+          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : shopifyStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: shopifyStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(shopifyStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
+              <StatusDot status={shopifyStatus} />
             </div>
             <div style={{ position: 'relative', marginBottom: 16 }}>
               <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
@@ -435,44 +476,51 @@ export default function Home() {
               <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
               <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
             </div>
-            <button onClick={testShopify} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: shopifyStatus === 'connected' ? 'rgba(34,197,94,0.15)' : shopifyStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: shopifyStatus === 'connected' ? '#22c55e' : shopifyStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
-              {shopifyStatus === 'loading' ? 'Verbinde...' : shopifyStatus === 'connected' ? '✓ Verbunden' : shopifyStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
-            </button>
+            <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
           </div>
 
-          {/* Zielsystem Card */}
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
+          {/* commercetools */}
+          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Zielsystem</div>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : contentfulStatus === 'loading' ? '#f59e0b' : '#334155', boxShadow: contentfulStatus === 'connected' ? '0 0 8px #22c55e' : 'none', ...(contentfulStatus === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Commerce</div>
+              <StatusDot status={ctStatus} />
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '8px 12px', background: '#080b12', borderRadius: 8, border: '1px solid #00B2E333' }}>
-                <CTLogo />
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#00B2E3' }}>commercetools</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '8px 12px', background: '#080b12', borderRadius: 8, border: '1px solid #FAE50133' }}>
-                <ContentfulLogo />
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #00B2E333' }}>
+              <CTLogo />
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#00B2E3' }}>commercetools</span>
+            </div>
+            <div style={{ background: '#0a0e1a', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+              Credentials werden aus den Vercel Environment Variables gelesen.<br />
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#334155' }}>CT_PROJECT_KEY · CT_CLIENT_ID · CT_CLIENT_SECRET</span>
+            </div>
+            <ConnectButton status={ctStatus} onClick={testCT} label="commercetools" />
+          </div>
+
+          {/* Contentful */}
+          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#FAE50133'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Content</div>
+              <StatusDot status={contentfulStatus} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #FAE50133' }}>
+              <ContentfulLogo />
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
             </div>
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contentful Space ID</div>
+              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
               <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
             </div>
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
               <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
             </div>
-            <button onClick={testContentful} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: contentfulStatus === 'connected' ? 'rgba(34,197,94,0.15)' : contentfulStatus === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: contentfulStatus === 'connected' ? '#22c55e' : contentfulStatus === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
-              {contentfulStatus === 'loading' ? 'Verbinde...' : contentfulStatus === 'connected' ? '✓ Verbunden' : contentfulStatus === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
-            </button>
+            <ConnectButton status={contentfulStatus} onClick={testContentful} label="Contentful" />
           </div>
         </div>
 
         {/* Model Mode Toggle */}
-        {bothConnected && (
-          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20, animationDelay: '0.1s' }}>
+        {allConnected && (
+          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="mode-btn" onClick={() => setModelMode('create')} style={{ flex: 1, background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b', color: modelMode === 'create' ? '#fff' : '#64748b', boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none' }}>
@@ -491,8 +539,8 @@ export default function Home() {
         )}
 
         {/* Analyse Button */}
-        {bothConnected && !inventory && !analyzing && (
-          <div className="fade-up" style={{ animationDelay: '0.15s' }}>
+        {allConnected && !inventory && !analyzing && (
+          <div className="fade-up">
             <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
               Inventar analysieren
             </button>
@@ -658,7 +706,7 @@ export default function Home() {
                 <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
                   <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
 
-                  {/* CT Produkte */}
+                  {/* commercetools Produkte */}
                   <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <CTLogo />
@@ -666,18 +714,11 @@ export default function Home() {
                     </div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                       <span style={{ fontSize: 12, color: '#475569' }}>Anzahl Produkte:</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={inventory?.productCount || 1695}
-                        value={productLimit}
-                        onChange={e => setProductLimit(parseInt(e.target.value) || 10)}
-                        style={{ ...inputStyle, width: 80 }}
-                      />
+                      <input type="number" min={1} max={inventory?.productCount || 1695} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
                       <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
                     </div>
                     <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
-                      {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte migrieren →`}
+                      {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
                     </button>
                     {migrateResultsCT && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
@@ -701,7 +742,7 @@ export default function Home() {
                       {inventory?.pages.length || 0} Pages werden migriert
                     </div>
                     <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#475569' : migrateResultsContentful ? '#22c55e' : '#000' }}>
-                      {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages migrieren →'}
+                      {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren →'}
                     </button>
                     {migrateResultsContentful && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
@@ -717,10 +758,15 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Nur Contentful zurücksetzen */}
-              <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444' }}>
-                {resetting ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
-              </button>
+              {/* Reset Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#475569' : '#00B2E3' }}>
+                  {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
+                </button>
+                <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#475569' : '#ef4444' }}>
+                  {resettingContentful ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
+                </button>
+              </div>
             </div>
           </div>
         )}
