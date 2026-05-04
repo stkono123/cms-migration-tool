@@ -12,9 +12,12 @@ export async function POST(request) {
     const ctAuthUrl = process.env.CT_AUTH_URL || 'https://auth.europe-west1.gcp.commercetools.com'
     const ctApiUrl = process.env.CT_API_URL || 'https://api.europe-west1.gcp.commercetools.com'
 
+    // Max 50 pro Request um Timeout zu vermeiden
+    const safeLimit = Math.min(limit, 50)
+
     // 1. Shopify Produkte laden
     const shopifyRes = await fetch(
-      `https://${shopifyDomain}/admin/api/2024-01/products.json?limit=${Math.min(limit, 250)}&status=active`,
+      `https://${shopifyDomain}/admin/api/2024-01/products.json?limit=${safeLimit}&status=active`,
       {
         headers: {
           'X-Shopify-Access-Token': shopifyToken,
@@ -45,7 +48,7 @@ export async function POST(request) {
     }
     const accessToken = authData.access_token
 
-    // 3. CT Product Type "Produkte" holen — mit allen Attributen
+    // 3. CT Product Type "Produkte" holen
     const ptRes = await fetch(
       `${ctApiUrl}/${ctProjectKey}/product-types?where=name%3D%22Produkte%22&limit=1`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -53,7 +56,6 @@ export async function POST(request) {
     const ptData = await ptRes.json()
     let productType = ptData.results?.[0]
 
-    // Fallback: ersten verfügbaren nehmen
     if (!productType) {
       const ptAllRes = await fetch(
         `${ctApiUrl}/${ctProjectKey}/product-types?limit=1`,
@@ -72,14 +74,11 @@ export async function POST(request) {
       (productType.attributes || []).map(a => a.name)
     )
 
-    // 5. Shopify-Felder auf vorhandene CT-Attribute mappen
-    // Wir definieren alle möglichen Mappings und filtern nur die vorhandenen
+    // 5. Attribute dynamisch mappen — OHNE 'name' da CT-internes Feld
     const buildVariantAttributes = (product, variant) => {
       const allMappings = [
         { name: 'product_id',   value: String(product.id) },
         { name: 'shopify_id',   value: String(product.id) },
-        { name: 'name',         value: product.title },
-        { name: 'titel',        value: product.title },
         { name: 'price',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
         { name: 'preis',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
         { name: 'inventory',    value: String(variant?.inventory_quantity || 0) },
@@ -100,18 +99,24 @@ export async function POST(request) {
     // 6. Produkte nach CT migrieren
     const results = []
     const usedSlugs = new Set()
+    const usedSkus = new Set()
 
     for (const product of products) {
       try {
         // Eindeutigen Slug sicherstellen
         let slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        if (usedSlugs.has(slug)) {
-          slug = `${slug}-${product.id}`
-        }
+        if (usedSlugs.has(slug)) slug = `${slug}-${product.id}`
         usedSlugs.add(slug)
 
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
+
+        // Eindeutige SKU für masterVariant
+        let masterSku = firstVariant?.sku || ''
+        if (!masterSku || usedSkus.has(masterSku)) {
+          masterSku = `shopify-${product.id}-${firstVariant?.id || 'master'}`
+        }
+        usedSkus.add(masterSku)
 
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
@@ -121,7 +126,7 @@ export async function POST(request) {
             ? { de: product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
             : undefined,
           masterVariant: {
-            sku: firstVariant?.sku || `shopify-${product.id}-master`,
+            sku: masterSku,
             prices: priceValue > 0 ? [{
               value: {
                 currencyCode: 'EUR',
@@ -137,18 +142,25 @@ export async function POST(request) {
             }] : [],
             attributes: buildVariantAttributes(product, firstVariant)
           },
-          variants: (product.variants?.slice(1) || []).map(v => ({
-            sku: v.sku || `shopify-${product.id}-${v.id}`,
-            prices: parseFloat(v.price || 0) > 0 ? [{
-              value: {
-                currencyCode: 'EUR',
-                centAmount: Math.round(parseFloat(v.price) * 100),
-                type: 'centPrecision',
-                fractionDigits: 2
-              }
-            }] : [],
-            attributes: buildVariantAttributes(product, v)
-          })),
+          variants: (product.variants?.slice(1) || []).map(v => {
+            let varSku = v.sku || ''
+            if (!varSku || usedSkus.has(varSku)) {
+              varSku = `shopify-${product.id}-${v.id}`
+            }
+            usedSkus.add(varSku)
+            return {
+              sku: varSku,
+              prices: parseFloat(v.price || 0) > 0 ? [{
+                value: {
+                  currencyCode: 'EUR',
+                  centAmount: Math.round(parseFloat(v.price) * 100),
+                  type: 'centPrecision',
+                  fractionDigits: 2
+                }
+              }] : [],
+              attributes: buildVariantAttributes(product, v)
+            }
+          }),
           categories: [],
           publish: true
         }
