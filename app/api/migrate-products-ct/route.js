@@ -45,26 +45,52 @@ export async function POST(request) {
     }
     const accessToken = authData.access_token
 
-    // 3. CT Product Type holen (erster vorhandener)
-    const ptRes = await fetch(`${ctApiUrl}/${ctProjectKey}/product-types?limit=1`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    })
+    // 3. CT Product Type "Produkte" holen
+    const ptRes = await fetch(
+      `${ctApiUrl}/${ctProjectKey}/product-types?where=name%3D%22Produkte%22&limit=1`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )
     const ptData = await ptRes.json()
-    const productType = ptData.results?.[0]
+    let productType = ptData.results?.[0]
+
+    // Fallback: ersten verfügbaren nehmen
+    if (!productType) {
+      const ptAllRes = await fetch(
+        `${ctApiUrl}/${ctProjectKey}/product-types?limit=1`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      )
+      const ptAllData = await ptAllRes.json()
+      productType = ptAllData.results?.[0]
+    }
 
     if (!productType) {
-      return Response.json({ error: 'Kein Product Type in commercetools gefunden. Bitte zuerst das Model anlegen.' }, { status: 400 })
+      return Response.json({ error: 'Kein Product Type gefunden. Bitte zuerst das Model anlegen.' }, { status: 400 })
     }
 
     // 4. Produkte nach CT migrieren
     const results = []
+    const usedSlugs = new Set()
 
     for (const product of products) {
       try {
-        const slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        const price = product.variants?.[0]?.price
-          ? Math.round(parseFloat(product.variants[0].price) * 100)
-          : 0
+        // Eindeutigen Slug sicherstellen
+        let slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        if (usedSlugs.has(slug)) {
+          slug = `${slug}-${product.id}`
+        }
+        usedSlugs.add(slug)
+
+        const firstVariant = product.variants?.[0]
+        const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
+
+        // Pflichtattribute für jede Variante
+        const buildVariantAttributes = (variant) => [
+          { name: 'product_id', value: String(product.id) },
+          { name: 'name', value: product.title },
+          { name: 'price', value: priceValue > 0 ? `${priceValue} EUR` : '0 EUR (Rezeptpflichtig)' },
+          { name: 'inventory', value: String(variant.inventory_quantity || 0) },
+          { name: 'sku', value: variant.sku || `shopify-${product.id}-${variant.id}` },
+        ]
 
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
@@ -74,29 +100,34 @@ export async function POST(request) {
             ? { de: product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
             : undefined,
           masterVariant: {
-            sku: product.variants?.[0]?.sku || `shopify-${product.id}`,
-            prices: price > 0 ? [{
-              value: { currencyCode: 'EUR', centAmount: price, type: 'centPrecision', fractionDigits: 2 }
+            sku: firstVariant?.sku || `shopify-${product.id}-master`,
+            prices: priceValue > 0 ? [{
+              value: {
+                currencyCode: 'EUR',
+                centAmount: Math.round(priceValue * 100),
+                type: 'centPrecision',
+                fractionDigits: 2
+              }
             }] : [],
             images: product.images?.[0] ? [{
               url: product.images[0].src,
               dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 },
               label: product.title
             }] : [],
-            attributes: [
-              { name: 'shopifyId', value: String(product.id) },
-              { name: 'vendor', value: product.vendor || '' },
-            ].filter(a => {
-              return productType.attributes?.some(pa => pa.name === a.name)
-            })
+            attributes: buildVariantAttributes(firstVariant || {})
           },
-          variants: product.variants?.slice(1).map((v, i) => ({
-            sku: v.sku || `shopify-${product.id}-${i + 1}`,
-            prices: v.price ? [{
-              value: { currencyCode: 'EUR', centAmount: Math.round(parseFloat(v.price) * 100), type: 'centPrecision', fractionDigits: 2 }
+          variants: (product.variants?.slice(1) || []).map(v => ({
+            sku: v.sku || `shopify-${product.id}-${v.id}`,
+            prices: parseFloat(v.price || 0) > 0 ? [{
+              value: {
+                currencyCode: 'EUR',
+                centAmount: Math.round(parseFloat(v.price) * 100),
+                type: 'centPrecision',
+                fractionDigits: 2
+              }
             }] : [],
-            attributes: []
-          })) || [],
+            attributes: buildVariantAttributes(v)
+          })),
           categories: [],
           publish: true
         }
