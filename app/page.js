@@ -66,8 +66,11 @@ export default function Home() {
   const [deployResultsCT, setDeployResultsCT] = useState(null)
   const [deployingContentful, setDeployingContentful] = useState(false)
   const [deployResultsContentful, setDeployResultsContentful] = useState(null)
-  const [migrating, setMigrating] = useState(false)
-  const [migrateResults, setMigrateResults] = useState(null)
+  const [migratingCT, setMigratingCT] = useState(false)
+  const [migrateResultsCT, setMigrateResultsCT] = useState(null)
+  const [productLimit, setProductLimit] = useState(10)
+  const [migratingContentful, setMigratingContentful] = useState(false)
+  const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
   const [resetting, setResetting] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
@@ -76,10 +79,11 @@ export default function Home() {
 
   const bothConnected = shopifyStatus === 'connected' && contentfulStatus === 'connected'
   const bothDeployed = deployResultsCT && deployResultsContentful
+  const bothMigrated = migrateResultsCT && migrateResultsContentful
 
   const currentStep = () => {
-    if (migrateResults && migrateResults.filter(r => r.status === 'success').length > 0) return 'done'
-    if (migrating) return 'migrate'
+    if (bothMigrated) return 'done'
+    if (migratingCT || migratingContentful) return 'migrate'
     if (bothDeployed) return 'migrate'
     if (deployingCT || deployingContentful) return 'model'
     if (reviewConfirmed) return 'model'
@@ -97,7 +101,7 @@ export default function Home() {
     const current = currentStep()
     const currentIdx = order.indexOf(current)
     const stepIdx = order.indexOf(stepId)
-    if (stepId === 'done' && migrateResults && migrateResults.filter(r => r.status === 'success').length > 0) return 'done'
+    if (stepId === 'done' && bothMigrated) return 'done'
     if (stepIdx < currentIdx) return 'done'
     if (stepIdx === currentIdx) return 'active'
     return 'pending'
@@ -243,8 +247,22 @@ export default function Home() {
     setDeployingContentful(false)
   }
 
-  async function migrateContent() {
-    setMigrating(true)
+  async function migrateProductsToCT() {
+    setMigratingCT(true)
+    try {
+      const res = await fetch('/api/migrate-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: productLimit })
+      })
+      const data = await res.json()
+      setMigrateResultsCT(data.results)
+    } catch (e) { console.error(e) }
+    setMigratingCT(false)
+  }
+
+  async function migrateContentToContentful() {
+    setMigratingContentful(true)
     try {
       const res = await fetch('/api/migrate-content', {
         method: 'POST',
@@ -252,9 +270,9 @@ export default function Home() {
         body: JSON.stringify({ pages: inventory.pages })
       })
       const data = await res.json()
-      setMigrateResults(data.results)
+      setMigrateResultsContentful(data.results)
     } catch (e) { console.error(e) }
-    setMigrating(false)
+    setMigratingContentful(false)
   }
 
   async function resetContentful() {
@@ -264,7 +282,8 @@ export default function Home() {
       await fetch('/api/reset-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       setDeployResultsContentful(null)
       setDeployResultsCT(null)
-      setMigrateResults(null)
+      setMigrateResultsCT(null)
+      setMigrateResultsContentful(null)
     } catch (e) { console.error(e) }
     setResetting(false)
   }
@@ -277,7 +296,8 @@ export default function Home() {
     setReviewConfirmed(false)
     setDeployResultsCT(null)
     setDeployResultsContentful(null)
-    setMigrateResults(null)
+    setMigrateResultsCT(null)
+    setMigrateResultsContentful(null)
     setShopifyStatus('idle')
     setContentfulStatus('idle')
     setAnalyzeStep(0)
@@ -346,6 +366,7 @@ export default function Home() {
         .mode-btn { transition: all 0.2s; cursor: pointer; border: none; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
       `}</style>
 
+      {/* Sticky Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 24px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
@@ -376,8 +397,8 @@ export default function Home() {
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 48px' }}>
 
+        {/* Connection Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-
           {/* Shopify Card */}
           <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -474,9 +495,6 @@ export default function Home() {
           <div className="fade-up" style={{ animationDelay: '0.15s' }}>
             <button onClick={analyze} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite' }}>
               Inventar analysieren
-            </button>
-            <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '12px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', marginBottom: 20 }}>
-              {resetting ? 'Contentful wird geleert...' : '↺ Contentful zurücksetzen'}
             </button>
           </div>
         )}
@@ -595,9 +613,21 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Model Deploy Buttons */}
+              {reviewConfirmed && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
+                    {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ CT Model angelegt' : 'CT Model anlegen →'}
+                  </button>
+                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
+                    {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen →'}
+                  </button>
+                </div>
+              )}
+
               {/* Deploy Results */}
               {(deployResultsCT || deployResultsContentful) && (
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 24 }}>
                   {deployResultsCT && (
                     <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 16, marginBottom: 10 }}>
                       <div style={{ fontSize: 12, color: '#00B2E3', fontWeight: 700, marginBottom: 10 }}>commercetools — Product Types</div>
@@ -623,40 +653,74 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Migrate Results */}
-              {migrateResults && (
-                <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// Content Migration</div>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#22c55e' }}>
-                    Pages migriert: {migrateResults.filter(r => r.status === 'success').length}/{migrateResults.length}
-                  </h2>
-                  {migrateResults.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
-                      <span>{r.title}</span>
-                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓ migriert' : `✗ ${r.error}`}</span>
+              {/* Migration Section */}
+              {bothDeployed && (
+                <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
+
+                  {/* CT Produkte */}
+                  <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <CTLogo />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                      <span style={{ fontSize: 12, color: '#475569' }}>Anzahl Produkte:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={inventory?.productCount || 1695}
+                        value={productLimit}
+                        onChange={e => setProductLimit(parseInt(e.target.value) || 10)}
+                        style={{ ...inputStyle, width: 80 }}
+                      />
+                      <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
+                    </div>
+                    <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
+                      {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte migrieren →`}
+                    </button>
+                    {migrateResultsCT && (
+                      <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
+                        {migrateResultsCT.map((r, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                            <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
+                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contentful Pages */}
+                  <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <ContentfulLogo />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages → Contentful</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>
+                      {inventory?.pages.length || 0} Pages werden migriert
+                    </div>
+                    <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#475569' : migrateResultsContentful ? '#22c55e' : '#000' }}>
+                      {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages migrieren →'}
+                    </button>
+                    {migrateResultsContentful && (
+                      <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
+                        {migrateResultsContentful.map((r, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                            <span style={{ color: '#94a3b8' }}>{r.title}</span>
+                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <button onClick={reset} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
-                  ↺ Von vorne
-                </button>
-                <button onClick={deployCTModel} disabled={deployingCT || !reviewConfirmed} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (deployingCT || !reviewConfirmed) ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : !reviewConfirmed ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: (deployingCT || !reviewConfirmed) ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
-                  {deployingCT ? 'Wird angelegt...' : !reviewConfirmed ? '⚠ Review bestätigen' : deployResultsCT ? '✓ CT Model angelegt' : 'CT Model anlegen →'}
-                </button>
-                <button onClick={deployContentfulModel} disabled={deployingContentful || !reviewConfirmed} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (deployingContentful || !reviewConfirmed) ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : !reviewConfirmed ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: (deployingContentful || !reviewConfirmed) ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
-                  {deployingContentful ? 'Wird angelegt...' : !reviewConfirmed ? '⚠ Review bestätigen' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen →'}
-                </button>
-                <button onClick={migrateContent} disabled={migrating || !bothDeployed} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: (migrating || !bothDeployed) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migrating ? '#1e293b' : !bothDeployed ? '#1e293b' : migrateResults ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: (migrating || !bothDeployed) ? '#475569' : migrateResults ? '#22c55e' : '#fff' }}>
-                  {migrating ? 'Migriere...' : migrateResults ? '✓ Migriert' : 'Inhalte migrieren →'}
-                </button>
-                <button onClick={resetContentful} disabled={resetting} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444', gridColumn: '1 / -1' }}>
-                  {resetting ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
-                </button>
-              </div>
+              {/* Nur Contentful zurücksetzen */}
+              <button onClick={resetContentful} disabled={resetting} style={{ width: '100%', padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resetting ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resetting ? '#475569' : '#ef4444' }}>
+                {resetting ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
+              </button>
             </div>
           </div>
         )}
