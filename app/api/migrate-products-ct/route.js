@@ -113,32 +113,44 @@ export async function POST(request) {
         .map(m => ({ name: m.name, value: castValue(m.name, m.value) }))
     }
 
-    // 7. Bestehende Slugs aus CT laden
-    const existingSlugsRes = await fetch(
+    // 7. Bestehende Slugs und Keys aus CT laden
+    const existingRes = await fetch(
       `${ctApiUrl}/${ctProjectKey}/products?limit=500&staged=false`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
     )
-    const existingSlugsData = await existingSlugsRes.json()
+    const existingData = await existingRes.json()
     const existingSlugs = new Set(
-      (existingSlugsData.results || []).flatMap(p =>
+      (existingData.results || []).flatMap(p =>
         Object.values(p.masterData?.current?.slug || {})
       )
+    )
+    const existingKeys = new Set(
+      (existingData.results || []).map(p => p.key).filter(Boolean)
     )
 
     // 8. Produkte nach CT migrieren
     const results = []
     const usedSlugs = new Set(existingSlugs)
+    const usedKeys = new Set(existingKeys)
     const usedSkus = new Set()
 
     for (const product of products) {
       try {
+        // Eindeutiger Slug
         let slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         if (usedSlugs.has(slug)) slug = `${slug}-${product.id}`
         usedSlugs.add(slug)
 
+        // Eindeutiger Key aus Shopify Handle
+        let key = product.handle || slug
+        key = key.replace(/[^a-zA-Z0-9_-]/g, '-').substring(0, 256)
+        if (usedKeys.has(key)) key = `${key}-${product.id}`
+        usedKeys.add(key)
+
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
 
+        // Eindeutige SKU
         let masterSku = firstVariant?.sku || ''
         if (!masterSku || usedSkus.has(masterSku)) {
           masterSku = `shopify-${product.id}-${firstVariant?.id || 'master'}`
@@ -147,6 +159,7 @@ export async function POST(request) {
 
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
+          key,
           name: { de: product.title, 'en-US': product.title },
           slug: { de: slug, 'en-US': slug },
           description: product.body_html
