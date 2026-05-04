@@ -12,7 +12,6 @@ export async function POST(request) {
     const ctAuthUrl = process.env.CT_AUTH_URL || 'https://auth.europe-west1.gcp.commercetools.com'
     const ctApiUrl = process.env.CT_API_URL || 'https://api.europe-west1.gcp.commercetools.com'
 
-    // Max 50 pro Request um Timeout zu vermeiden
     const safeLimit = Math.min(limit, 50)
 
     // 1. Shopify Produkte laden
@@ -74,11 +73,14 @@ export async function POST(request) {
       (productType.attributes || []).map(a => a.name)
     )
 
-    // 5. Attribute dynamisch mappen — OHNE 'name' da CT-internes Feld
+    // 5. Attribute dynamisch mappen
+    // WICHTIG: 'name' als Attribut ist das Varianten-Attribut, nicht das CT-Produktname-Feld
     const buildVariantAttributes = (product, variant) => {
       const allMappings = [
         { name: 'product_id',   value: String(product.id) },
         { name: 'shopify_id',   value: String(product.id) },
+        { name: 'name',         value: product.title },
+        { name: 'titel',        value: product.title },
         { name: 'price',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
         { name: 'preis',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
         { name: 'inventory',    value: String(variant?.inventory_quantity || 0) },
@@ -96,9 +98,21 @@ export async function POST(request) {
       return allMappings.filter(m => availableAttributes.has(m.name))
     }
 
-    // 6. Produkte nach CT migrieren
+    // 6. Bestehende Slugs aus CT laden um Duplikate zu vermeiden
+    const existingSlugsRes = await fetch(
+      `${ctApiUrl}/${ctProjectKey}/products?limit=500&staged=false`,
+      { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )
+    const existingSlugsData = await existingSlugsRes.json()
+    const existingSlugs = new Set(
+      (existingSlugsData.results || []).flatMap(p =>
+        Object.values(p.masterData?.current?.slug || {})
+      )
+    )
+
+    // 7. Produkte nach CT migrieren
     const results = []
-    const usedSlugs = new Set()
+    const usedSlugs = new Set(existingSlugs)
     const usedSkus = new Set()
 
     for (const product of products) {
@@ -111,7 +125,7 @@ export async function POST(request) {
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
 
-        // Eindeutige SKU für masterVariant
+        // Eindeutige SKU
         let masterSku = firstVariant?.sku || ''
         if (!masterSku || usedSkus.has(masterSku)) {
           masterSku = `shopify-${product.id}-${firstVariant?.id || 'master'}`
