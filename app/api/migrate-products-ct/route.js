@@ -68,24 +68,37 @@ export async function POST(request) {
       return Response.json({ error: 'Kein Product Type gefunden. Bitte zuerst das Model anlegen.' }, { status: 400 })
     }
 
-    // 4. Vorhandene Attributnamen aus CT auslesen
-    const availableAttributes = new Set(
-      (productType.attributes || []).map(a => a.name)
-    )
+    // 4. Vorhandene Attribute aus CT auslesen — mit Typ
+    const attributeDefinitions = {}
+    for (const attr of (productType.attributes || [])) {
+      attributeDefinitions[attr.name] = attr.type?.name || 'text'
+    }
+    const availableAttributes = new Set(Object.keys(attributeDefinitions))
 
-    // 5. Attribute dynamisch mappen
-    // WICHTIG: 'name' als Attribut ist das Varianten-Attribut, nicht das CT-Produktname-Feld
+    // 5. Wert korrekt typisieren basierend auf CT Attribut-Typ
+    const castValue = (attrName, value) => {
+      const type = attributeDefinitions[attrName]
+      if (type === 'number' || type === 'integer') {
+        const num = parseFloat(value)
+        return isNaN(num) ? 0 : num
+      }
+      if (type === 'boolean') return value === 'true' || value === true
+      return String(value)
+    }
+
+    // 6. Attribute dynamisch mappen
     const buildVariantAttributes = (product, variant) => {
       const allMappings = [
         { name: 'product_id',   value: String(product.id) },
         { name: 'shopify_id',   value: String(product.id) },
         { name: 'name',         value: product.title },
+        { name: 'title',        value: product.title },
         { name: 'titel',        value: product.title },
         { name: 'price',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
         { name: 'preis',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
-        { name: 'inventory',    value: String(variant?.inventory_quantity || 0) },
-        { name: 'inventar',     value: String(variant?.inventory_quantity || 0) },
-        { name: 'lagerbestand', value: String(variant?.inventory_quantity || 0) },
+        { name: 'inventory',    value: variant?.inventory_quantity || 0 },
+        { name: 'inventar',     value: variant?.inventory_quantity || 0 },
+        { name: 'lagerbestand', value: variant?.inventory_quantity || 0 },
         { name: 'sku',          value: variant?.sku || `shopify-${product.id}-${variant?.id || 'master'}` },
         { name: 'vendor',       value: product.vendor || '' },
         { name: 'hersteller',   value: product.vendor || '' },
@@ -95,10 +108,12 @@ export async function POST(request) {
         { name: 'status',       value: product.status || 'active' },
       ]
 
-      return allMappings.filter(m => availableAttributes.has(m.name))
+      return allMappings
+        .filter(m => availableAttributes.has(m.name))
+        .map(m => ({ name: m.name, value: castValue(m.name, m.value) }))
     }
 
-    // 6. Bestehende Slugs aus CT laden um Duplikate zu vermeiden
+    // 7. Bestehende Slugs aus CT laden
     const existingSlugsRes = await fetch(
       `${ctApiUrl}/${ctProjectKey}/products?limit=500&staged=false`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -110,14 +125,13 @@ export async function POST(request) {
       )
     )
 
-    // 7. Produkte nach CT migrieren
+    // 8. Produkte nach CT migrieren
     const results = []
     const usedSlugs = new Set(existingSlugs)
     const usedSkus = new Set()
 
     for (const product of products) {
       try {
-        // Eindeutigen Slug sicherstellen
         let slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         if (usedSlugs.has(slug)) slug = `${slug}-${product.id}`
         usedSlugs.add(slug)
@@ -125,7 +139,6 @@ export async function POST(request) {
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
 
-        // Eindeutige SKU
         let masterSku = firstVariant?.sku || ''
         if (!masterSku || usedSkus.has(masterSku)) {
           masterSku = `shopify-${product.id}-${firstVariant?.id || 'master'}`
@@ -158,9 +171,7 @@ export async function POST(request) {
           },
           variants: (product.variants?.slice(1) || []).map(v => {
             let varSku = v.sku || ''
-            if (!varSku || usedSkus.has(varSku)) {
-              varSku = `shopify-${product.id}-${v.id}`
-            }
+            if (!varSku || usedSkus.has(varSku)) varSku = `shopify-${product.id}-${v.id}`
             usedSkus.add(varSku)
             return {
               sku: varSku,
