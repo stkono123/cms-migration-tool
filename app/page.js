@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const ShopifyLogo = () => (
   <svg width="18" height="18" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg">
@@ -41,6 +41,33 @@ const PIPELINE_STEPS = [
   { id: 'done', label: 'Fertig' },
 ]
 
+// Count-up Hook
+function useCountUp(target, duration = 1200, start = false) {
+  const [value, setValue] = useState(0)
+  const frameRef = useRef(null)
+
+  useEffect(() => {
+    if (!start || target === 0) { setValue(target); return }
+    const startTime = performance.now()
+    const animate = (now) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(Math.round(eased * target))
+      if (progress < 1) frameRef.current = requestAnimationFrame(animate)
+    }
+    frameRef.current = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(frameRef.current)
+  }, [target, start, duration])
+
+  return value
+}
+
+function AnimatedNumber({ value, animate }) {
+  const displayed = useCountUp(value, 1200, animate)
+  return <>{displayed}</>
+}
+
 export default function Home() {
   const [sourceSystem, setSourceSystem] = useState('shopify')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
@@ -48,19 +75,15 @@ export default function Home() {
   const [shopifyToken, setShopifyToken] = useState('••••••••••••••••••••••••')
   const [shopifyTokenEditing, setShopifyTokenEditing] = useState(false)
   const [shopifyTokenReal, setShopifyTokenReal] = useState('')
-
-  // Separate CT connection state
   const [ctStatus, setCtStatus] = useState('idle')
-
-  // Contentful connection state
   const [contentfulSpace, setContentfulSpace] = useState('1ub4n2ex18h8')
   const [contentfulToken, setContentfulToken] = useState('••••••••••••••••••••••••')
   const [contentfulTokenEditing, setContentfulTokenEditing] = useState(false)
   const [contentfulTokenReal, setContentfulTokenReal] = useState('')
   const [contentfulStatus, setContentfulStatus] = useState('idle')
-
   const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [inventory, setInventory] = useState(null)
+  const [animateNumbers, setAnimateNumbers] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [mapping, setMapping] = useState(null)
@@ -180,6 +203,7 @@ export default function Home() {
 
   async function analyze() {
     setAnalyzing(true)
+    setAnimateNumbers(false)
     setAnalyzeStep(0)
     const stepInterval = setInterval(() => {
       setAnalyzeStep(s => {
@@ -207,6 +231,7 @@ export default function Home() {
         metafields: metafields.metafields || [],
         themes: themes.themes || [],
       })
+      setTimeout(() => setAnimateNumbers(true), 100)
     } catch (e) {
       clearInterval(stepInterval)
       console.error(e)
@@ -319,6 +344,7 @@ export default function Home() {
 
   function reset() {
     setInventory(null)
+    setAnimateNumbers(false)
     setMapping(null)
     setReviewedCT(null)
     setReviewedContentful(null)
@@ -398,12 +424,12 @@ export default function Home() {
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
-        @keyframes countUp { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
-        .count-up { animation: countUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
         input:focus { border-color: #6366f1 !important; }
         .dropdown-item:hover { background: #1e293b; }
         .mode-btn { transition: all 0.2s; cursor: pointer; border: none; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
+        .card { display: flex; flex-direction: column; }
+        .card-body { flex: 1; }
       `}</style>
 
       {/* Sticky Header */}
@@ -437,82 +463,88 @@ export default function Home() {
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 48px' }}>
 
-        {/* ── CONNECTION CARDS: 3 columns ── */}
+        {/* ── CONNECTION CARDS ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
 
           {/* Shopify */}
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
-              <StatusDot status={shopifyStatus} />
-            </div>
-            <div style={{ position: 'relative', marginBottom: 16 }}>
-              <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {selectedSource?.logo && <selectedSource.logo />}
-                  {selectedSource?.label}
-                </div>
-                <span style={{ color: '#475569', fontSize: 10 }}>▼</span>
-              </button>
-              {sourceDropdownOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0f1623', border: '1px solid #1e293b', borderRadius: 8, marginTop: 4, zIndex: 10, overflow: 'hidden' }}>
-                  {SOURCE_SYSTEMS.map(sys => (
-                    <div key={sys.id} className="dropdown-item" onClick={() => { if (sys.available) { setSourceSystem(sys.id); setSourceDropdownOpen(false) } }} style={{ padding: '10px 14px', cursor: sys.available ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: sys.available ? 1 : 0.4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500 }}>
-                        {sys.logo && <sys.logo />}
-                        {sys.label}
+          <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
+            <div className="card-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
+                <StatusDot status={shopifyStatus} />
+              </div>
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {selectedSource?.logo && <selectedSource.logo />}
+                    {selectedSource?.label}
+                  </div>
+                  <span style={{ color: '#475569', fontSize: 10 }}>▼</span>
+                </button>
+                {sourceDropdownOpen && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0f1623', border: '1px solid #1e293b', borderRadius: 8, marginTop: 4, zIndex: 10, overflow: 'hidden' }}>
+                    {SOURCE_SYSTEMS.map(sys => (
+                      <div key={sys.id} className="dropdown-item" onClick={() => { if (sys.available) { setSourceSystem(sys.id); setSourceDropdownOpen(false) } }} style={{ padding: '10px 14px', cursor: sys.available ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: sys.available ? 1 : 0.4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500 }}>
+                          {sys.logo && <sys.logo />}
+                          {sys.label}
+                        </div>
+                        {!sys.available && <span style={{ fontSize: 10, color: '#475569', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
                       </div>
-                      {!sys.available && <span style={{ fontSize: 10, color: '#475569', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
-              <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
-              <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
+                <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
+                <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
+              </div>
             </div>
             <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
           </div>
 
           {/* commercetools */}
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Commerce</div>
-              <StatusDot status={ctStatus} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #00B2E333' }}>
-              <CTLogo />
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#00B2E3' }}>commercetools</span>
-            </div>
-            <div style={{ background: '#0a0e1a', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
-              Credentials werden aus den Vercel Environment Variables gelesen.<br />
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#334155' }}>CT_PROJECT_KEY · CT_CLIENT_ID · CT_CLIENT_SECRET</span>
+          <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
+            <div className="card-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Commerce</div>
+                <StatusDot status={ctStatus} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #00B2E333' }}>
+                <CTLogo />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#00B2E3' }}>commercetools</span>
+              </div>
+              <div style={{ background: '#0a0e1a', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                Credentials werden aus den Vercel Environment Variables gelesen.<br />
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#334155' }}>CT_PROJECT_KEY · CT_CLIENT_ID · CT_CLIENT_SECRET</span>
+              </div>
             </div>
             <ConnectButton status={ctStatus} onClick={testCT} label="commercetools" />
           </div>
 
           {/* Contentful */}
-          <div className="fade-up" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#FAE50133'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Content</div>
-              <StatusDot status={contentfulStatus} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #FAE50133' }}>
-              <ContentfulLogo />
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
-              <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
-              <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
+          <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#FAE50133'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
+            <div className="card-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Content</div>
+                <StatusDot status={contentfulStatus} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #FAE50133' }}>
+                <ContentfulLogo />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
+                <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
+                <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
+              </div>
             </div>
             <ConnectButton status={contentfulStatus} onClick={testContentful} label="Contentful" />
           </div>
@@ -573,13 +605,15 @@ export default function Home() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                 {[
-                  { label: 'Produkte', value: inventory.productCount, delay: '0s' },
-                  { label: 'Pages', value: inventory.pages.length, delay: '0.1s' },
-                  { label: 'Blogs', value: inventory.blogs.length, delay: '0.2s' },
-                  { label: 'Metafields', value: inventory.metafields.length, delay: '0.3s' },
+                  { label: 'Produkte', value: inventory.productCount },
+                  { label: 'Pages', value: inventory.pages.length },
+                  { label: 'Blogs', value: inventory.blogs.length },
+                  { label: 'Metafields', value: inventory.metafields.length },
                 ].map(s => (
-                  <div key={s.label} className="count-up" style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center', animationDelay: s.delay }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</div>
+                  <div key={s.label} style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <AnimatedNumber value={s.value} animate={animateNumbers} />
+                    </div>
                     <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                   </div>
                 ))}
@@ -620,7 +654,6 @@ export default function Home() {
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
               </div>
 
-              {/* Aufteilung */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                 <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -640,7 +673,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Review */}
               {!reviewConfirmed && reviewedCT && reviewedContentful && (
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
@@ -661,7 +693,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Model Deploy Buttons */}
               {reviewConfirmed && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                   <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
@@ -673,7 +704,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Deploy Results */}
               {(deployResultsCT || deployResultsContentful) && (
                 <div style={{ marginBottom: 24 }}>
                   {deployResultsCT && (
@@ -701,12 +731,10 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Migration Section */}
               {bothDeployed && (
                 <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
                   <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
 
-                  {/* commercetools Produkte */}
                   <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <CTLogo />
@@ -714,8 +742,8 @@ export default function Home() {
                     </div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                       <span style={{ fontSize: 12, color: '#475569' }}>Anzahl Produkte:</span>
-                      <input type="number" min={1} max={inventory?.productCount || 1695} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
-                      <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
+                      <input type="number" min={1} max={50} value={productLimit} onChange={e => setProductLimit(Math.min(50, parseInt(e.target.value) || 10))} style={{ ...inputStyle, width: 80 }} />
+                      <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt (max. 50 pro Batch)</span>
                     </div>
                     <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
                       {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
@@ -732,7 +760,6 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* Contentful Pages */}
                   <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <ContentfulLogo />
@@ -758,7 +785,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Reset Buttons */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#475569' : '#00B2E3' }}>
                   {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
