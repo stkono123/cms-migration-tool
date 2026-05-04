@@ -45,7 +45,7 @@ export async function POST(request) {
     }
     const accessToken = authData.access_token
 
-    // 3. CT Product Type "Produkte" holen
+    // 3. CT Product Type "Produkte" holen — mit allen Attributen
     const ptRes = await fetch(
       `${ctApiUrl}/${ctProjectKey}/product-types?where=name%3D%22Produkte%22&limit=1`,
       { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -67,7 +67,37 @@ export async function POST(request) {
       return Response.json({ error: 'Kein Product Type gefunden. Bitte zuerst das Model anlegen.' }, { status: 400 })
     }
 
-    // 4. Produkte nach CT migrieren
+    // 4. Vorhandene Attributnamen aus CT auslesen
+    const availableAttributes = new Set(
+      (productType.attributes || []).map(a => a.name)
+    )
+
+    // 5. Shopify-Felder auf vorhandene CT-Attribute mappen
+    // Wir definieren alle möglichen Mappings und filtern nur die vorhandenen
+    const buildVariantAttributes = (product, variant) => {
+      const allMappings = [
+        { name: 'product_id',   value: String(product.id) },
+        { name: 'shopify_id',   value: String(product.id) },
+        { name: 'name',         value: product.title },
+        { name: 'titel',        value: product.title },
+        { name: 'price',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
+        { name: 'preis',        value: variant?.price ? `${parseFloat(variant.price)} EUR` : '0 EUR (Rezeptpflichtig)' },
+        { name: 'inventory',    value: String(variant?.inventory_quantity || 0) },
+        { name: 'inventar',     value: String(variant?.inventory_quantity || 0) },
+        { name: 'lagerbestand', value: String(variant?.inventory_quantity || 0) },
+        { name: 'sku',          value: variant?.sku || `shopify-${product.id}-${variant?.id || 'master'}` },
+        { name: 'vendor',       value: product.vendor || '' },
+        { name: 'hersteller',   value: product.vendor || '' },
+        { name: 'category',     value: product.product_type || '' },
+        { name: 'kategorie',    value: product.product_type || '' },
+        { name: 'tags',         value: product.tags || '' },
+        { name: 'status',       value: product.status || 'active' },
+      ]
+
+      return allMappings.filter(m => availableAttributes.has(m.name))
+    }
+
+    // 6. Produkte nach CT migrieren
     const results = []
     const usedSlugs = new Set()
 
@@ -82,15 +112,6 @@ export async function POST(request) {
 
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
-
-        // Pflichtattribute für jede Variante
-        const buildVariantAttributes = (variant) => [
-          { name: 'product_id', value: String(product.id) },
-          { name: 'name', value: product.title },
-          { name: 'price', value: priceValue > 0 ? `${priceValue} EUR` : '0 EUR (Rezeptpflichtig)' },
-          { name: 'inventory', value: String(variant.inventory_quantity || 0) },
-          { name: 'sku', value: variant.sku || `shopify-${product.id}-${variant.id}` },
-        ]
 
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
@@ -114,7 +135,7 @@ export async function POST(request) {
               dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 },
               label: product.title
             }] : [],
-            attributes: buildVariantAttributes(firstVariant || {})
+            attributes: buildVariantAttributes(product, firstVariant)
           },
           variants: (product.variants?.slice(1) || []).map(v => ({
             sku: v.sku || `shopify-${product.id}-${v.id}`,
@@ -126,7 +147,7 @@ export async function POST(request) {
                 fractionDigits: 2
               }
             }] : [],
-            attributes: buildVariantAttributes(v)
+            attributes: buildVariantAttributes(product, v)
           })),
           categories: [],
           publish: true
@@ -146,7 +167,11 @@ export async function POST(request) {
         if (res.ok) {
           results.push({ name: product.title, status: 'success', ctId: data.id })
         } else {
-          results.push({ name: product.title, status: 'error', error: data.message || data.errors?.[0]?.message || JSON.stringify(data.errors) })
+          results.push({
+            name: product.title,
+            status: 'error',
+            error: data.message || data.errors?.[0]?.message || JSON.stringify(data.errors)
+          })
         }
       } catch (e) {
         results.push({ name: product.title, status: 'error', error: e.message })
