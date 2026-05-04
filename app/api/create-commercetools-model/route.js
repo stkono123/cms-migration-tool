@@ -35,7 +35,7 @@ export async function POST(request) {
         const attributes = ct.fields.map(f => ({
           name: f.id,
           label: { de: f.name, 'en-US': f.name },
-          isRequired: f.required || false,
+          isRequired: false,
           type: mapFieldType(f.type),
           attributeConstraint: 'None',
           isSearchable: true,
