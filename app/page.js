@@ -617,7 +617,7 @@ export default function Home() {
               {reviewConfirmed && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                   <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
-                    {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ CT Model angelegt' : 'CT Model anlegen →'}
+                    {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ commercetools Model angelegt' : 'commercetools Model anlegen →'}
                   </button>
                   <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
                     {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen →'}
