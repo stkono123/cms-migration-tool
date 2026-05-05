@@ -218,7 +218,7 @@ export async function POST(request) {
     const existingCatsData = await existingCatsRes.json()
     const categoryMap = {}
     for (const cat of (existingCatsData.results || [])) {
-      const key = cat.name?.de || cat.name?.['en-US'] || ''
+      const key = cat.name?.['de-DE'] || cat.name?.['en-US'] || ''
       if (key) categoryMap[key] = cat.id
     }
 
@@ -229,7 +229,7 @@ export async function POST(request) {
       const catRes = await fetch(`${ctApiUrl}/${ctProjectKey}/categories`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: { de: typeName, 'en-US': typeName }, slug: { de: slug, 'en-US': slug } })
+        body: JSON.stringify({ name: { 'de-DE': typeName, 'en-US': typeName }, slug: { 'de-DE': slug, 'en-US': slug } })
       })
       const catData = await catRes.json()
       if (catRes.ok) categoryMap[typeName] = catData.id
@@ -314,8 +314,8 @@ export async function POST(request) {
           name: { 'de-DE': product.title, 'en-US': product.title },
           slug: { 'de-DE': slug, 'en-US': slug },
           description: product.body_html
-            ? { 'de-DE': product.body_html.replace(...), 'en-US': ... }
-          : undefined,
+            ? { 'de-DE': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500), 'en-US': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
+            : undefined,
           categories,
           masterVariant: {
             sku: masterSku,
