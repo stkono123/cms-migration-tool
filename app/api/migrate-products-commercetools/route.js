@@ -149,12 +149,21 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
             const optValue = variant?.[`option${i + 1}`]
             if (!optValue || optValue === 'Default Title') return null
             return {
-              name: opt.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+              name: normalizeAttrName(opt.name),
               value: optValue
             }
           }).filter(Boolean)
         : []
 
+      const normalizeAttrName = (name) => name
+  .toLowerCase()
+  .replace(/ä/g, 'a')
+  .replace(/ö/g, 'o')
+  .replace(/ü/g, 'u')
+  .replace(/ß/g, 'ss')
+  .replace(/\s+/g, '_')
+  .replace(/[^a-z0-9_]/g, '')
+      
       const allMappings = [
         { name: 'product_id',   value: String(product.id) },
         { name: 'shopify_id',   value: String(product.id) },
