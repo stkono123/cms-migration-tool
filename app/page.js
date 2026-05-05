@@ -41,7 +41,6 @@ const PIPELINE_STEPS = [
   { id: 'done', label: 'Fertig' },
 ]
 
-// Count-up Hook
 function useCountUp(target, duration = 1200, start = false) {
   const [value, setValue] = useState(0)
   const frameRef = useRef(null)
@@ -146,25 +145,16 @@ export default function Home() {
     'KI bereitet MACH-Mapping vor...',
   ]
 
-  async function shopifyFetch(endpoint) {
-    const body = { endpoint }
-    if (shopifyTokenEditing && shopifyTokenReal) {
-      body.domain = shopifyDomain
-      body.token = shopifyTokenReal
-    }
-    const res = await fetch('/api/shopify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    return res.json()
-  }
-
+  // FIX: Shopify-Verbindungstest über analyze-shopify
   async function testShopify() {
     setShopifyStatus('loading')
     try {
-      const data = await shopifyFetch('shop.json')
-      if (data.shop) setShopifyStatus('connected')
+      const res = await fetch('/api/analyze-shopify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.shopName) setShopifyStatus('connected')
       else setShopifyStatus('error')
     } catch { setShopifyStatus('error') }
   }
@@ -182,18 +172,14 @@ export default function Home() {
     } catch { setCtStatus('error') }
   }
 
+  // FIX: Contentful-Verbindungstest direkt über Contentful API
   async function testContentful() {
     setContentfulStatus('loading')
     try {
-      const body = { endpoint: '' }
-      if (contentfulTokenEditing && contentfulTokenReal) {
-        body.spaceId = contentfulSpace
-        body.token = contentfulTokenReal
-      }
-      const res = await fetch('/api/contentful', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+      const spaceId = contentfulTokenEditing && contentfulSpace ? contentfulSpace : '1ub4n2ex18h8'
+      const token = contentfulTokenEditing && contentfulTokenReal ? contentfulTokenReal : process.env.NEXT_PUBLIC_CONTENTFUL_CMA_TOKEN
+      const res = await fetch(`https://api.contentful.com/spaces/${spaceId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await res.json()
       if (data.name) setContentfulStatus('connected')
@@ -201,6 +187,7 @@ export default function Home() {
     } catch { setContentfulStatus('error') }
   }
 
+  // FIX: Analyse nutzt jetzt analyze-shopify direkt — kein manuelles Zusammenbauen mehr
   async function analyze() {
     setAnalyzing(true)
     setAnimateNumbers(false)
@@ -212,25 +199,15 @@ export default function Home() {
       })
     }, 600)
     try {
-      const [shop, products, pages, blogs, metafields, themes] = await Promise.all([
-        shopifyFetch('shop.json'),
-        shopifyFetch('products/count.json'),
-        shopifyFetch('pages.json?limit=250'),
-        shopifyFetch('blogs.json?limit=50'),
-        shopifyFetch('metafields.json?limit=250'),
-        shopifyFetch('themes.json'),
-      ])
+      const res = await fetch('/api/analyze-shopify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
       clearInterval(stepInterval)
       setAnalyzeStep(analyzeSteps.length - 1)
       await new Promise(r => setTimeout(r, 800))
-      setInventory({
-        shopName: shop.shop?.name,
-        productCount: products.count || 0,
-        pages: pages.pages || [],
-        blogs: blogs.blogs || [],
-        metafields: metafields.metafields || [],
-        themes: themes.themes || [],
-      })
+      setInventory(data)
       setTimeout(() => setAnimateNumbers(true), 100)
     } catch (e) {
       clearInterval(stepInterval)
@@ -264,10 +241,11 @@ export default function Home() {
     setReviewedContentful(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
   }
 
+  // FIX: neue Route-Namen
   async function deployCTModel() {
     setDeployingCT(true)
     try {
-      const res = await fetch('/api/create-commercetools-model', {
+      const res = await fetch('/api/create-model-commercetools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contentTypes: reviewedCT })
@@ -281,7 +259,7 @@ export default function Home() {
   async function deployContentfulModel() {
     setDeployingContentful(true)
     try {
-      const res = await fetch('/api/create-content-model', {
+      const res = await fetch('/api/create-model-contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contentTypes: reviewedContentful })
@@ -295,7 +273,7 @@ export default function Home() {
   async function migrateProductsToCT() {
     setMigratingCT(true)
     try {
-      const res = await fetch('/api/migrate-products-ct', {
+      const res = await fetch('/api/migrate-products-commercetools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit: productLimit })
@@ -309,7 +287,7 @@ export default function Home() {
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
-      const res = await fetch('/api/migrate-content', {
+      const res = await fetch('/api/migrate-content-contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pages: inventory.pages })
@@ -463,7 +441,7 @@ export default function Home() {
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 48px' }}>
 
-        {/* ── CONNECTION CARDS ── */}
+        {/* CONNECTION CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
 
           {/* Shopify */}
