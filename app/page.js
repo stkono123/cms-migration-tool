@@ -41,10 +41,18 @@ const PIPELINE_STEPS = [
   { id: 'done', label: 'Fertig' },
 ]
 
+const TEXT_LEVELS = [
+  { level: 0, label: 'L0', title: '1:1 übernehmen', desc: 'Text wird unverändert übertragen.' },
+  { level: 1, label: 'L1', title: 'Rechtschreibung & Grammatik', desc: 'Nur Fehler korrigieren, kein Eingriff in Stil oder Inhalt.' },
+  { level: 2, label: 'L2', title: 'Leichte Verbesserungen', desc: 'L1 plus sanfte Formulierungsverbesserungen.' },
+  { level: 3, label: 'L3', title: 'Ton & Zielgruppe', desc: 'L2 plus Anpassung an eine definierte Persona und Tonalität.' },
+  { level: 4, label: 'L4', title: 'SEO-Optimierung', desc: 'L3 plus Keyword-Findung und smarte SEO-Optimierung.' },
+  { level: 5, label: 'L5', title: 'AIO + FAQs', desc: 'L4 plus FAQ-Erweiterung für AI-Overviews und Featured Snippets.' },
+]
+
 function useCountUp(target, duration = 1200, start = false) {
   const [value, setValue] = useState(0)
   const frameRef = useRef(null)
-
   useEffect(() => {
     if (!start || target === 0) { setValue(target); return }
     const startTime = performance.now()
@@ -58,7 +66,6 @@ function useCountUp(target, duration = 1200, start = false) {
     frameRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(frameRef.current)
   }, [target, start, duration])
-
   return value
 }
 
@@ -104,6 +111,44 @@ export default function Home() {
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
 
+  // Migration Settings
+  const [migrationSettings, setMigrationSettings] = useState({
+    // Produkt-Filter
+    statusFilter: ['active'],
+    tagInclude: '',
+    tagExclude: '',
+    productTypeFilter: '',
+    onlyWithImages: false,
+    onlyWithSku: false,
+    // Preisfilter
+    priceOperator: 'none',
+    priceValue: '',
+    priceReference: 'min',
+    // Varianten & Bilder
+    inheritImages: true,
+    transferVariantOptions: true,
+    maxImagesPerProduct: '',
+    // SKU
+    skuFallback: 'generate',
+    skuPrefix: '',
+    // Duplikate
+    duplicateHandling: 'skip',
+    // Content-Qualität
+    textLevel: 0,
+  })
+
+  const updateSetting = (key, value) => setMigrationSettings(prev => ({ ...prev, [key]: value }))
+
+  const toggleStatus = (status) => {
+    setMigrationSettings(prev => {
+      const current = prev.statusFilter
+      if (current.includes(status)) {
+        return { ...prev, statusFilter: current.filter(s => s !== status) }
+      }
+      return { ...prev, statusFilter: [...current, status] }
+    })
+  }
+
   useEffect(() => { setMounted(true) }, [])
 
   const allConnected = shopifyStatus === 'connected' && ctStatus === 'connected' && contentfulStatus === 'connected'
@@ -145,14 +190,10 @@ export default function Home() {
     'KI bereitet MACH-Mapping vor...',
   ]
 
-  // FIX: Shopify-Verbindungstest über analyze-shopify
   async function testShopify() {
     setShopifyStatus('loading')
     try {
-      const res = await fetch('/api/analyze-shopify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
+      const res = await fetch('/api/analyze-shopify', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       const data = await res.json()
       if (data.shopName) setShopifyStatus('connected')
       else setShopifyStatus('error')
@@ -162,31 +203,23 @@ export default function Home() {
   async function testCT() {
     setCtStatus('loading')
     try {
-      const res = await fetch('/api/test-commercetools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
+      const res = await fetch('/api/test-commercetools', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       const data = await res.json()
       if (data.ok) setCtStatus('connected')
       else setCtStatus('error')
     } catch { setCtStatus('error') }
   }
 
-  // FIX: Contentful-Verbindungstest direkt über Contentful API
   async function testContentful() {
-  setContentfulStatus('loading')
-  try {
-    const res = await fetch('/api/test-contentful', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    })
-    const data = await res.json()
-    if (data.ok) setContentfulStatus('connected')
-    else setContentfulStatus('error')
-  } catch { setContentfulStatus('error') }
-}
+    setContentfulStatus('loading')
+    try {
+      const res = await fetch('/api/test-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      const data = await res.json()
+      if (data.ok) setContentfulStatus('connected')
+      else setContentfulStatus('error')
+    } catch { setContentfulStatus('error') }
+  }
 
-  // FIX: Analyse nutzt jetzt analyze-shopify direkt — kein manuelles Zusammenbauen mehr
   async function analyze() {
     setAnalyzing(true)
     setAnimateNumbers(false)
@@ -198,10 +231,7 @@ export default function Home() {
       })
     }, 600)
     try {
-      const res = await fetch('/api/analyze-shopify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
+      const res = await fetch('/api/analyze-shopify', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       const data = await res.json()
       clearInterval(stepInterval)
       setAnalyzeStep(analyzeSteps.length - 1)
@@ -240,7 +270,6 @@ export default function Home() {
     setReviewedContentful(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
   }
 
-  // FIX: neue Route-Namen
   async function deployCTModel() {
     setDeployingCT(true)
     try {
@@ -275,7 +304,7 @@ export default function Home() {
       const res = await fetch('/api/migrate-products-commercetools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: productLimit })
+        body: JSON.stringify({ limit: productLimit, settings: migrationSettings })
       })
       const data = await res.json()
       setMigrateResultsCT(data.results)
@@ -289,7 +318,7 @@ export default function Home() {
       const res = await fetch('/api/migrate-content-contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages: inventory.pages })
+        body: JSON.stringify({ pages: inventory.pages, settings: migrationSettings })
       })
       const data = await res.json()
       setMigrateResultsContentful(data.results)
@@ -352,6 +381,35 @@ export default function Home() {
     outline: 'none', width: '100%'
   }
 
+  const selectStyle = {
+    background: '#080b12', border: '1px solid #1e293b',
+    borderRadius: 6, padding: '7px 10px', color: '#e2e8f0',
+    fontFamily: 'Inter, sans-serif', fontSize: 12, outline: 'none', cursor: 'pointer'
+  }
+
+  const Toggle = ({ value, onChange, label }) => (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#94a3b8' }}>
+      <div onClick={() => onChange(!value)} style={{ width: 36, height: 20, borderRadius: 10, background: value ? '#6366f1' : '#1e293b', position: 'relative', transition: 'background 0.2s', flexShrink: 0, cursor: 'pointer' }}>
+        <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: value ? 19 : 3, transition: 'left 0.2s' }} />
+      </div>
+      {label}
+    </label>
+  )
+
+  const StatusPill = ({ status, active, onClick }) => {
+    const colors = { active: '#22c55e', draft: '#f59e0b', archived: '#64748b' }
+    const labels = { active: 'Active', draft: 'Draft', archived: 'Archived' }
+    return (
+      <button onClick={onClick} style={{ padding: '4px 12px', borderRadius: 99, border: `1px solid ${active ? colors[status] : '#1e293b'}`, background: active ? `${colors[status]}22` : 'transparent', color: active ? colors[status] : '#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
+        {labels[status]}
+      </button>
+    )
+  }
+
+  const SectionLabel = ({ children }) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>{children}</div>
+  )
+
   const StatusDot = ({ status }) => (
     <div style={{ width: 10, height: 10, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : status === 'loading' ? '#f59e0b' : '#334155', boxShadow: status === 'connected' ? '0 0 8px #22c55e' : 'none', ...(status === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
   )
@@ -391,6 +449,8 @@ export default function Home() {
     </div>
   )
 
+  const currentTextLevel = TEXT_LEVELS[migrationSettings.textLevel]
+
   return (
     <>
       <style>{`
@@ -403,10 +463,13 @@ export default function Home() {
         @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
         input:focus { border-color: #6366f1 !important; }
+        select:focus { border-color: #6366f1 !important; }
         .dropdown-item:hover { background: #1e293b; }
         .mode-btn { transition: all 0.2s; cursor: pointer; border: none; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
         .card { display: flex; flex-direction: column; }
         .card-body { flex: 1; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 700px) { .settings-grid { grid-template-columns: 1fr; } }
       `}</style>
 
       {/* Sticky Header */}
@@ -442,7 +505,6 @@ export default function Home() {
 
         {/* CONNECTION CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-
           {/* Shopify */}
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
@@ -540,9 +602,7 @@ export default function Home() {
               </button>
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: '#475569' }}>
-              {modelMode === 'create'
-                ? 'Produkte → commercetools. Pages und Blogs → Contentful. Du prüfst die Namen vor dem Anlegen.'
-                : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
+              {modelMode === 'create' ? 'Produkte → commercetools. Pages und Blogs → Contentful. Du prüfst die Namen vor dem Anlegen.' : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
             </div>
           </div>
         )}
@@ -569,9 +629,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* Inventar */}
+        {/* Inventar + Migration Settings */}
         {inventory && !mapping && (
           <div className="fade-up">
+            {/* Inventar */}
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
@@ -595,6 +656,12 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+              {inventory.variantOptions?.length > 0 && (
+                <div style={{ marginBottom: 10, fontSize: 13 }}>
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>varianten-optionen: </span>
+                  {inventory.variantOptions.map(o => <span key={o} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{o}</span>)}
+                </div>
+              )}
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
                   <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
@@ -615,6 +682,148 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* ── MIGRATION SETTINGS PANEL ── */}
+            <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Migration Settings</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#a5b4fc', marginBottom: 24 }}>Migrations-Einstellungen</div>
+
+              <div className="settings-grid">
+
+                {/* PRODUKT-FILTER */}
+                <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
+                  <SectionLabel>Produkt-Filter</SectionLabel>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Status</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {['active', 'draft', 'archived'].map(s => (
+                        <StatusPill key={s} status={s} active={migrationSettings.statusFilter.includes(s)} onClick={() => toggleStatus(s)} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Tag enthält</div>
+                    <input style={{ ...inputStyle, marginBottom: 6 }} value={migrationSettings.tagInclude} onChange={e => updateSetting('tagInclude', e.target.value)} placeholder="z.B. sale, featured" />
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Tag ausschliessen</div>
+                    <input style={inputStyle} value={migrationSettings.tagExclude} onChange={e => updateSetting('tagExclude', e.target.value)} placeholder="z.B. intern, test" />
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Produkttyp</div>
+                    <input style={inputStyle} value={migrationSettings.productTypeFilter} onChange={e => updateSetting('productTypeFilter', e.target.value)} placeholder="Nur dieser Produkttyp (leer = alle)" />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Toggle value={migrationSettings.onlyWithImages} onChange={v => updateSetting('onlyWithImages', v)} label="Nur Produkte mit Bildern" />
+                    <Toggle value={migrationSettings.onlyWithSku} onChange={v => updateSetting('onlyWithSku', v)} label="Nur Produkte mit SKU" />
+                  </div>
+                </div>
+
+                {/* PREISFILTER */}
+                <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
+                  <SectionLabel>Preisfilter</SectionLabel>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Preis-Referenz</div>
+                    <select style={{ ...selectStyle, width: '100%' }} value={migrationSettings.priceReference} onChange={e => updateSetting('priceReference', e.target.value)}>
+                      <option value="min">Günstigste Variante (Standard)</option>
+                      <option value="max">Teuerste Variante</option>
+                      <option value="avg">Durchschnitt aller Varianten</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Operator</div>
+                    <select style={{ ...selectStyle, width: '100%' }} value={migrationSettings.priceOperator} onChange={e => updateSetting('priceOperator', e.target.value)}>
+                      <option value="none">Kein Filter</option>
+                      <option value="lt">{'< Kleiner als'}</option>
+                      <option value="gt">{'> Grösser als'}</option>
+                      <option value="eq">{'= Gleich'}</option>
+                      <option value="lte">{'<= Kleiner oder gleich'}</option>
+                      <option value="gte">'{'>= Grösser oder gleich'}</option>
+                    </select>
+                  </div>
+
+                  {migrationSettings.priceOperator !== 'none' && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Betrag in €</div>
+                      <input style={inputStyle} type="number" min="0" step="0.01" value={migrationSettings.priceValue} onChange={e => updateSetting('priceValue', e.target.value)} placeholder="0.00" />
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 20 }}>
+                    <SectionLabel>SKU-Behandlung</SectionLabel>
+                    <div style={{ marginBottom: 10 }}>
+                      <select style={{ ...selectStyle, width: '100%' }} value={migrationSettings.skuFallback} onChange={e => updateSetting('skuFallback', e.target.value)}>
+                        <option value="generate">Fallback-ID generieren</option>
+                        <option value="skip">Produkt überspringen</option>
+                        <option value="warn">Warnung, trotzdem migrieren</option>
+                      </select>
+                    </div>
+                    <input style={inputStyle} value={migrationSettings.skuPrefix} onChange={e => updateSetting('skuPrefix', e.target.value)} placeholder="SKU-Präfix (optional, z.B. SHOP-)" />
+                  </div>
+                </div>
+
+                {/* VARIANTEN & BILDER */}
+                <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
+                  <SectionLabel>Varianten & Bilder</SectionLabel>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                    <Toggle value={migrationSettings.inheritImages} onChange={v => updateSetting('inheritImages', v)} label="Produktbilder an alle Varianten vererben" />
+                    <Toggle value={migrationSettings.transferVariantOptions} onChange={v => updateSetting('transferVariantOptions', v)} label="Variantenoptionen als Attribute übertragen" />
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Max. Bilder pro Produkt</div>
+                    <input style={inputStyle} type="number" min="1" value={migrationSettings.maxImagesPerProduct} onChange={e => updateSetting('maxImagesPerProduct', e.target.value)} placeholder="Leer = alle Bilder" />
+                  </div>
+
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Bei Duplikaten</div>
+                    <select style={{ ...selectStyle, width: '100%' }} value={migrationSettings.duplicateHandling} onChange={e => updateSetting('duplicateHandling', e.target.value)}>
+                      <option value="skip">Überspringen</option>
+                      <option value="overwrite">Überschreiben</option>
+                      <option value="error">Fehler melden</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* TEXT-QUALITÄT L0-L5 */}
+                <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
+                  <SectionLabel>Text-Qualität</SectionLabel>
+
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                    {TEXT_LEVELS.map(l => (
+                      <button key={l.level} onClick={() => updateSetting('textLevel', l.level)} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1px solid ${migrationSettings.textLevel === l.level ? '#6366f1' : '#1e293b'}`, background: migrationSettings.textLevel === l.level ? 'rgba(99,102,241,0.2)' : 'transparent', color: migrationSettings.textLevel === l.level ? '#a5b4fc' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ background: '#0a0e1a', borderRadius: 10, padding: 14, borderLeft: '3px solid #6366f1' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc', marginBottom: 4 }}>{currentTextLevel.title}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{currentTextLevel.desc}</div>
+                  </div>
+
+                  {migrationSettings.textLevel === 3 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Zielgruppe / Persona</div>
+                      <input style={inputStyle} placeholder="z.B. Medizinisches Fachpersonal, 40-60 Jahre" />
+                    </div>
+                  )}
+                  {migrationSettings.textLevel >= 4 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>Primäres Keyword (optional)</div>
+                      <input style={inputStyle} placeholder="Leer = KI ermittelt selbst" />
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
               {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
             </button>
