@@ -1,3 +1,7 @@
+// Contentful-spezifische Reset-Route
+// Löscht alle Entries und Content Types im Space
+// Für andere Zielsysteme: reset-{system}/route.js anlegen
+
 export const runtime = 'nodejs'
 
 export async function POST(request) {
@@ -16,14 +20,12 @@ export async function POST(request) {
 
     for (const entry of entriesData.items || []) {
       try {
-        // Unpublishen falls published
         if (entry.sys.publishedVersion) {
           await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries/${entry.sys.id}/published`,
             { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
           )
         }
-        // Löschen
         await fetch(
           `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries/${entry.sys.id}`,
           { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
@@ -43,14 +45,12 @@ export async function POST(request) {
 
     for (const ct of ctData.items || []) {
       try {
-        // Unpublishen
         if (ct.sys.publishedVersion) {
           await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types/${ct.sys.id}/published`,
             { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
           )
         }
-        // Löschen
         await fetch(
           `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types/${ct.sys.id}`,
           { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
