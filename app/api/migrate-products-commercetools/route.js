@@ -1,20 +1,30 @@
 // commercetools-spezifische Route zum Migrieren von Produkten
-// Quellsystem-spezifische Logik (Shopify) liegt in lib/adapters/shopify/products.js
 // Für andere Zielsysteme: migrate-products-{system}/route.js anlegen
 
 export const runtime = 'nodejs'
 
+// Umlaut-sichere Normalisierung für CT-Attributnamen
+// Konsistent mit KI-Prompt-Logik: Umlaute weglassen
+const normalizeAttrName = (name) => name
+  .toLowerCase()
+  .replace(/ä/g, 'a')
+  .replace(/ö/g, 'o')
+  .replace(/ü/g, 'u')
+  .replace(/ß/g, 'ss')
+  .replace(/\s+/g, '_')
+  .replace(/[^a-z0-9_]/g, '')
+
 // Preis-Referenz berechnen
-function getRefPrice(variants, reference) {
+const getRefPrice = (variants, reference) => {
   const prices = (variants || []).map(v => parseFloat(v.price || 0)).filter(p => p > 0)
   if (prices.length === 0) return 0
   if (reference === 'max') return Math.max(...prices)
   if (reference === 'avg') return prices.reduce((a, b) => a + b, 0) / prices.length
-  return Math.min(...prices) // 'min' ist default
+  return Math.min(...prices)
 }
 
 // Preisfilter anwenden
-function passesPrice(product, settings) {
+const passesPrice = (product, settings) => {
   if (!settings?.priceOperator || settings.priceOperator === 'none') return true
   if (!settings.priceValue) return true
   const threshold = parseFloat(settings.priceValue)
@@ -32,7 +42,7 @@ function passesPrice(product, settings) {
 
 export async function POST(request) {
   try {
-    const { limit = 10, settings = {} } = await request.json()
+    const { limit = 20, settings = {} } = await request.json()
 
     const shopifyDomain = process.env.SHOPIFY_DOMAIN
     const shopifyToken = process.env.SHOPIFY_ADMIN_TOKEN
@@ -42,7 +52,8 @@ export async function POST(request) {
     const ctAuthUrl = process.env.CT_AUTH_URL || 'https://auth.europe-west1.gcp.commercetools.com'
     const ctApiUrl = process.env.CT_API_URL || 'https://api.europe-west1.gcp.commercetools.com'
 
-    const safeLimit = Math.min(limit, 50)
+    // Kein hartes Limit — Nutzer entscheidet selbst, Default 20
+    const safeLimit = limit > 0 ? limit : 20
 
     // Settings mit Defaults
     const statusFilter = settings.statusFilter?.length > 0 ? settings.statusFilter : ['active', 'draft', 'archived']
@@ -51,21 +62,23 @@ export async function POST(request) {
     const productTypeFilter = settings.productTypeFilter?.trim().toLowerCase() || ''
     const onlyWithImages = settings.onlyWithImages || false
     const onlyWithSku = settings.onlyWithSku || false
-    const inheritImages = settings.inheritImages !== false // default true
-    const transferVariantOptions = settings.transferVariantOptions !== false // default true
+    const inheritImages = settings.inheritImages !== false
+    const transferVariantOptions = settings.transferVariantOptions !== false
     const maxImages = settings.maxImagesPerProduct ? parseInt(settings.maxImagesPerProduct) : null
     const skuFallback = settings.skuFallback || 'generate'
     const skuPrefix = settings.skuPrefix?.trim() || ''
     const duplicateHandling = settings.duplicateHandling || 'skip'
 
-   // 1. Shopify Produkte laden — alle Status separat (Shopify API unterstützt kein status=any)
-const [res1, res2, res3] = await Promise.all([
-  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=active`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
-  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=draft`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
-  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=archived`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
-])
-const [d1, d2, d3] = await Promise.all([res1.json(), res2.json(), res3.json()])
-const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.products || [])]
+    // 1. Shopify Produkte laden — alle Status separat (Shopify API unterstützt kein status=any)
+    const shopifyHeaders = { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' }
+    const base = `https://${shopifyDomain}/admin/api/2024-01`
+    const [res1, res2, res3] = await Promise.all([
+      fetch(`${base}/products.json?limit=250&status=active`, { headers: shopifyHeaders }),
+      fetch(`${base}/products.json?limit=250&status=draft`, { headers: shopifyHeaders }),
+      fetch(`${base}/products.json?limit=250&status=archived`, { headers: shopifyHeaders }),
+    ])
+    const [d1, d2, d3] = await Promise.all([res1.json(), res2.json(), res3.json()])
+    const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.products || [])]
 
     // 2. Filtern anhand Settings
     const products = allProducts
@@ -140,15 +153,6 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
       }
       if (type === 'boolean') return value === 'true' || value === true
       return String(value)
-
-    const normalizeAttrName = (name) => name
-      .toLowerCase()
-      .replace(/ä/g, 'a')
-      .replace(/ö/g, 'o')
-      .replace(/ü/g, 'u')
-      .replace(/ß/g, 'ss')
-      .replace(/\s+/g, '_')
-      .replace(/[^a-z0-9_]/g, '')
     }
 
     // Varianten-Attribute inkl. Farbe/Grösse aus Shopify options
@@ -195,11 +199,9 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
       const variantImages = (product.images || []).filter(img =>
         img.variant_ids && img.variant_ids.includes(variant.id)
       )
-      // Fallback auf alle Produktbilder wenn inheritImages aktiv und keine eigenen Bilder
       const imagesToUse = variantImages.length > 0
         ? variantImages
         : (inheritImages ? (product.images || []) : [])
-
       const limited = maxImages ? imagesToUse.slice(0, maxImages) : imagesToUse
       return limited.map(img => ({
         url: img.src,
@@ -266,7 +268,7 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
             results.push({ name: product.title, status: 'error', error: 'Duplikat gefunden' })
             continue
           }
-          slug = `${slug}-${product.id}` // overwrite: neuer Slug
+          slug = `${slug}-${product.id}`
         }
         usedSlugs.add(slug)
 
@@ -286,14 +288,8 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
             results.push({ name: product.title, status: 'skipped', reason: 'Keine SKU vorhanden' })
             continue
           }
-          if (skuFallback === 'generate') {
-            masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
-            skuWarning = 'Keine SKU in Shopify, Fallback-ID generiert'
-          }
-          if (skuFallback === 'warn') {
-            masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
-            skuWarning = 'Warnung: Keine SKU in Shopify gepflegt'
-          }
+          masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
+          skuWarning = skuFallback === 'warn' ? 'Warnung: Keine SKU in Shopify gepflegt' : 'Fallback-ID generiert'
         }
         if (usedSkus.has(masterSku)) masterSku = `${masterSku}-${firstVariant?.id}`
         usedSkus.add(masterSku)
@@ -301,25 +297,24 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
         const categoryId = categoryMap[product.product_type?.trim()]
         const categories = categoryId ? [{ id: categoryId, typeId: 'category' }] : []
 
-        // Master-Bilder (Bilder ohne Varianten-Zuweisung)
+        // Master-Bilder (ohne Varianten-Zuweisung)
         let masterImages = (product.images || [])
           .filter(img => !img.variant_ids || img.variant_ids.length === 0)
           .map(img => ({ url: img.src, dimensions: { w: img.width || 800, h: img.height || 800 }, label: product.title }))
 
-        // Fallback wenn keine freien Bilder
         if (masterImages.length === 0 && product.images?.[0]) {
           masterImages = [{ url: product.images[0].src, dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 }, label: product.title }]
         }
-
         if (maxImages) masterImages = masterImages.slice(0, maxImages)
 
+        // FIX: Produktname und Beschreibung als lokalisierte CT-Felder setzen
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
           key,
           name: { de: product.title, 'en-US': product.title },
           slug: { de: slug, 'en-US': slug },
           description: product.body_html
-            ? { de: product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
+            ? { de: product.body_html.replace(/<[^>]*>/g, '').substring(0, 500), 'en-US': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
             : undefined,
           categories,
           masterVariant: {
@@ -381,7 +376,7 @@ const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.prod
         statusFilter,
         tagInclude: tagInclude || null,
         tagExclude: tagExclude || null,
-        priceFilter: settings.priceOperator !== 'none' ? `${settings.priceOperator} ${settings.priceValue} EUR (${settings.priceReference})` : null,
+        priceFilter: settings.priceOperator !== 'none' ? `${settings.priceOperator} ${settings.priceValue} EUR` : null,
         inheritImages,
         skuFallback,
         duplicateHandling
