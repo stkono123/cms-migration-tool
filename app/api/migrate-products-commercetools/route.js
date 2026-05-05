@@ -304,9 +304,8 @@ export async function POST(request) {
         if (maxImages) masterImages = masterImages.slice(0, maxImages)
 
         // L0-L5: Beschreibung durch Text-Optimizer jagen
-        const rawDescription = product.body_html
-          ? product.body_html.replace(/<[^>]*>/g, '')
-          : ''
+        const rawDescription = product.body_html || ''
+        
         const optimizedDescription = rawDescription
           ? await optimizeText(rawDescription, settings)
           : ''
