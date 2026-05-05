@@ -1,3 +1,7 @@
+// commercetools-spezifische Verbindungstest-Route
+// Prüft ob die CT-Credentials gültig sind und das Projekt erreichbar ist
+// Für andere Zielsysteme: test-{system}/route.js anlegen
+
 export const runtime = 'nodejs'
 
 export async function POST(request) {
