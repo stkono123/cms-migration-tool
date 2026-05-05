@@ -4,9 +4,35 @@
 
 export const runtime = 'nodejs'
 
+// Preis-Referenz berechnen
+function getRefPrice(variants, reference) {
+  const prices = (variants || []).map(v => parseFloat(v.price || 0)).filter(p => p > 0)
+  if (prices.length === 0) return 0
+  if (reference === 'max') return Math.max(...prices)
+  if (reference === 'avg') return prices.reduce((a, b) => a + b, 0) / prices.length
+  return Math.min(...prices) // 'min' ist default
+}
+
+// Preisfilter anwenden
+function passesPrice(product, settings) {
+  if (!settings?.priceOperator || settings.priceOperator === 'none') return true
+  if (!settings.priceValue) return true
+  const threshold = parseFloat(settings.priceValue)
+  if (isNaN(threshold)) return true
+  const refPrice = getRefPrice(product.variants, settings.priceReference || 'min')
+  switch (settings.priceOperator) {
+    case 'lt':  return refPrice < threshold
+    case 'gt':  return refPrice > threshold
+    case 'eq':  return refPrice === threshold
+    case 'lte': return refPrice <= threshold
+    case 'gte': return refPrice >= threshold
+    default: return true
+  }
+}
+
 export async function POST(request) {
   try {
-    const { limit = 10 } = await request.json()
+    const { limit = 10, settings = {} } = await request.json()
 
     const shopifyDomain = process.env.SHOPIFY_DOMAIN
     const shopifyToken = process.env.SHOPIFY_ADMIN_TOKEN
@@ -18,9 +44,23 @@ export async function POST(request) {
 
     const safeLimit = Math.min(limit, 50)
 
-    // 1. Shopify Produkte laden
+    // Settings mit Defaults
+    const statusFilter = settings.statusFilter?.length > 0 ? settings.statusFilter : ['active', 'draft', 'archived']
+    const tagInclude = settings.tagInclude?.trim().toLowerCase() || ''
+    const tagExclude = settings.tagExclude?.trim().toLowerCase() || 'intern'
+    const productTypeFilter = settings.productTypeFilter?.trim().toLowerCase() || ''
+    const onlyWithImages = settings.onlyWithImages || false
+    const onlyWithSku = settings.onlyWithSku || false
+    const inheritImages = settings.inheritImages !== false // default true
+    const transferVariantOptions = settings.transferVariantOptions !== false // default true
+    const maxImages = settings.maxImagesPerProduct ? parseInt(settings.maxImagesPerProduct) : null
+    const skuFallback = settings.skuFallback || 'generate'
+    const skuPrefix = settings.skuPrefix?.trim() || ''
+    const duplicateHandling = settings.duplicateHandling || 'skip'
+
+    // 1. Shopify Produkte laden — alle Status
     const shopifyRes = await fetch(
-      `https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=active`,
+      `https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=any`,
       {
         headers: {
           'X-Shopify-Access-Token': shopifyToken,
@@ -31,18 +71,24 @@ export async function POST(request) {
     const shopifyData = await shopifyRes.json()
     const allProducts = shopifyData.products || []
 
-    // 2. Filtern
+    // 2. Filtern anhand Settings
     const products = allProducts
-      .filter(p => p.product_type && p.product_type.trim() !== '')
+      .filter(p => statusFilter.includes(p.status))
       .filter(p => {
         const tags = (p.tags || '').toLowerCase()
-        return !tags.includes('intern')
+        if (tagExclude && tags.includes(tagExclude)) return false
+        if (tagInclude && !tags.includes(tagInclude)) return false
+        return true
       })
+      .filter(p => !productTypeFilter || p.product_type?.toLowerCase() === productTypeFilter)
+      .filter(p => !onlyWithImages || (p.images && p.images.length > 0))
+      .filter(p => !onlyWithSku || p.variants?.some(v => v.sku && v.sku.trim() !== ''))
+      .filter(p => passesPrice(p, settings))
       .slice(0, safeLimit)
 
     if (products.length === 0) {
       return Response.json({
-        error: 'Keine passenden Produkte gefunden.',
+        error: 'Keine passenden Produkte gefunden. Bitte Filter überprüfen.',
         totalLoaded: allProducts.length
       }, { status: 400 })
     }
@@ -56,7 +102,6 @@ export async function POST(request) {
       },
       body: `grant_type=client_credentials&scope=manage_products:${ctProjectKey} manage_project:${ctProjectKey}`
     })
-
     const authData = await authResponse.json()
     if (!authResponse.ok) {
       return Response.json({ error: 'CT Auth fehlgeschlagen', details: authData }, { status: 500 })
@@ -103,14 +148,16 @@ export async function POST(request) {
 
     // Varianten-Attribute inkl. Farbe/Grösse aus Shopify options
     const buildVariantAttributes = (product, variant) => {
-      const optionAttributes = (product.options || []).map((opt, i) => {
-        const optValue = variant?.[`option${i + 1}`]
-        if (!optValue || optValue === 'Default Title') return null
-        return {
-          name: opt.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-          value: optValue
-        }
-      }).filter(Boolean)
+      const optionAttributes = transferVariantOptions
+        ? (product.options || []).map((opt, i) => {
+            const optValue = variant?.[`option${i + 1}`]
+            if (!optValue || optValue === 'Default Title') return null
+            return {
+              name: opt.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+              value: optValue
+            }
+          }).filter(Boolean)
+        : []
 
       const allMappings = [
         { name: 'product_id',   value: String(product.id) },
@@ -138,12 +185,18 @@ export async function POST(request) {
         .map(m => ({ name: m.name, value: castValue(m.name, m.value) }))
     }
 
-    // Bild-zu-Variante Mapping aus Shopify
+    // Bild-zu-Variante Mapping — mit Vererbungs-Option
     const buildVariantImages = (product, variant) => {
       const variantImages = (product.images || []).filter(img =>
         img.variant_ids && img.variant_ids.includes(variant.id)
       )
-      return variantImages.map(img => ({
+      // Fallback auf alle Produktbilder wenn inheritImages aktiv und keine eigenen Bilder
+      const imagesToUse = variantImages.length > 0
+        ? variantImages
+        : (inheritImages ? (product.images || []) : [])
+
+      const limited = maxImages ? imagesToUse.slice(0, maxImages) : imagesToUse
+      return limited.map(img => ({
         url: img.src,
         dimensions: { w: img.width || 800, h: img.height || 800 },
         label: product.title
@@ -162,20 +215,14 @@ export async function POST(request) {
       if (key) categoryMap[key] = cat.id
     }
 
-    const uniqueTypes = [...new Set(products.map(p => p.product_type.trim()))]
+    const uniqueTypes = [...new Set(products.map(p => p.product_type?.trim()).filter(Boolean))]
     for (const typeName of uniqueTypes) {
       if (categoryMap[typeName]) continue
       const slug = typeName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       const catRes = await fetch(`${ctApiUrl}/${ctProjectKey}/categories`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: { de: typeName, 'en-US': typeName },
-          slug: { de: slug, 'en-US': slug }
-        })
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: { de: typeName, 'en-US': typeName }, slug: { de: slug, 'en-US': slug } })
       })
       const catData = await catRes.json()
       if (catRes.ok) categoryMap[typeName] = catData.id
@@ -188,9 +235,7 @@ export async function POST(request) {
     )
     const existingData = await existingRes.json()
     const existingSlugs = new Set(
-      (existingData.results || []).flatMap(p =>
-        Object.values(p.masterData?.current?.slug || {})
-      )
+      (existingData.results || []).flatMap(p => Object.values(p.masterData?.current?.slug || {}))
     )
     const existingKeys = new Set(
       (existingData.results || []).map(p => p.key).filter(Boolean)
@@ -205,7 +250,19 @@ export async function POST(request) {
     for (const product of products) {
       try {
         let slug = product.handle || product.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        if (usedSlugs.has(slug)) slug = `${slug}-${product.id}`
+
+        // Duplikat-Handling
+        if (usedSlugs.has(slug)) {
+          if (duplicateHandling === 'skip') {
+            results.push({ name: product.title, status: 'skipped', reason: 'Duplikat übersprungen' })
+            continue
+          }
+          if (duplicateHandling === 'error') {
+            results.push({ name: product.title, status: 'error', error: 'Duplikat gefunden' })
+            continue
+          }
+          slug = `${slug}-${product.id}` // overwrite: neuer Slug
+        }
         usedSlugs.add(slug)
 
         let key = product.handle || slug
@@ -216,11 +273,22 @@ export async function POST(request) {
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
 
-        let masterSku = firstVariant?.sku || ''
+        // SKU-Behandlung anhand Settings
+        let masterSku = firstVariant?.sku ? `${skuPrefix}${firstVariant.sku}` : ''
         let skuWarning = null
-        if (!masterSku) {
-          masterSku = `shopify-${product.id}-${firstVariant?.id || 'master'}`
-          skuWarning = 'Keine SKU in Shopify gepflegt, Fallback-ID verwendet'
+        if (!firstVariant?.sku) {
+          if (skuFallback === 'skip') {
+            results.push({ name: product.title, status: 'skipped', reason: 'Keine SKU vorhanden' })
+            continue
+          }
+          if (skuFallback === 'generate') {
+            masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
+            skuWarning = 'Keine SKU in Shopify, Fallback-ID generiert'
+          }
+          if (skuFallback === 'warn') {
+            masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
+            skuWarning = 'Warnung: Keine SKU in Shopify gepflegt'
+          }
         }
         if (usedSkus.has(masterSku)) masterSku = `${masterSku}-${firstVariant?.id}`
         usedSkus.add(masterSku)
@@ -228,19 +296,17 @@ export async function POST(request) {
         const categoryId = categoryMap[product.product_type?.trim()]
         const categories = categoryId ? [{ id: categoryId, typeId: 'category' }] : []
 
-        const masterImages = (product.images || [])
+        // Master-Bilder (Bilder ohne Varianten-Zuweisung)
+        let masterImages = (product.images || [])
           .filter(img => !img.variant_ids || img.variant_ids.length === 0)
-          .map(img => ({
-            url: img.src,
-            dimensions: { w: img.width || 800, h: img.height || 800 },
-            label: product.title
-          }))
+          .map(img => ({ url: img.src, dimensions: { w: img.width || 800, h: img.height || 800 }, label: product.title }))
 
-        const fallbackImage = product.images?.[0] ? [{
-          url: product.images[0].src,
-          dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 },
-          label: product.title
-        }] : []
+        // Fallback wenn keine freien Bilder
+        if (masterImages.length === 0 && product.images?.[0]) {
+          masterImages = [{ url: product.images[0].src, dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 }, label: product.title }]
+        }
+
+        if (maxImages) masterImages = masterImages.slice(0, maxImages)
 
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
@@ -253,31 +319,17 @@ export async function POST(request) {
           categories,
           masterVariant: {
             sku: masterSku,
-            prices: priceValue > 0 ? [{
-              value: {
-                currencyCode: 'EUR',
-                centAmount: Math.round(priceValue * 100),
-                type: 'centPrecision',
-                fractionDigits: 2
-              }
-            }] : [],
-            images: masterImages.length > 0 ? masterImages : fallbackImage,
+            prices: priceValue > 0 ? [{ value: { currencyCode: 'EUR', centAmount: Math.round(priceValue * 100), type: 'centPrecision', fractionDigits: 2 } }] : [],
+            images: masterImages,
             attributes: buildVariantAttributes(product, firstVariant)
           },
           variants: (product.variants?.slice(1) || []).map(v => {
-            let varSku = v.sku || ''
-            if (!varSku || usedSkus.has(varSku)) varSku = `shopify-${product.id}-${v.id}`
+            let varSku = v.sku ? `${skuPrefix}${v.sku}` : ''
+            if (!varSku || usedSkus.has(varSku)) varSku = `${skuPrefix}shopify-${product.id}-${v.id}`
             usedSkus.add(varSku)
             return {
               sku: varSku,
-              prices: parseFloat(v.price || 0) > 0 ? [{
-                value: {
-                  currencyCode: 'EUR',
-                  centAmount: Math.round(parseFloat(v.price) * 100),
-                  type: 'centPrecision',
-                  fractionDigits: 2
-                }
-              }] : [],
+              prices: parseFloat(v.price || 0) > 0 ? [{ value: { currencyCode: 'EUR', centAmount: Math.round(parseFloat(v.price) * 100), type: 'centPrecision', fractionDigits: 2 } }] : [],
               images: buildVariantImages(product, v),
               attributes: buildVariantAttributes(product, v)
             }
@@ -287,10 +339,7 @@ export async function POST(request) {
 
         const res = await fetch(`${ctApiUrl}/${ctProjectKey}/products`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(ctProduct)
         })
 
@@ -322,7 +371,16 @@ export async function POST(request) {
       results,
       total: products.length,
       filtered: allProducts.length - products.length,
-      categoriesCreated: Object.keys(categoryMap).length
+      categoriesCreated: Object.keys(categoryMap).length,
+      settingsApplied: {
+        statusFilter,
+        tagInclude: tagInclude || null,
+        tagExclude: tagExclude || null,
+        priceFilter: settings.priceOperator !== 'none' ? `${settings.priceOperator} ${settings.priceValue} EUR (${settings.priceReference})` : null,
+        inheritImages,
+        skuFallback,
+        duplicateHandling
+      }
     })
 
   } catch (error) {
