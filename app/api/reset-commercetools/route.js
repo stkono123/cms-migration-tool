@@ -1,3 +1,7 @@
+// commercetools-spezifische Reset-Route
+// Löscht alle Produkte und Product Types im Projekt
+// Für andere Zielsysteme: reset-{system}/route.js anlegen
+
 export const runtime = 'nodejs'
 
 export async function POST(request) {
@@ -34,7 +38,6 @@ export async function POST(request) {
 
     for (const product of productsData.results || []) {
       try {
-        // Unpublishen falls published
         if (product.masterData?.published) {
           await fetch(
             `${ctApiUrl}/${ctProjectKey}/products/${product.id}`,
@@ -45,7 +48,6 @@ export async function POST(request) {
             }
           )
         }
-        // Löschen
         const deleteRes = await fetch(
           `${ctApiUrl}/${ctProjectKey}/products/${product.id}?version=${product.version}`,
           { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
