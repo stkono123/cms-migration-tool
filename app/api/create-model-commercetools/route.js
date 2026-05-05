@@ -3,6 +3,17 @@
 
 export const runtime = 'nodejs'
 
+// Umlaut-sichere Normalisierung für CT-Attributnamen
+// Konsistent mit migrate-products-commercetools/route.js
+const normalizeAttrName = (name) => name
+  .toLowerCase()
+  .replace(/ä/g, 'a')
+  .replace(/ö/g, 'o')
+  .replace(/ü/g, 'u')
+  .replace(/ß/g, 'ss')
+  .replace(/\s+/g, '_')
+  .replace(/[^a-z0-9_]/g, '')
+
 export async function POST(request) {
   try {
     const { contentTypes } = await request.json()
@@ -24,7 +35,6 @@ export async function POST(request) {
     })
 
     const authData = await authResponse.json()
-
     if (!authResponse.ok) {
       return Response.json({ error: 'Auth fehlgeschlagen', details: authData }, { status: 500 })
     }
@@ -35,7 +45,8 @@ export async function POST(request) {
     for (const ct of contentTypes) {
       try {
         const attributes = ct.fields.map(f => ({
-          name: f.id,
+          // FIX: Attributnamen normalisieren damit Umlaute und Sonderzeichen CT nicht blockieren
+          name: normalizeAttrName(f.id),
           label: { de: f.name, 'en-US': f.name },
           isRequired: false,
           type: mapFieldType(f.type),
