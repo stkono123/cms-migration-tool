@@ -3,8 +3,9 @@
 
 export const runtime = 'nodejs'
 
+import { optimizeText } from '../../../lib/pipeline/text-optimizer.js'
+
 // Umlaut-sichere Normalisierung für CT-Attributnamen
-// Konsistent mit KI-Prompt-Logik: Umlaute weglassen
 const normalizeAttrName = (name) => name
   .toLowerCase()
   .replace(/ä/g, 'a')
@@ -52,7 +53,6 @@ export async function POST(request) {
     const ctAuthUrl = process.env.CT_AUTH_URL || 'https://auth.europe-west1.gcp.commercetools.com'
     const ctApiUrl = process.env.CT_API_URL || 'https://api.europe-west1.gcp.commercetools.com'
 
-    // Kein hartes Limit — Nutzer entscheidet selbst, Default 20
     const safeLimit = limit > 0 ? limit : 20
 
     // Settings mit Defaults
@@ -69,7 +69,7 @@ export async function POST(request) {
     const skuPrefix = settings.skuPrefix?.trim() || ''
     const duplicateHandling = settings.duplicateHandling || 'skip'
 
-    // 1. Shopify Produkte laden — alle Status separat (Shopify API unterstützt kein status=any)
+    // 1. Shopify Produkte laden — alle Status separat
     const shopifyHeaders = { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' }
     const base = `https://${shopifyDomain}/admin/api/2024-01`
     const [res1, res2, res3] = await Promise.all([
@@ -161,10 +161,7 @@ export async function POST(request) {
         ? (product.options || []).map((opt, i) => {
             const optValue = variant?.[`option${i + 1}`]
             if (!optValue || optValue === 'Default Title') return null
-            return {
-              name: normalizeAttrName(opt.name),
-              value: optValue
-            }
+            return { name: normalizeAttrName(opt.name), value: optValue }
           }).filter(Boolean)
         : []
 
@@ -194,7 +191,7 @@ export async function POST(request) {
         .map(m => ({ name: m.name, value: castValue(m.name, m.value) }))
     }
 
-    // Bild-zu-Variante Mapping — mit Vererbungs-Option
+    // Bild-zu-Variante Mapping mit Vererbungs-Option
     const buildVariantImages = (product, variant) => {
       const variantImages = (product.images || []).filter(img =>
         img.variant_ids && img.variant_ids.includes(variant.id)
@@ -280,7 +277,7 @@ export async function POST(request) {
         const firstVariant = product.variants?.[0]
         const priceValue = firstVariant?.price ? parseFloat(firstVariant.price) : 0
 
-        // SKU-Behandlung anhand Settings
+        // SKU-Behandlung
         let masterSku = firstVariant?.sku ? `${skuPrefix}${firstVariant.sku}` : ''
         let skuWarning = null
         if (!firstVariant?.sku) {
@@ -289,7 +286,7 @@ export async function POST(request) {
             continue
           }
           masterSku = `${skuPrefix}shopify-${product.id}-${firstVariant?.id || 'master'}`
-          skuWarning = skuFallback === 'warn' ? 'Warnung: Keine SKU in Shopify gepflegt' : 'Fallback-ID generiert'
+          skuWarning = skuFallback === 'warn' ? 'Warnung: Keine SKU gepflegt' : 'Fallback-ID generiert'
         }
         if (usedSkus.has(masterSku)) masterSku = `${masterSku}-${firstVariant?.id}`
         usedSkus.add(masterSku)
@@ -297,24 +294,30 @@ export async function POST(request) {
         const categoryId = categoryMap[product.product_type?.trim()]
         const categories = categoryId ? [{ id: categoryId, typeId: 'category' }] : []
 
-        // Master-Bilder (ohne Varianten-Zuweisung)
+        // Master-Bilder
         let masterImages = (product.images || [])
           .filter(img => !img.variant_ids || img.variant_ids.length === 0)
           .map(img => ({ url: img.src, dimensions: { w: img.width || 800, h: img.height || 800 }, label: product.title }))
-
         if (masterImages.length === 0 && product.images?.[0]) {
           masterImages = [{ url: product.images[0].src, dimensions: { w: product.images[0].width || 800, h: product.images[0].height || 800 }, label: product.title }]
         }
         if (maxImages) masterImages = masterImages.slice(0, maxImages)
 
-        // FIX: Produktname und Beschreibung als lokalisierte CT-Felder setzen
+        // L0-L5: Beschreibung durch Text-Optimizer jagen
+        const rawDescription = product.body_html
+          ? product.body_html.replace(/<[^>]*>/g, '').substring(0, 1000)
+          : ''
+        const optimizedDescription = rawDescription
+          ? await optimizeText(rawDescription, settings)
+          : ''
+
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
           key,
           name: { 'de-DE': product.title, 'en-US': product.title },
           slug: { 'de-DE': slug, 'en-US': slug },
-          description: product.body_html
-            ? { 'de-DE': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500), 'en-US': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
+          description: optimizedDescription
+            ? { 'de-DE': optimizedDescription, 'en-US': optimizedDescription }
             : undefined,
           categories,
           masterVariant: {
@@ -351,6 +354,7 @@ export async function POST(request) {
             status: 'success',
             ctId: data.id,
             category: product.product_type,
+            textLevel: settings.textLevel || 0,
             skuWarning: skuWarning || undefined,
             imagesCount: (ctProduct.masterVariant.images?.length || 0) +
               ctProduct.variants.reduce((sum, v) => sum + (v.images?.length || 0), 0)
@@ -374,9 +378,9 @@ export async function POST(request) {
       categoriesCreated: Object.keys(categoryMap).length,
       settingsApplied: {
         statusFilter,
-        tagInclude: tagInclude || null,
         tagExclude: tagExclude || null,
         priceFilter: settings.priceOperator !== 'none' ? `${settings.priceOperator} ${settings.priceValue} EUR` : null,
+        textLevel: settings.textLevel || 0,
         inheritImages,
         skuFallback,
         duplicateHandling
