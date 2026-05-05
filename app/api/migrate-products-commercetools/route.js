@@ -311,11 +311,11 @@ export async function POST(request) {
         const ctProduct = {
           productType: { id: productType.id, typeId: 'product-type' },
           key,
-          name: { de: product.title, 'en-US': product.title },
-          slug: { de: slug, 'en-US': slug },
+          name: { 'de-DE': product.title, 'en-US': product.title },
+          slug: { 'de-DE': slug, 'en-US': slug },
           description: product.body_html
-            ? { de: product.body_html.replace(/<[^>]*>/g, '').substring(0, 500), 'en-US': product.body_html.replace(/<[^>]*>/g, '').substring(0, 500) }
-            : undefined,
+            ? { 'de-DE': product.body_html.replace(...), 'en-US': ... }
+          : undefined,
           categories,
           masterVariant: {
             sku: masterSku,
