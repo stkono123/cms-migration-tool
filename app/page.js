@@ -122,7 +122,7 @@ export default function Home() {
   const [deployResultsContentful, setDeployResultsContentful] = useState(null)
   const [migratingCT, setMigratingCT] = useState(false)
   const [migrateResultsCT, setMigrateResultsCT] = useState(null)
-  const [productLimit, setProductLimit] = useState(10)
+  const [productLimit, setProductLimit] = useState(20)
   const [migratingContentful, setMigratingContentful] = useState(false)
   const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
   const [resettingContentful, setResettingContentful] = useState(false)
@@ -929,7 +929,7 @@ export default function Home() {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                       <span style={{ fontSize: 13, color: '#475569' }}>Anzahl Produkte:</span>
                       <input type="number" min={1} max={50} value={productLimit} onChange={e => setProductLimit(Math.min(50, parseInt(e.target.value) || 10))} style={{ ...inp, width: 80 }} />
-                      <span style={{ fontSize: 12, color: '#475569' }}>von {inventory?.productCount || 0} gesamt (max. 50 pro Batch)</span>
+                     <span style={{ fontSize: 12, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
                     </div>
                     <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
                       {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
