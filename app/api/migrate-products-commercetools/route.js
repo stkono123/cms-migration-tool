@@ -58,18 +58,14 @@ export async function POST(request) {
     const skuPrefix = settings.skuPrefix?.trim() || ''
     const duplicateHandling = settings.duplicateHandling || 'skip'
 
-    // 1. Shopify Produkte laden — alle Status
-    const shopifyRes = await fetch(
-      `https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=any`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': shopifyToken,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-    const shopifyData = await shopifyRes.json()
-    const allProducts = shopifyData.products || []
+   // 1. Shopify Produkte laden — alle Status separat (Shopify API unterstützt kein status=any)
+const [res1, res2, res3] = await Promise.all([
+  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=active`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
+  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=draft`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
+  fetch(`https://${shopifyDomain}/admin/api/2024-01/products.json?limit=250&status=archived`, { headers: { 'X-Shopify-Access-Token': shopifyToken, 'Content-Type': 'application/json' } }),
+])
+const [d1, d2, d3] = await Promise.all([res1.json(), res2.json(), res3.json()])
+const allProducts = [...(d1.products || []), ...(d2.products || []), ...(d3.products || [])]
 
     // 2. Filtern anhand Settings
     const products = allProducts
