@@ -174,18 +174,17 @@ export default function Home() {
 
   // FIX: Contentful-Verbindungstest direkt über Contentful API
   async function testContentful() {
-    setContentfulStatus('loading')
-    try {
-      const spaceId = contentfulTokenEditing && contentfulSpace ? contentfulSpace : '1ub4n2ex18h8'
-      const token = contentfulTokenEditing && contentfulTokenReal ? contentfulTokenReal : process.env.NEXT_PUBLIC_CONTENTFUL_CMA_TOKEN
-      const res = await fetch(`https://api.contentful.com/spaces/${spaceId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (data.name) setContentfulStatus('connected')
-      else setContentfulStatus('error')
-    } catch { setContentfulStatus('error') }
-  }
+  setContentfulStatus('loading')
+  try {
+    const res = await fetch('/api/test-contentful', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    const data = await res.json()
+    if (data.ok) setContentfulStatus('connected')
+    else setContentfulStatus('error')
+  } catch { setContentfulStatus('error') }
+}
 
   // FIX: Analyse nutzt jetzt analyze-shopify direkt — kein manuelles Zusammenbauen mehr
   async function analyze() {
