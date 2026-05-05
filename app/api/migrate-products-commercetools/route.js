@@ -305,7 +305,7 @@ export async function POST(request) {
 
         // L0-L5: Beschreibung durch Text-Optimizer jagen
         const rawDescription = product.body_html
-          ? product.body_html.replace(/<[^>]*>/g, '').substring(0, 1000)
+          ? product.body_html.replace(/<[^>]*>/g, '')
           : ''
         const optimizedDescription = rawDescription
           ? await optimizeText(rawDescription, settings)
