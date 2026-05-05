@@ -4,7 +4,7 @@
 
 export const runtime = 'nodejs'
 
-import { buildMappingPrompt } from '../../lib/adapters/shopify/ai-prompt.js'
+import { buildMappingPrompt } from '../../../lib/adapters/shopify/ai-prompt.js'
 
 export async function POST(request) {
   try {
