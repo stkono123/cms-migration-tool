@@ -1243,7 +1243,7 @@ export default function Home() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
                               onClick={() => setSelectedMetafieldNamespaces(metafieldNamespaces)}
-                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#6366f1' : '#1e293b', color: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#22c55e' : '#1e293b', color: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
                             >Alle</button>
                             <button
                               onClick={() => setSelectedMetafieldNamespaces([])}
@@ -1337,7 +1337,7 @@ export default function Home() {
                                   style={{ flex: 1 }}
                                 >
                                   {check.action.options.map((opt, i) => (
-                                    <option key={i} value={i}>{opt}{i === check.action.default ? ' (empfohlen)' : ''}</option>
+                                    <option key={i} value={i}>{opt}{i === check.action.default && !opt.includes('empfohlen') ? ' (empfohlen)' : ''}</option>
                                   ))}
                                 </select>
                               </div>
