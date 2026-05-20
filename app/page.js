@@ -53,20 +53,6 @@ const TEXT_LEVELS = [
 // Deep-Check Definitionen — was wir nicht aus dem Inventar ableiten können
 const DEEP_CHECKS = [
   {
-    id: 'trend_check',
-    label: 'Trend-Check — Keyword-Relevanz',
-    desc: 'KI analysiert alle Titel und Beschreibungen und bewertet die Suchrelevanz. Ergebnis: Relevanz-Score (1–10) pro Eintrag als Basis für den Relevanz-Filter.',
-    severity: 'info',
-    endpoint: '/api/check-trend',
-    resultKey: 'trendScores',
-    resultLabel: (r) => `${r.highRelevance} Einträge mit hoher Relevanz (Score ≥ 7) von ${r.total}`,
-    action: {
-      label: 'Mindest-Score für Optimierung',
-      options: ['Score ≥ 5 (breit)', 'Score ≥ 7 (empfohlen)', 'Score ≥ 9 (nur Top-Content)', 'Nicht anwenden'],
-      default: 1,
-    }
-  },
-  {
     id: 'inline_images',
     label: 'Inline-Bilder im Content',
     desc: 'Shopify CDN URLs in <img>-Tags werden nach Migration ungültig.',
@@ -147,6 +133,22 @@ const DEEP_CHECKS = [
     action: {
       label: 'Behandlung',
       options: ['Suffix anhängen (-2, -3)', 'Ersten behalten, Rest überspringen', 'Manuell lösen'],
+      default: 0,
+    }
+  },
+  {
+    id: 'variant_descriptions',
+    label: 'Beschreibung pro Variante',
+    desc: 'In Shopify sitzt die Beschreibung nur auf Produkt-Level. Falls Varianten eigene Texte über Metafields pflegen, müssen diese separat erkannt und migriert werden.',
+    severity: 'info',
+    endpoint: '/api/check-variant-descriptions',
+    resultKey: 'variantsWithDescriptions',
+    resultLabel: (r) => r.count > 0
+      ? `${r.count} Varianten mit eigenen Beschreibungs-Metafields gefunden`
+      : `Keine variantenspezifischen Beschreibungen gefunden`,
+    action: {
+      label: 'Behandlung',
+      options: ['Als separate CT-Attribute migrieren (empfohlen)', 'Ignorieren'],
       default: 0,
     }
   },
@@ -246,6 +248,19 @@ export default function Home() {
   const [textLevel, setTextLevel] = useState(0)
   const [seoPersona, setSeoPersona] = useState('')
   const [seoKeyword, setSeoKeyword] = useState('')
+
+  const [selectedStatuses, setSelectedStatuses] = useState(['Active', 'Draft', 'Archived'])
+  const [trendMinScore, setTrendMinScore] = useState('none')
+  const [trendCheckRunning, setTrendCheckRunning] = useState(false)
+  const [trendCheckResult, setTrendCheckResult] = useState(null)
+
+  async function runTrendCheck() {
+    setTrendCheckRunning(true)
+    await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000))
+    const total = (inventory?.productCount || 0) + (inventory?.pages?.length || 0)
+    setTrendCheckResult({ total, highRelevance: Math.round(total * 0.38) })
+    setTrendCheckRunning(false)
+  }
 
   // Relevanz-Filter & Kosten-Estimate
   const [relevanceMaxAge, setRelevanceMaxAge] = useState('all')
@@ -531,13 +546,13 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 1200 + Math.random() * 800))
       // Mock-Ergebnis basierend auf Inventory
       const mockResults = {
-        trend_check: { count: Math.floor(inventory.pages.length * 0.4), total: inventory.pages.length + inventory.productCount, highRelevance: Math.floor((inventory.pages.length + inventory.productCount) * 0.4) },
         inline_images: { count: Math.floor(inventory.pages.length * 0.6), total: inventory.pages.length },
         internal_links: { count: Math.floor(inventory.pages.length * 0.4), total: inventory.pages.length },
         tables: { count: Math.floor(inventory.pages.length * 0.2), total: inventory.pages.length },
         videos: { count: Math.floor(inventory.pages.length * 0.1), total: inventory.pages.length },
         empty_fields: { count: Math.floor((inventory.pages.length + inventory.blogs.length) * 0.05), total: inventory.pages.length + inventory.blogs.length },
         duplicate_slugs: { count: Math.floor(inventory.pages.length * 0.02), total: inventory.pages.length },
+        variant_descriptions: { count: inventory.metafields.filter(m => ['description', 'beschreibung', 'variant_text', 'variant_description'].includes(m.key?.toLowerCase())).length, total: inventory.productCount },
         alt_texts: { count: Math.floor(inventory.metafields.length * 0.3), total: inventory.metafields.length },
         deprecated_html: { count: Math.floor(inventory.pages.length * 0.15), total: inventory.pages.length },
       }
@@ -895,33 +910,66 @@ export default function Home() {
                       <div>
                         <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Status</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {['Active', 'Draft', 'Archived'].map(s => (
-                            <span key={s} className="chip" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid #6366f133', color: '#a5b4fc' }}>{s}</span>
-                          ))}
+                          {['Active', 'Draft', 'Archived'].map(s => {
+                            const isOn = selectedStatuses.includes(s)
+                            return (
+                              <span
+                                key={s}
+                                className="chip"
+                                onClick={() => setSelectedStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                                style={{
+                                  background: isOn ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.08)',
+                                  border: `1px solid ${isOn ? '#22c55e44' : '#6366f122'}`,
+                                  color: isOn ? '#22c55e' : '#6366f1',
+                                  cursor: 'pointer',
+                                }}
+                              >{isOn ? '✓ ' : ''}{s}</span>
+                            )
+                          })}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Tag ausschliessen</div>
-                        <input style={{ ...inputStyle, width: '100%' }} defaultValue="intern" placeholder="Tag-Name..." />
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Tags ausschliessen</div>
+                        <div style={{ fontSize: 10, color: '#334155', marginBottom: 6 }}>Mehrere Tags mit Semikolon trennen</div>
+                        <input style={{ ...inputStyle, width: '100%' }} defaultValue="intern" placeholder="z. B. intern;test;hidden" />
                       </div>
                     </div>
                   </div>
 
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
 
-                  {/* Varianten & Bilder */}
+                  {/* Produkt-Varianten */}
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Varianten & Bilder</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Produkt-Varianten</div>
+                    <div style={{ fontSize: 11, color: '#334155', marginBottom: 10 }}>Steuert wie Varianten (z. B. Farbe, Grösse) in commercetools als Attribute angelegt werden.</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       {[
-                        { label: 'Bilder an alle Varianten vererben', default: true },
-                        { label: 'Variantenoptionen als Attribute', default: true },
+                        { label: 'Variantenoptionen als CT-Attribute übertragen', default: true },
+                        { label: 'Duplikate überspringen', default: true },
                       ].map(opt => (
                         <label key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>
                           <input type="checkbox" defaultChecked={opt.default} style={{ accentColor: '#6366f1' }} />
                           {opt.label}
                         </label>
                       ))}
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+
+                  {/* Produkt-Bilder */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Produkt-Bilder</div>
+                    <div style={{ fontSize: 11, color: '#334155', marginBottom: 10 }}>Steuert wie Produktbilder aus Shopify nach commercetools und Contentful übertragen werden.</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>
+                        <input type="checkbox" defaultChecked={true} style={{ accentColor: '#6366f1' }} />
+                        Bilder an alle Varianten vererben
+                      </label>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Max. Bilder pro Produkt</div>
+                        <input style={{ ...inputStyle }} placeholder="leer = alle" type="number" min={1} />
+                      </div>
                     </div>
                   </div>
 
@@ -957,8 +1005,12 @@ export default function Home() {
                           <span style={{ fontSize: 20, fontWeight: 800, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginLeft: 10 }}>{TEXT_LEVELS[textLevel].desc}</span>
                         </div>
-                        <span style={{ fontSize: 11, color: textLevel === 0 ? '#64748b' : '#818cf8', background: textLevel === 0 ? 'transparent' : 'rgba(99,102,241,0.1)', border: `1px solid ${textLevel === 0 ? 'transparent' : 'rgba(99,102,241,0.25)'}`, borderRadius: 6, padding: '3px 8px', transition: 'all 0.2s' }}>
-                          {textLevel === 0 ? 'Kein KI-Eingriff' : 'KI aktiv — verlangsamt Migration leicht'}
+                        <span style={{ fontSize: 11, color: textLevel === 0 ? '#64748b' : textLevel >= 4 ? '#ef4444' : '#818cf8', background: textLevel === 0 ? 'transparent' : textLevel >= 4 ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)', border: `1px solid ${textLevel === 0 ? 'transparent' : textLevel >= 4 ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.25)'}`, borderRadius: 6, padding: '3px 8px', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
+                          {textLevel === 0
+                            ? 'Kein KI-Eingriff'
+                            : textLevel >= 4
+                              ? `⚠ Hoher KI-Verbrauch · ~$${estimatedCost}`
+                              : `KI aktiv · ~$${estimatedCost} · ${estimatedTime}`}
                         </span>
                       </div>
                       <input
@@ -983,6 +1035,47 @@ export default function Home() {
                         <div style={{ marginTop: 10 }}>
                           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>SEO-Keywords (optional)</div>
                           <input style={inputStyle} value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="z. B. TENS Gerät kaufen, Reizstromgerät" />
+                        </div>
+                      )}
+
+                      {/* Trend-Check & Fokus-Segment ab L1 */}
+                      {textLevel >= 1 && (
+                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Fokus & Trend-Analyse</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Fokus-Segment / Zielgruppe</div>
+                              <input style={inputStyle} placeholder="z. B. B2B Einkäufer, Endverbraucher 50+" />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Mindest-Relevanz-Score für Optimierung</div>
+                              <select style={{ width: '100%' }} value={trendMinScore} onChange={e => setTrendMinScore(e.target.value)}>
+                                <option value="none">Nicht anwenden (alle optimieren)</option>
+                                <option value="5">Score ≥ 5 (breit)</option>
+                                <option value="7">Score ≥ 7 (empfohlen)</option>
+                                <option value="9">Score ≥ 9 (nur Top-Content)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <button
+                            onClick={runTrendCheck}
+                            disabled={trendCheckRunning}
+                            style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: '1px solid #6366f133', background: trendCheckResult ? 'rgba(99,102,241,0.1)' : '#1a1f35', color: trendCheckRunning ? '#64748b' : '#a5b4fc', cursor: trendCheckRunning ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                          >
+                            {trendCheckRunning ? (
+                              <><span style={{ width: 12, height: 12, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> KI analysiert Keyword-Relevanz...</>
+                            ) : trendCheckResult ? (
+                              `↺ Trend-Check wiederholen · ${trendCheckResult.highRelevance} von ${trendCheckResult.total} Einträgen relevant`
+                            ) : (
+                              '✦ Trend-Check starten — KI bewertet Suchrelevanz aller Inhalte'
+                            )}
+                          </button>
+                          {trendCheckResult && (
+                            <div style={{ marginTop: 10, background: '#080b12', borderRadius: 8, padding: 12, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                              <span style={{ color: '#a5b4fc', fontWeight: 700 }}>{trendCheckResult.highRelevance} Einträge</span> haben einen Relevanz-Score ≥ 7.{' '}
+                              Mit dem gewählten Filter werden <span style={{ color: '#22c55e', fontWeight: 700 }}>{trendMinScore === 'none' ? relevantItemCount : Math.round(trendCheckResult.total * (trendMinScore === '5' ? 0.65 : trendMinScore === '7' ? 0.4 : 0.15))}</span> Einträge optimiert.
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1126,9 +1219,9 @@ export default function Home() {
                                 className="chip"
                                 onClick={() => toggleBlog(b.id)}
                                 style={{
-                                  background: isSelected ? (isPartial ? 'rgba(148,163,184,0.15)' : 'rgba(34,197,94,0.15)') : '#1e293b',
-                                  border: `1px solid ${isSelected ? (isPartial ? '#94a3b833' : '#22c55e44') : '#334155'}`,
-                                  color: isSelected ? (isPartial ? '#94a3b8' : '#22c55e') : '#64748b',
+                                  background: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.06)',
+                                  border: `1px solid ${isSelected ? '#22c55e44' : '#6366f122'}`,
+                                  color: isSelected ? '#22c55e' : '#6366f180',
                                 }}
                               >
                                 {isSelected ? '✓' : '○'} {b.title}
@@ -1168,9 +1261,9 @@ export default function Home() {
                                 className="chip"
                                 onClick={() => toggleNamespace(ns)}
                                 style={{
-                                  background: isSelected ? (isPartial ? 'rgba(148,163,184,0.15)' : 'rgba(99,102,241,0.15)') : '#1e293b',
-                                  border: `1px solid ${isSelected ? (isPartial ? '#94a3b833' : '#6366f144') : '#334155'}`,
-                                  color: isSelected ? (isPartial ? '#94a3b8' : '#a5b4fc') : '#64748b',
+                                  background: isSelected ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.06)',
+                                  border: `1px solid ${isSelected ? '#22c55e44' : '#6366f122'}`,
+                                  color: isSelected ? '#22c55e' : '#6366f180',
                                   fontFamily: 'JetBrains Mono, monospace',
                                 }}
                               >
