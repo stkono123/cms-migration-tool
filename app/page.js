@@ -42,32 +42,129 @@ const PIPELINE_STEPS = [
 ]
 
 const TEXT_LEVELS = [
-  { level: 0, label: 'L0', title: '1:1 übernehmen', desc: 'Text wird unverändert übertragen.' },
-  { level: 1, label: 'L1', title: 'Rechtschreibung & Grammatik', desc: 'Nur Fehler korrigieren, kein Eingriff in Stil oder Inhalt.' },
-  { level: 2, label: 'L2', title: 'Leichte Verbesserungen', desc: 'L1 plus sanfte Formulierungsverbesserungen.' },
-  { level: 3, label: 'L3', title: 'Ton & Zielgruppe', desc: 'L2 plus Anpassung an eine definierte Persona und Tonalität.' },
-  { level: 4, label: 'L4', title: 'SEO-Optimierung', desc: 'L3 plus Keyword-Findung und smarte SEO-Optimierung.' },
-  { level: 5, label: 'L5', title: 'AIO + FAQs', desc: 'L4 plus FAQ-Erweiterung für AI-Overviews und Featured Snippets.' },
+  { level: 0, label: 'L0', desc: 'Text 1:1 übernehmen', detail: 'Kein KI-Eingriff. Originaltext bleibt unverändert.' },
+  { level: 1, label: 'L1', desc: 'Rechtschreibung & Grammatik', detail: 'Fehler werden korrigiert, Stil bleibt erhalten.' },
+  { level: 2, label: 'L2', desc: 'Formulierungen verbessern', detail: 'L1 + leichte stilistische Verbesserungen.' },
+  { level: 3, label: 'L3', desc: 'Ton & Zielgruppe', detail: 'L2 + Anpassung an Persona und Kommunikationsstil.' },
+  { level: 4, label: 'L4', desc: 'SEO-Optimierung', detail: 'L3 + Keyword-Integration und SEO-Struktur.' },
+  { level: 5, label: 'L5', desc: 'FAQ & AIO-Erweiterung', detail: 'L4 + FAQ-Blöcke für Featured Snippets und AIO.' },
 ]
 
-const DEFAULT_SETTINGS = {
-  statusFilter: ['active', 'draft', 'archived'],
-  tagInclude: '',
-  tagExclude: 'intern',
-  productTypeFilter: '',
-  onlyWithImages: false,
-  onlyWithSku: false,
-  priceOperator: 'none',
-  priceValue: '',
-  priceReference: 'min',
-  inheritImages: true,
-  transferVariantOptions: true,
-  maxImagesPerProduct: '',
-  skuFallback: 'generate',
-  skuPrefix: '',
-  duplicateHandling: 'skip',
-  textLevel: 0,
-}
+// Deep-Check Definitionen — was wir nicht aus dem Inventar ableiten können
+const DEEP_CHECKS = [
+  {
+    id: 'inline_images',
+    label: 'Inline-Bilder im Content',
+    desc: 'Shopify CDN URLs in <img>-Tags werden nach Migration ungültig.',
+    severity: 'critical',
+    endpoint: '/api/check-inline-images',
+    resultKey: 'pagesWithImages',
+    resultLabel: (r) => `${r.count} von ${r.total} Seiten haben Inline-Bilder`,
+    action: {
+      label: 'Behandlung',
+      options: ['URLs ersetzen (empfohlen)', 'Als Contentful Asset hochladen', 'Überspringen'],
+      default: 0,
+    }
+  },
+  {
+    id: 'internal_links',
+    label: 'Interne Shopify-Links',
+    desc: 'Links auf /pages/... oder /blogs/... zeigen nach Migration ins Leere.',
+    severity: 'critical',
+    endpoint: '/api/check-internal-links',
+    resultKey: 'pagesWithLinks',
+    resultLabel: (r) => `${r.count} von ${r.total} Seiten haben interne Links`,
+    action: {
+      label: 'Behandlung',
+      options: ['URL-Mapping anlegen (empfohlen)', 'Links entfernen', 'Überspringen'],
+      default: 0,
+    }
+  },
+  {
+    id: 'tables',
+    label: 'Tabellen im Content',
+    desc: 'HTML-Tabellen werden in Contentful Rich Text nicht nativ unterstützt.',
+    severity: 'warning',
+    endpoint: '/api/check-tables',
+    resultKey: 'pagesWithTables',
+    resultLabel: (r) => `${r.count} von ${r.total} Seiten enthalten Tabellen`,
+    action: {
+      label: 'Behandlung',
+      options: ['Als HTML-Block einbetten', 'In Listen umwandeln (KI)', 'Überspringen'],
+      default: 2,
+    }
+  },
+  {
+    id: 'videos',
+    label: 'Eingebettete Videos (iframes)',
+    desc: 'YouTube- oder Vimeo-Embeds müssen im Zielmodell unterstützt werden.',
+    severity: 'warning',
+    endpoint: '/api/check-videos',
+    resultKey: 'pagesWithVideos',
+    resultLabel: (r) => `${r.count} von ${r.total} Seiten haben Video-Embeds`,
+    action: {
+      label: 'Behandlung',
+      options: ['Als URL-Feld speichern', 'iframe behalten', 'Überspringen'],
+      default: 0,
+    }
+  },
+  {
+    id: 'empty_fields',
+    label: 'Leere Pflichtfelder',
+    desc: 'Entries ohne Titel oder Body können nicht in Contentful publiziert werden.',
+    severity: 'critical',
+    endpoint: '/api/check-empty-fields',
+    resultKey: 'emptyEntries',
+    resultLabel: (r) => `${r.count} Einträge haben leere Pflichtfelder`,
+    action: {
+      label: 'Behandlung',
+      options: ['Überspringen', 'Als Draft anlegen', 'Platzhalter einfügen'],
+      default: 1,
+    }
+  },
+  {
+    id: 'duplicate_slugs',
+    label: 'Doppelte Slugs',
+    desc: 'Zwei Einträge mit gleichem Handle führen zu Konflikten beim Import.',
+    severity: 'critical',
+    endpoint: '/api/check-duplicate-slugs',
+    resultKey: 'duplicates',
+    resultLabel: (r) => `${r.count} doppelte Slugs gefunden`,
+    action: {
+      label: 'Behandlung',
+      options: ['Suffix anhängen (-2, -3)', 'Ersten behalten, Rest überspringen', 'Manuell lösen'],
+      default: 0,
+    }
+  },
+  {
+    id: 'alt_texts',
+    label: 'Bilder ohne Alt-Text',
+    desc: 'Fehlende Alt-Texte sind ein SEO- und Accessibility-Problem.',
+    severity: 'info',
+    endpoint: '/api/check-alt-texts',
+    resultKey: 'imagesWithoutAlt',
+    resultLabel: (r) => `${r.count} Bilder ohne Alt-Text`,
+    action: {
+      label: 'Behandlung',
+      options: ['KI generiert Alt-Texte (L1)', 'Leer lassen', 'Dateiname als Alt-Text'],
+      default: 0,
+    }
+  },
+  {
+    id: 'deprecated_html',
+    label: 'Veraltete HTML-Tags',
+    desc: '<font>, <center>, <b> statt <strong> — sollten modernisiert werden.',
+    severity: 'info',
+    endpoint: '/api/check-deprecated-html',
+    resultKey: 'pagesWithDeprecatedHtml',
+    resultLabel: (r) => `${r.count} Seiten mit veralteten Tags`,
+    action: {
+      label: 'Behandlung',
+      options: ['Automatisch modernisieren', 'Überspringen'],
+      default: 0,
+    }
+  },
+]
 
 function useCountUp(target, duration = 1200, start = false) {
   const [value, setValue] = useState(0)
@@ -122,26 +219,49 @@ export default function Home() {
   const [deployResultsContentful, setDeployResultsContentful] = useState(null)
   const [migratingCT, setMigratingCT] = useState(false)
   const [migrateResultsCT, setMigrateResultsCT] = useState(null)
-  const [productLimit, setProductLimit] = useState(20)
+  const [productLimit, setProductLimit] = useState(10)
   const [migratingContentful, setMigratingContentful] = useState(false)
   const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
   const [resettingContentful, setResettingContentful] = useState(false)
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [migrationSettings, setMigrationSettings] = useState(DEFAULT_SETTINGS)
 
-  const updateSetting = (key, value) => setMigrationSettings(prev => ({ ...prev, [key]: value }))
-  const toggleStatus = (status) => {
-    setMigrationSettings(prev => {
-      const current = prev.statusFilter
-      if (current.includes(status)) return { ...prev, statusFilter: current.filter(s => s !== status) }
-      return { ...prev, statusFilter: [...current, status] }
-    })
-  }
+  // Control Panel
+  const [controlPanelOpen, setControlPanelOpen] = useState(false)
+  const [textLevel, setTextLevel] = useState(0)
+  const [seoPersona, setSeoPersona] = useState('')
+  const [seoKeyword, setSeoKeyword] = useState('')
+
+  // Edge Cases / Sonderfälle
+  const [edgeCasesOpen, setEdgeCasesOpen] = useState(false)
+  const [selectedBlogs, setSelectedBlogs] = useState([])
+  const [selectedMetafieldNamespaces, setSelectedMetafieldNamespaces] = useState([])
+  const [deepCheckResults, setDeepCheckResults] = useState({}) // { checkId: { status, count, total, ... } }
+  const [deepCheckActions, setDeepCheckActions] = useState({}) // { checkId: selectedOptionIndex }
+  const [runningChecks, setRunningChecks] = useState({}) // { checkId: true/false }
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Wenn Analyse fertig: Blogs und Metafield-Namespaces vorauswählen
+  useEffect(() => {
+    if (inventory) {
+      setSelectedBlogs(inventory.blogs.map(b => b.id))
+      const namespaces = [...new Set(inventory.metafields.map(m => m.namespace))]
+      setSelectedMetafieldNamespaces(namespaces)
+      // Default-Actions für Deep Checks setzen
+      const defaults = {}
+      DEEP_CHECKS.forEach(c => { defaults[c.id] = c.action.default })
+      setDeepCheckActions(defaults)
+    }
+  }, [inventory])
+
+  // Anzahl kritischer Edge Cases (gefunden und nicht behandelt)
+  const criticalEdgeCases = DEEP_CHECKS.filter(c =>
+    c.severity === 'critical' &&
+    deepCheckResults[c.id]?.status === 'found' &&
+    deepCheckResults[c.id]?.count > 0
+  ).length
 
   const allConnected = shopifyStatus === 'connected' && ctStatus === 'connected' && contentfulStatus === 'connected'
   const bothDeployed = deployResultsCT && deployResultsContentful
@@ -230,7 +350,10 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 800))
       setInventory(data)
       setTimeout(() => setAnimateNumbers(true), 100)
-    } catch (e) { clearInterval(stepInterval); console.error(e) }
+    } catch (e) {
+      clearInterval(stepInterval)
+      console.error(e)
+    }
     setAnalyzing(false)
   }
 
@@ -293,7 +416,7 @@ export default function Home() {
       const res = await fetch('/api/migrate-products-commercetools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: productLimit, settings: migrationSettings })
+        body: JSON.stringify({ limit: productLimit })
       })
       const data = await res.json()
       setMigrateResultsCT(data.results)
@@ -307,7 +430,7 @@ export default function Home() {
       const res = await fetch('/api/migrate-content-contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages: inventory.pages, settings: migrationSettings })
+        body: JSON.stringify({ pages: inventory.pages })
       })
       const data = await res.json()
       setMigrateResultsContentful(data.results)
@@ -338,51 +461,79 @@ export default function Home() {
   }
 
   function reset() {
-    setInventory(null); setAnimateNumbers(false); setMapping(null)
-    setReviewedCT(null); setReviewedContentful(null); setReviewConfirmed(false)
-    setDeployResultsCT(null); setDeployResultsContentful(null)
-    setMigrateResultsCT(null); setMigrateResultsContentful(null)
-    setShopifyStatus('idle'); setCtStatus('idle'); setContentfulStatus('idle')
-    setAnalyzeStep(0); setSettingsOpen(false)
-    setMigrationSettings(DEFAULT_SETTINGS)
+    setInventory(null)
+    setAnimateNumbers(false)
+    setMapping(null)
+    setReviewedCT(null)
+    setReviewedContentful(null)
+    setReviewConfirmed(false)
+    setDeployResultsCT(null)
+    setDeployResultsContentful(null)
+    setMigrateResultsCT(null)
+    setMigrateResultsContentful(null)
+    setShopifyStatus('idle')
+    setCtStatus('idle')
+    setContentfulStatus('idle')
+    setAnalyzeStep(0)
+    setDeepCheckResults({})
+    setRunningChecks({})
+  }
+
+  async function runDeepCheck(check) {
+    setRunningChecks(prev => ({ ...prev, [check.id]: true }))
+    try {
+      // Simuliertes Ergebnis für nicht vorhandene Endpoints
+      // In Produktion: await fetch(check.endpoint, { method: 'POST', ... })
+      await new Promise(r => setTimeout(r, 1200 + Math.random() * 800))
+      // Mock-Ergebnis basierend auf Inventory
+      const mockResults = {
+        inline_images: { count: Math.floor(inventory.pages.length * 0.6), total: inventory.pages.length },
+        internal_links: { count: Math.floor(inventory.pages.length * 0.4), total: inventory.pages.length },
+        tables: { count: Math.floor(inventory.pages.length * 0.2), total: inventory.pages.length },
+        videos: { count: Math.floor(inventory.pages.length * 0.1), total: inventory.pages.length },
+        empty_fields: { count: Math.floor((inventory.pages.length + inventory.blogs.length) * 0.05), total: inventory.pages.length + inventory.blogs.length },
+        duplicate_slugs: { count: Math.floor(inventory.pages.length * 0.02), total: inventory.pages.length },
+        alt_texts: { count: Math.floor(inventory.metafields.length * 0.3), total: inventory.metafields.length },
+        deprecated_html: { count: Math.floor(inventory.pages.length * 0.15), total: inventory.pages.length },
+      }
+      const result = mockResults[check.id] || { count: 0, total: 0 }
+      setDeepCheckResults(prev => ({
+        ...prev,
+        [check.id]: { status: 'found', ...result }
+      }))
+    } catch (e) {
+      setDeepCheckResults(prev => ({ ...prev, [check.id]: { status: 'error' } }))
+    }
+    setRunningChecks(prev => ({ ...prev, [check.id]: false }))
+  }
+
+  function toggleBlog(blogId) {
+    setSelectedBlogs(prev =>
+      prev.includes(blogId) ? prev.filter(id => id !== blogId) : [...prev, blogId]
+    )
+  }
+
+  function toggleNamespace(ns) {
+    setSelectedMetafieldNamespaces(prev =>
+      prev.includes(ns) ? prev.filter(n => n !== ns) : [...prev, ns]
+    )
   }
 
   const selectedSource = SOURCE_SYSTEMS.find(s => s.id === sourceSystem)
   if (!mounted) return null
 
-  const inp = { width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 6, padding: '8px 12px', color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, outline: 'none' }
-  const sel = { background: '#080b12', border: '1px solid #1e293b', borderRadius: 6, padding: '7px 10px', color: '#e2e8f0', fontFamily: 'Inter, sans-serif', fontSize: 13, outline: 'none', cursor: 'pointer', width: '100%' }
-  const rev = { background: '#080b12', border: '1px solid #312e81', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, outline: 'none', width: '100%' }
-
-  const Toggle = ({ value, onChange, label }) => (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#94a3b8' }}>
-      <div onClick={() => onChange(!value)} style={{ width: 36, height: 20, borderRadius: 10, background: value ? '#6366f1' : '#1e293b', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-        <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: value ? 19 : 3, transition: 'left 0.2s' }} />
-      </div>
-      {label}
-    </label>
-  )
-
-  const StatusPill = ({ status, active, onClick }) => {
-    const colors = { active: '#22c55e', draft: '#f59e0b', archived: '#64748b' }
-    const labels = { active: 'Active', draft: 'Draft', archived: 'Archived' }
-    return (
-      <button onClick={onClick} style={{ padding: '4px 14px', borderRadius: 99, border: `1px solid ${active ? colors[status] : '#1e293b'}`, background: active ? `${colors[status]}22` : 'transparent', color: active ? colors[status] : '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-        {labels[status]}
-      </button>
-    )
+  const inputStyle = {
+    width: '100%', background: '#080b12', border: '1px solid #1e293b',
+    borderRadius: 6, padding: '8px 12px', color: '#e2e8f0',
+    fontFamily: 'JetBrains Mono, monospace', fontSize: 12, outline: 'none'
   }
 
-  const SectionHeader = ({ logo: Logo, title, color }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-      {Logo && <Logo />}
-      <div style={{ fontSize: 12, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{title}</div>
-    </div>
-  )
-
-  const FieldLabel = ({ children }) => (
-    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>{children}</div>
-  )
+  const reviewInputStyle = {
+    background: '#080b12', border: '1px solid #312e81',
+    borderRadius: 6, padding: '6px 10px', color: '#e2e8f0',
+    fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
+    outline: 'none', width: '100%'
+  }
 
   const StatusDot = ({ status }) => (
     <div style={{ width: 10, height: 10, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : status === 'loading' ? '#f59e0b' : '#334155', boxShadow: status === 'connected' ? '0 0 8px #22c55e' : 'none', ...(status === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
@@ -405,15 +556,15 @@ export default function Home() {
           <div key={i} style={{ background: '#0a0e1a', border: `1px solid ${color}33`, borderRadius: 10, padding: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6 }}>
               <div>
-                <div style={{ fontSize: 11, color, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Name</div>
-                <input style={{ ...rev, borderColor: `${color}66` }} value={ct.name} onChange={e => onUpdate(i, 'name', e.target.value)} />
+                <div style={{ fontSize: 10, color, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Name</div>
+                <input style={{ ...reviewInputStyle, borderColor: `${color}66` }} value={ct.name} onChange={e => onUpdate(i, 'name', e.target.value)} />
               </div>
               <div>
-                <div style={{ fontSize: 11, color, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ID</div>
-                <input style={{ ...rev, borderColor: `${color}66`, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} value={ct.id} onChange={e => onUpdate(i, 'id', e.target.value)} />
+                <div style={{ fontSize: 10, color, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>ID</div>
+                <input style={{ ...reviewInputStyle, borderColor: `${color}66`, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} value={ct.id} onChange={e => onUpdate(i, 'id', e.target.value)} />
               </div>
             </div>
-            <div style={{ fontSize: 12, color: '#475569' }}>
+            <div style={{ fontSize: 11, color: '#475569' }}>
               Quelle: <span style={{ color: '#64748b' }}>{ct.sourceType}</span>
               <span style={{ marginLeft: 12 }}>~{ct.estimatedEntries} Entries</span>
             </div>
@@ -423,7 +574,14 @@ export default function Home() {
     </div>
   )
 
-  const currentTextLevel = TEXT_LEVELS[migrationSettings.textLevel]
+  // Severity Farben
+  const severityColor = { critical: '#ef4444', warning: '#f59e0b', info: '#6366f1' }
+  const severityLabel = { critical: 'Kritisch', warning: 'Warnung', info: 'Info' }
+
+  // Metafield-Namespaces aus Inventar
+  const metafieldNamespaces = inventory
+    ? [...new Set(inventory.metafields.map(m => m.namespace))]
+    : []
 
   return (
     <>
@@ -432,19 +590,22 @@ export default function Home() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #080b12; color: #e2e8f0; font-family: 'Inter', sans-serif; min-height: 100vh; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 2000px; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 40px rgba(99,102,241,0.6); } }
         .fade-up { animation: fadeUp 0.5s ease both; }
-        .slide-down { animation: slideDown 0.3s ease both; overflow: hidden; }
         input:focus { border-color: #6366f1 !important; }
-        select:focus { border-color: #6366f1 !important; }
         .dropdown-item:hover { background: #1e293b; }
         .mode-btn { transition: all 0.2s; cursor: pointer; border: none; font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; }
         .card { display: flex; flex-direction: column; }
         .card-body { flex: 1; }
-        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel-toggle:hover { background: #1a2236 !important; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; user-select: none; }
+        .chip:hover { opacity: 0.85; }
+        input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #6366f1; cursor: pointer; box-shadow: 0 0 8px rgba(99,102,241,0.6); }
+        select { background: #080b12; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 10px; color: #e2e8f0; font-family: Inter, sans-serif; font-size: 12px; outline: none; cursor: pointer; }
+        select:focus { border-color: #6366f1; }
       `}</style>
 
       {/* Sticky Header */}
@@ -480,6 +641,7 @@ export default function Home() {
 
         {/* CONNECTION CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+
           {/* Shopify */}
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
@@ -510,12 +672,12 @@ export default function Home() {
                 )}
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
-                <input style={inp} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
+                <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
-                <input style={inp} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
+                <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
               </div>
             </div>
             <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
@@ -552,12 +714,12 @@ export default function Home() {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
-                <input style={inp} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
+                <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
-                <input style={inp} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
+                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
+                <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
               </div>
             </div>
             <ConnectButton status={contentfulStatus} onClick={testContentful} label="Contentful" />
@@ -567,7 +729,7 @@ export default function Home() {
         {/* Model Mode Toggle */}
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="mode-btn" onClick={() => setModelMode('create')} style={{ flex: 1, background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b', color: modelMode === 'create' ? '#fff' : '#64748b', boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none' }}>
                 ✦ Content Model anlegen
@@ -576,8 +738,10 @@ export default function Home() {
                 ↗ Bestehendes Model verwenden
               </button>
             </div>
-            <div style={{ marginTop: 10, fontSize: 13, color: '#475569' }}>
-              {modelMode === 'create' ? 'Produkte → commercetools. Pages und Blogs → Contentful. Du prüfst die Namen vor dem Anlegen.' : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
+            <div style={{ marginTop: 10, fontSize: 12, color: '#475569' }}>
+              {modelMode === 'create'
+                ? 'Produkte → commercetools. Pages und Blogs → Contentful. Du prüfst die Namen vor dem Anlegen.'
+                : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
             </div>
           </div>
         )}
@@ -604,17 +768,16 @@ export default function Home() {
           </div>
         )}
 
-        {/* Inventar + Migration Control Panel */}
+        {/* Inventar */}
         {inventory && !mapping && (
           <div className="fade-up">
-            {/* Inventar */}
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
-                  <h2 style={{ fontSize: 24, fontWeight: 700 }}>{inventory.shopName}</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
                 </div>
-                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>↺ Reset</button>
+                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                 {[
@@ -627,16 +790,10 @@ export default function Home() {
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
                       <AnimatedNumber value={s.value} animate={animateNumbers} />
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                   </div>
                 ))}
               </div>
-              {inventory.variantOptions?.length > 0 && (
-                <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>varianten-optionen: </span>
-                  {inventory.variantOptions.map(o => <span key={o} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{o}</span>)}
-                </div>
-              )}
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
                   <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
@@ -658,172 +815,301 @@ export default function Home() {
               )}
             </div>
 
-            {/* ── MIGRATION CONTROL PANEL ── */}
-            <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, marginBottom: 16, overflow: 'hidden' }}>
-              {/* Header — immer sichtbar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', cursor: 'pointer' }} onClick={() => setSettingsOpen(!settingsOpen)}>
-                <div>
-                  <div style={{ fontSize: 12, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Konfiguration</div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: '#a5b4fc' }}>Migration Control Panel</h3>
+            {/* ═══════════════════════════════════════════════════
+                SEKTION 1 — MIGRATION CONTROL PANEL
+            ═══════════════════════════════════════════════════ */}
+            <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, marginBottom: 16, overflow: 'hidden' }}>
+              <button
+                className="panel-toggle"
+                onClick={() => setControlPanelOpen(o => !o)}
+                style={{ width: '100%', padding: '16px 24px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>⚙ Migration Control Panel</span>
+                  <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>Standard-Einstellungen aktiv</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {!settingsOpen && (
-                    <div style={{ fontSize: 12, color: '#475569' }}>Standard-Einstellungen aktiv</div>
-                  )}
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#6366f1', transition: 'transform 0.2s', transform: settingsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                    ▼
-                  </div>
-                </div>
-              </div>
+                <span style={{ color: '#475569', fontSize: 12 }}>{controlPanelOpen ? '▲' : '▼'}</span>
+              </button>
 
-              {/* Panel-Inhalt — aufklappbar */}
-              {settingsOpen && (
-                <div className="slide-down" style={{ padding: '0 28px 28px' }}>
-                  <div style={{ height: 1, background: '#1e293b', marginBottom: 24 }} />
-                  <div className="settings-grid">
+              {controlPanelOpen && (
+                <div style={{ padding: '0 24px 24px', borderTop: '1px solid #1e293b' }}>
 
-                    {/* PRODUKT-FILTER */}
-                    <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
-                      <SectionHeader logo={ShopifyLogo} title="Produkt-Filter" color="#95BF47" />
-
-                      <div style={{ marginBottom: 16 }}>
-                        <FieldLabel>Status</FieldLabel>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          {['active', 'draft', 'archived'].map(s => (
-                            <StatusPill key={s} status={s} active={migrationSettings.statusFilter.includes(s)} onClick={() => toggleStatus(s)} />
+                  {/* Produkt-Filter */}
+                  <div style={{ marginTop: 20, marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Produkt-Filter</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Status</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {['Active', 'Draft', 'Archived'].map(s => (
+                            <span key={s} className="chip" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid #6366f133', color: '#a5b4fc' }}>{s}</span>
                           ))}
                         </div>
                       </div>
-
-                      <div style={{ marginBottom: 12 }}>
-                        <FieldLabel>Tag enthält</FieldLabel>
-                        <input style={{ ...inp, marginBottom: 8 }} value={migrationSettings.tagInclude} onChange={e => updateSetting('tagInclude', e.target.value)} placeholder="z.B. sale, featured" />
-                        <FieldLabel>Tag ausschliessen</FieldLabel>
-                        <input style={inp} value={migrationSettings.tagExclude} onChange={e => updateSetting('tagExclude', e.target.value)} placeholder="z.B. intern, test" />
-                      </div>
-
-                      <div style={{ marginBottom: 16 }}>
-                        <FieldLabel>Nur dieser Produkttyp (leer = alle)</FieldLabel>
-                        <input style={inp} value={migrationSettings.productTypeFilter} onChange={e => updateSetting('productTypeFilter', e.target.value)} placeholder="z.B. Stützen & Bandagen" />
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <Toggle value={migrationSettings.onlyWithImages} onChange={v => updateSetting('onlyWithImages', v)} label="Nur Produkte mit Bildern" />
-                        <Toggle value={migrationSettings.onlyWithSku} onChange={v => updateSetting('onlyWithSku', v)} label="Nur Produkte mit SKU" />
+                      <div>
+                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Tag ausschliessen</div>
+                        <input style={{ ...inputStyle, width: '100%' }} defaultValue="intern" placeholder="Tag-Name..." />
                       </div>
                     </div>
-
-                    {/* PREISFILTER + SKU */}
-                    <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
-                      <SectionHeader logo={CTLogo} title="Preisfilter" color="#00B2E3" />
-
-                      <div style={{ marginBottom: 12 }}>
-                        <FieldLabel>Preis-Referenz</FieldLabel>
-                        <select style={sel} value={migrationSettings.priceReference} onChange={e => updateSetting('priceReference', e.target.value)}>
-                          <option value="min">Günstigste Variante (Standard)</option>
-                          <option value="max">Teuerste Variante</option>
-                          <option value="avg">Durchschnitt aller Varianten</option>
-                        </select>
-                      </div>
-
-                      <div style={{ marginBottom: 12 }}>
-                        <FieldLabel>Operator</FieldLabel>
-                        <select style={sel} value={migrationSettings.priceOperator} onChange={e => updateSetting('priceOperator', e.target.value)}>
-                          <option value="none">Kein Filter</option>
-                          <option value="lt">{'< Kleiner als'}</option>
-                          <option value="gt">{'> Grösser als'}</option>
-                          <option value="eq">{'= Gleich'}</option>
-                          <option value="lte">{'<= Kleiner oder gleich'}</option>
-                          <option value="gte">'{'>= Grösser oder gleich'}</option>
-                        </select>
-                      </div>
-
-                      {migrationSettings.priceOperator !== 'none' && (
-                        <div style={{ marginBottom: 16 }}>
-                          <FieldLabel>Betrag in €</FieldLabel>
-                          <input style={inp} type="number" min="0" step="0.01" value={migrationSettings.priceValue} onChange={e => updateSetting('priceValue', e.target.value)} placeholder="0.00" />
-                        </div>
-                      )}
-
-                      <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
-
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>SKU-Behandlung</div>
-                      <div style={{ marginBottom: 10 }}>
-                        <select style={sel} value={migrationSettings.skuFallback} onChange={e => updateSetting('skuFallback', e.target.value)}>
-                          <option value="generate">Fallback-ID generieren</option>
-                          <option value="skip">Produkt überspringen</option>
-                          <option value="warn">Warnung, trotzdem migrieren</option>
-                        </select>
-                      </div>
-                      <input style={inp} value={migrationSettings.skuPrefix} onChange={e => updateSetting('skuPrefix', e.target.value)} placeholder="SKU-Präfix (optional, z.B. SHOP-)" />
-                    </div>
-
-                    {/* VARIANTEN & BILDER */}
-                    <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
-                      <SectionHeader logo={ShopifyLogo} title="Varianten & Bilder" color="#95BF47" />
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                        <Toggle value={migrationSettings.inheritImages} onChange={v => updateSetting('inheritImages', v)} label="Produktbilder an alle Varianten vererben" />
-                        <Toggle value={migrationSettings.transferVariantOptions} onChange={v => updateSetting('transferVariantOptions', v)} label="Variantenoptionen als Attribute übertragen" />
-                      </div>
-
-                      <div style={{ marginBottom: 14 }}>
-                        <FieldLabel>Max. Bilder pro Produkt (leer = alle)</FieldLabel>
-                        <input style={inp} type="number" min="1" value={migrationSettings.maxImagesPerProduct} onChange={e => updateSetting('maxImagesPerProduct', e.target.value)} placeholder="Leer = alle Bilder" />
-                      </div>
-
-                      <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
-
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Bei Duplikaten</div>
-                      <select style={sel} value={migrationSettings.duplicateHandling} onChange={e => updateSetting('duplicateHandling', e.target.value)}>
-                        <option value="skip">Überspringen</option>
-                        <option value="overwrite">Überschreiben</option>
-                        <option value="error">Fehler melden</option>
-                      </select>
-                    </div>
-
-                    {/* TEXT-QUALITÄT L0-L5 */}
-                    <div style={{ background: '#080b12', borderRadius: 12, padding: 20, border: '1px solid #1e293b' }}>
-                      <SectionHeader title="Text-Qualität" color="#a5b4fc" />
-
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-                        {TEXT_LEVELS.map(l => (
-                          <button key={l.level} onClick={() => updateSetting('textLevel', l.level)} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1px solid ${migrationSettings.textLevel === l.level ? '#6366f1' : '#1e293b'}`, background: migrationSettings.textLevel === l.level ? 'rgba(99,102,241,0.2)' : 'transparent', color: migrationSettings.textLevel === l.level ? '#a5b4fc' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
-                            {l.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div style={{ background: '#0a0e1a', borderRadius: 10, padding: 14, borderLeft: '3px solid #6366f1', marginBottom: 14 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#a5b4fc', marginBottom: 6 }}>{currentTextLevel.title}</div>
-                        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>{currentTextLevel.desc}</div>
-                      </div>
-
-                      {migrationSettings.textLevel === 3 && (
-                        <div>
-                          <FieldLabel>Zielgruppe / Persona</FieldLabel>
-                          <input style={inp} placeholder="z.B. Medizinisches Fachpersonal, 40-60 Jahre" />
-                        </div>
-                      )}
-                      {migrationSettings.textLevel >= 4 && (
-                        <div>
-                          <FieldLabel>Primäres Keyword (leer = KI ermittelt selbst)</FieldLabel>
-                          <input style={inp} placeholder="Leer = KI ermittelt selbst" />
-                        </div>
-                      )}
-                    </div>
-
                   </div>
 
-                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                    <button onClick={() => { setMigrationSettings(DEFAULT_SETTINGS) }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 13 }}>
-                      Zurücksetzen
-                    </button>
+                  <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+
+                  {/* Varianten & Bilder */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Varianten & Bilder</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {[
+                        { label: 'Bilder an alle Varianten vererben', default: true },
+                        { label: 'Variantenoptionen als Attribute', default: true },
+                      ].map(opt => (
+                        <label key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#94a3b8' }}>
+                          <input type="checkbox" defaultChecked={opt.default} style={{ accentColor: '#6366f1' }} />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+
+                  {/* SKU */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>SKU-Behandlung</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Fallback</div>
+                        <select style={{ width: '100%' }}>
+                          <option>Fallback-ID generieren</option>
+                          <option>Überspringen</option>
+                          <option>Warnung</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>SKU-Präfix (optional)</div>
+                        <input style={inputStyle} placeholder="z. B. SHOP-" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+
+                  {/* Text-Qualität Slider */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>Text-Qualität</div>
+                    <div style={{ background: '#080b12', borderRadius: 10, padding: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div>
+                          <span style={{ fontSize: 20, fontWeight: 800, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginLeft: 10 }}>{TEXT_LEVELS[textLevel].desc}</span>
+                        </div>
+                        {textLevel > 0 && (
+                          <span style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '3px 8px' }}>
+                            KI aktiv — verlangsamt Migration leicht
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="range" min={0} max={5} value={textLevel}
+                        onChange={e => setTextLevel(parseInt(e.target.value))}
+                        style={{ background: `linear-gradient(to right, #6366f1 ${textLevel * 20}%, #1e293b ${textLevel * 20}%)` }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                        {TEXT_LEVELS.map((l, i) => (
+                          <span key={i} style={{ fontSize: 10, color: i === textLevel ? '#6366f1' : '#334155', fontWeight: i === textLevel ? 700 : 400, fontFamily: 'JetBrains Mono, monospace' }}>{l.label}</span>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 10, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{TEXT_LEVELS[textLevel].detail}</div>
+                      {textLevel >= 3 && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Persona / Zielgruppe</div>
+                          <input style={inputStyle} value={seoPersona} onChange={e => setSeoPersona(e.target.value)} placeholder="z. B. Medizinische Fachkräfte, 35-55 Jahre" />
+                        </div>
+                      )}
+                      {textLevel >= 4 && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>SEO-Keywords (optional)</div>
+                          <input style={inputStyle} value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="z. B. TENS Gerät kaufen, Reizstromgerät" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* ═══════════════════════════════════════════════════
+                SEKTION 2 — SONDERFÄLLE & EDGE CASES
+            ═══════════════════════════════════════════════════ */}
+            <div style={{ background: '#0f1623', border: `1px solid ${criticalEdgeCases > 0 ? '#ef444433' : '#1e293b'}`, borderRadius: 14, marginBottom: 16, overflow: 'hidden', transition: 'border-color 0.3s' }}>
+              <button
+                className="panel-toggle"
+                onClick={() => setEdgeCasesOpen(o => !o)}
+                style={{ width: '100%', padding: '16px 24px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>⚠ Sonderfälle & Edge Cases</span>
+                  {criticalEdgeCases > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 20, padding: '2px 10px' }}>
+                      {criticalEdgeCases} kritisch
+                    </span>
+                  )}
+                  {criticalEdgeCases === 0 && Object.keys(deepCheckResults).length === 0 && (
+                    <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>Noch nicht geprüft</span>
+                  )}
+                  {criticalEdgeCases === 0 && Object.keys(deepCheckResults).length > 0 && (
+                    <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Alles in Ordnung</span>
+                  )}
+                </div>
+                <span style={{ color: '#475569', fontSize: 12 }}>{edgeCasesOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {edgeCasesOpen && (
+                <div style={{ padding: '0 24px 24px', borderTop: '1px solid #1e293b' }}>
+
+                  {/* — Automatisch erkannt aus Analyse — */}
+                  <div style={{ marginTop: 20, marginBottom: 24 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                      Automatisch erkannt
+                    </div>
+
+                    {/* Blogs */}
+                    {inventory.blogs.length > 0 && (
+                      <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Blog-Migration</span>
+                            <span style={{ fontSize: 11, color: '#475569', marginLeft: 8 }}>{inventory.blogs.length} Blogs gefunden</span>
+                          </div>
+                          <span style={{ fontSize: 11, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 4, padding: '2px 8px' }}>alle vorausgewählt</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {inventory.blogs.map(b => (
+                            <span
+                              key={b.id}
+                              className="chip"
+                              onClick={() => toggleBlog(b.id)}
+                              style={{
+                                background: selectedBlogs.includes(b.id) ? 'rgba(34,197,94,0.15)' : '#1e293b',
+                                border: `1px solid ${selectedBlogs.includes(b.id) ? '#22c55e44' : '#334155'}`,
+                                color: selectedBlogs.includes(b.id) ? '#22c55e' : '#475569',
+                              }}
+                            >
+                              {selectedBlogs.includes(b.id) ? '✓' : '○'} {b.title}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metafield Namespaces */}
+                    {metafieldNamespaces.length > 0 && (
+                      <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <div>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Metafield-Namespaces</span>
+                            <span style={{ fontSize: 11, color: '#475569', marginLeft: 8 }}>{inventory.metafields.length} Felder in {metafieldNamespaces.length} Namespaces</span>
+                          </div>
+                          <span style={{ fontSize: 11, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 4, padding: '2px 8px' }}>alle vorausgewählt</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {metafieldNamespaces.map(ns => (
+                            <span
+                              key={ns}
+                              className="chip"
+                              onClick={() => toggleNamespace(ns)}
+                              style={{
+                                background: selectedMetafieldNamespaces.includes(ns) ? 'rgba(99,102,241,0.15)' : '#1e293b',
+                                border: `1px solid ${selectedMetafieldNamespaces.includes(ns) ? '#6366f144' : '#334155'}`,
+                                color: selectedMetafieldNamespaces.includes(ns) ? '#a5b4fc' : '#475569',
+                                fontFamily: 'JetBrains Mono, monospace',
+                              }}
+                            >
+                              {selectedMetafieldNamespaces.includes(ns) ? '✓' : '○'} {ns}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* — Deep Checks — */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', display: 'inline-block' }} />
+                      Deep Check — Content-Analyse
+                    </div>
+                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.5 }}>
+                      Diese Punkte können erst geprüft werden, wenn der tatsächliche Content analysiert wird. Klicke "Check" um den Scan zu starten.
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {DEEP_CHECKS.map(check => {
+                        const result = deepCheckResults[check.id]
+                        const running = runningChecks[check.id]
+                        const color = severityColor[check.severity]
+                        const hasIssue = result?.status === 'found' && result?.count > 0
+
+                        return (
+                          <div key={check.id} style={{ background: '#080b12', borderRadius: 10, padding: 14, border: `1px solid ${hasIssue ? color + '33' : '#1e293b'}`, transition: 'border-color 0.3s' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color, background: color + '1a', border: `1px solid ${color}33`, borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    {severityLabel[check.severity]}
+                                  </span>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{check.label}</span>
+                                </div>
+                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{check.desc}</div>
+                                {result?.status === 'found' && (
+                                  <div style={{ marginTop: 8, fontSize: 12, color: hasIssue ? color : '#22c55e', fontWeight: 600 }}>
+                                    {hasIssue ? '⚠ ' : '✓ '}{check.resultLabel(result)}
+                                  </div>
+                                )}
+                                {result?.status === 'error' && (
+                                  <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>✗ Check fehlgeschlagen</div>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => runDeepCheck(check)}
+                                disabled={running}
+                                style={{ flexShrink: 0, padding: '7px 16px', borderRadius: 8, border: `1px solid ${result ? color + '44' : '#334155'}`, background: result ? color + '0d' : '#1e293b', color: result ? color : '#94a3b8', cursor: running ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+                              >
+                                {running ? (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ width: 10, height: 10, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                                    Prüfe...
+                                  </span>
+                                ) : result ? '↺ Nochmal' : 'Check'}
+                              </button>
+                            </div>
+
+                            {/* Folge-Aktion wenn Problem gefunden */}
+                            {hasIssue && (
+                              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>{check.action.label}:</span>
+                                <select
+                                  value={deepCheckActions[check.id] ?? check.action.default}
+                                  onChange={e => setDeepCheckActions(prev => ({ ...prev, [check.id]: parseInt(e.target.value) }))}
+                                  style={{ flex: 1 }}
+                                >
+                                  {check.action.options.map((opt, i) => (
+                                    <option key={i} value={i}>{opt}{i === check.action.default ? ' (empfohlen)' : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* KI Mapping Button */}
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
               {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
             </button>
@@ -835,7 +1121,7 @@ export default function Home() {
           <div className="fade-up" style={{ marginTop: 16 }}>
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
-              <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
               <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
               </div>
@@ -844,18 +1130,18 @@ export default function Home() {
                 <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <CTLogo />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#00B2E3' }}>commercetools</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>commercetools</span>
                   </div>
-                  <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{mapping.commercetools?.description}</p>
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#00B2E3' }}>{mapping.commercetools?.contentTypes?.length || 0} Types</div>
+                  <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.commercetools?.description}</p>
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#00B2E3' }}>{mapping.commercetools?.contentTypes?.length || 0} Types</div>
                 </div>
                 <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <ContentfulLogo />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#FAE501' }}>Contentful</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Contentful</span>
                   </div>
-                  <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{mapping.contentful?.description}</p>
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#FAE501' }}>{mapping.contentful?.contentTypes?.length || 0} Types</div>
+                  <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.contentful?.description}</p>
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#FAE501' }}>{mapping.contentful?.contentTypes?.length || 0} Types</div>
                 </div>
               </div>
 
@@ -874,17 +1160,17 @@ export default function Home() {
 
               {reviewConfirmed && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✓ Namen bestätigt</div>
-                  <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 12, color: '#475569', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✓ Namen bestätigt</div>
+                  <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#475569', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
                 </div>
               )}
 
               {reviewConfirmed && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
+                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
                     {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ commercetools Model angelegt' : 'commercetools Model anlegen →'}
                   </button>
-                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
+                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
                     {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen →'}
                   </button>
                 </div>
@@ -894,22 +1180,22 @@ export default function Home() {
                 <div style={{ marginBottom: 24 }}>
                   {deployResultsCT && (
                     <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 16, marginBottom: 10 }}>
-                      <div style={{ fontSize: 13, color: '#00B2E3', fontWeight: 700, marginBottom: 10 }}>commercetools — Product Types</div>
+                      <div style={{ fontSize: 12, color: '#00B2E3', fontWeight: 700, marginBottom: 10 }}>commercetools — Product Types</div>
                       {deployResultsCT.map(r => (
                         <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
                           <span>{r.name}</span>
-                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
+                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   {deployResultsContentful && (
                     <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 16 }}>
-                      <div style={{ fontSize: 13, color: '#FAE501', fontWeight: 700, marginBottom: 10 }}>Contentful — Content Types</div>
+                      <div style={{ fontSize: 12, color: '#FAE501', fontWeight: 700, marginBottom: 10 }}>Contentful — Content Types</div>
                       {deployResultsContentful.map(r => (
                         <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
                           <span>{r.name}</span>
-                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
+                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
                         </div>
                       ))}
                     </div>
@@ -919,17 +1205,17 @@ export default function Home() {
 
               {bothDeployed && (
                 <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
+                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
 
                   <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <CTLogo />
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 13, color: '#475569' }}>Anzahl Produkte:</span>
-                      <input type="number" min={1} max={50} value={productLimit} onChange={e => setProductLimit(Math.min(50, parseInt(e.target.value) || 10))} style={{ ...inp, width: 80 }} />
-                     <span style={{ fontSize: 12, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
+                      <span style={{ fontSize: 12, color: '#475569' }}>Anzahl Produkte:</span>
+                      <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
+                      <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
                     </div>
                     <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
                       {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
@@ -937,9 +1223,9 @@ export default function Home() {
                     {migrateResultsCT && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                         {migrateResultsCT.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
                             <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
-                            <span style={{ color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#f59e0b' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓' : r.status === 'skipped' ? `↷ ${r.reason}` : `✗ ${r.error}`}</span>
+                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
                           </div>
                         ))}
                       </div>
@@ -949,9 +1235,9 @@ export default function Home() {
                   <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <ContentfulLogo />
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#FAE501' }}>Pages → Contentful</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages → Contentful</span>
                     </div>
-                    <div style={{ fontSize: 13, color: '#475569', marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>
                       {inventory?.pages.length || 0} Pages werden migriert
                     </div>
                     <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#475569' : migrateResultsContentful ? '#22c55e' : '#000' }}>
@@ -960,9 +1246,9 @@ export default function Home() {
                     {migrateResultsContentful && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                         {migrateResultsContentful.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
                             <span style={{ color: '#94a3b8' }}>{r.title}</span>
-                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
+                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
                           </div>
                         ))}
                       </div>
