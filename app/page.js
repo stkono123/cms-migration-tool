@@ -564,7 +564,7 @@ export default function Home() {
                 <input style={{ ...reviewInputStyle, borderColor: `${color}66`, fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }} value={ct.id} onChange={e => onUpdate(i, 'id', e.target.value)} />
               </div>
             </div>
-            <div style={{ fontSize: 11, color: '#475569' }}>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
               Quelle: <span style={{ color: '#64748b' }}>{ct.sourceType}</span>
               <span style={{ marginLeft: 12 }}>~{ct.estimatedEntries} Entries</span>
             </div>
@@ -621,7 +621,7 @@ export default function Home() {
                 return (
                   <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b', color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#475569', border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent', boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none', transition: 'all 0.3s', ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {}) }}>
+                      <div style={{ width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b', color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#64748b', border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent', boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none', transition: 'all 0.3s', ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {}) }}>
                         {status === 'done' ? '✓' : i + 1}
                       </div>
                       <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155', whiteSpace: 'nowrap', transition: 'color 0.3s' }}>{step.label}</div>
@@ -646,7 +646,7 @@ export default function Home() {
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
                 <StatusDot status={shopifyStatus} />
               </div>
               <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -655,7 +655,7 @@ export default function Home() {
                     {selectedSource?.logo && <selectedSource.logo />}
                     {selectedSource?.label}
                   </div>
-                  <span style={{ color: '#475569', fontSize: 10 }}>▼</span>
+                  <span style={{ color: '#64748b', fontSize: 10 }}>▼</span>
                 </button>
                 {sourceDropdownOpen && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0f1623', border: '1px solid #1e293b', borderRadius: 8, marginTop: 4, zIndex: 10, overflow: 'hidden' }}>
@@ -665,18 +665,18 @@ export default function Home() {
                           {sys.logo && <sys.logo />}
                           {sys.label}
                         </div>
-                        {!sys.available && <span style={{ fontSize: 10, color: '#475569', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
+                        {!sys.available && <span style={{ fontSize: 10, color: '#64748b', background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>bald</span>}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
                 <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
                 <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
               </div>
             </div>
@@ -687,14 +687,14 @@ export default function Home() {
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Commerce</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Commerce</div>
                 <StatusDot status={ctStatus} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #00B2E333' }}>
                 <CTLogo />
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00B2E3' }}>commercetools</span>
               </div>
-              <div style={{ background: '#0a0e1a', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+              <div style={{ background: '#0a0e1a', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
                 Credentials werden aus den Vercel Environment Variables gelesen.<br />
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#334155' }}>CT_PROJECT_KEY · CT_CLIENT_ID · CT_CLIENT_SECRET</span>
               </div>
@@ -706,7 +706,7 @@ export default function Home() {
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#FAE50133'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Content</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Content</div>
                 <StatusDot status={contentfulStatus} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: '#080b12', borderRadius: 8, border: '1px solid #FAE50133' }}>
@@ -714,11 +714,11 @@ export default function Home() {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#FAE501' }}>Contentful</span>
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Space ID</div>
                 <input style={inputStyle} value={contentfulSpace} onChange={e => setContentfulSpace(e.target.value)} placeholder="Space ID" />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 10, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
+                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CMA Token</div>
                 <input style={inputStyle} value={contentfulTokenEditing ? contentfulTokenReal : contentfulToken} onChange={e => setContentfulTokenReal(e.target.value)} onFocus={() => { setContentfulTokenEditing(true); setContentfulTokenReal('') }} onBlur={() => { if (!contentfulTokenReal) setContentfulTokenEditing(false) }} placeholder="CFPAT-xxx" type={contentfulTokenEditing ? 'text' : 'password'} />
               </div>
             </div>
@@ -729,7 +729,7 @@ export default function Home() {
         {/* Model Mode Toggle */}
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="mode-btn" onClick={() => setModelMode('create')} style={{ flex: 1, background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b', color: modelMode === 'create' ? '#fff' : '#64748b', boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none' }}>
                 ✦ Content Model anlegen
@@ -738,7 +738,7 @@ export default function Home() {
                 ↗ Bestehendes Model verwenden
               </button>
             </div>
-            <div style={{ marginTop: 10, fontSize: 12, color: '#475569' }}>
+            <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
               {modelMode === 'create'
                 ? 'Produkte → commercetools. Pages und Blogs → Contentful. Du prüfst die Namen vor dem Anlegen.'
                 : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
@@ -774,10 +774,10 @@ export default function Home() {
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
+                  <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
                   <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
                 </div>
-                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
+                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                 {[
@@ -790,27 +790,36 @@ export default function Home() {
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
                       <AnimatedNumber value={s.value} animate={animateNumbers} />
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                   </div>
                 ))}
               </div>
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
+                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
                   {inventory.pages.map(p => <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>)}
                 </div>
               )}
               {inventory.blogs.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
+                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
                   {inventory.blogs.map(b => <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>)}
                 </div>
               )}
               {inventory.metafields.length > 0 && (
                 <div style={{ fontSize: 13 }}>
-                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metafields: </span>
-                  {inventory.metafields.slice(0, 10).map(m => <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>)}
-                  {inventory.metafields.length > 10 && <span style={{ color: '#475569', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
+                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>meta-fields: </span>
+                  {inventory.metafieldSources && (
+                    <span style={{ fontSize: 11, color: '#64748b', marginRight: 8 }}>
+                      ({inventory.metafieldSources.shop} Shop-Level, {inventory.metafieldSources.product} Produkt-Level)
+                    </span>
+                  )}
+                  {inventory.metafields.slice(0, 10).map(m => (
+                    <span key={`${m.namespace}.${m.key}`} style={{ background: m.source === 'product' ? 'rgba(99,102,241,0.12)' : '#1e293b', border: m.source === 'product' ? '1px solid #6366f122' : 'none', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block', color: m.source === 'product' ? '#a5b4fc' : '#cbd5e1' }}>
+                      {m.namespace}.{m.key}
+                    </span>
+                  ))}
+                  {inventory.metafields.length > 10 && <span style={{ color: '#64748b', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
                 </div>
               )}
             </div>
@@ -826,9 +835,9 @@ export default function Home() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>⚙ Migration Control Panel</span>
-                  <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>Standard-Einstellungen aktiv</span>
+                  <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Standard-Einstellungen aktiv</span>
                 </div>
-                <span style={{ color: '#475569', fontSize: 12 }}>{controlPanelOpen ? '▲' : '▼'}</span>
+                <span style={{ color: '#64748b', fontSize: 12 }}>{controlPanelOpen ? '▲' : '▼'}</span>
               </button>
 
               {controlPanelOpen && (
@@ -836,10 +845,10 @@ export default function Home() {
 
                   {/* Produkt-Filter */}
                   <div style={{ marginTop: 20, marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Produkt-Filter</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Produkt-Filter</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Status</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Status</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {['Active', 'Draft', 'Archived'].map(s => (
                             <span key={s} className="chip" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid #6366f133', color: '#a5b4fc' }}>{s}</span>
@@ -847,7 +856,7 @@ export default function Home() {
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Tag ausschliessen</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Tag ausschliessen</div>
                         <input style={{ ...inputStyle, width: '100%' }} defaultValue="intern" placeholder="Tag-Name..." />
                       </div>
                     </div>
@@ -857,7 +866,7 @@ export default function Home() {
 
                   {/* Varianten & Bilder */}
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Varianten & Bilder</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Varianten & Bilder</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       {[
                         { label: 'Bilder an alle Varianten vererben', default: true },
@@ -875,10 +884,10 @@ export default function Home() {
 
                   {/* SKU */}
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>SKU-Behandlung</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>SKU-Behandlung</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Fallback</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Fallback</div>
                         <select style={{ width: '100%' }}>
                           <option>Fallback-ID generieren</option>
                           <option>Überspringen</option>
@@ -886,7 +895,7 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>SKU-Präfix (optional)</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>SKU-Präfix (optional)</div>
                         <input style={inputStyle} placeholder="z. B. SHOP-" />
                       </div>
                     </div>
@@ -896,18 +905,16 @@ export default function Home() {
 
                   {/* Text-Qualität Slider */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>Text-Qualität</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>Text-Qualität</div>
                     <div style={{ background: '#080b12', borderRadius: 10, padding: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <div>
                           <span style={{ fontSize: 20, fontWeight: 800, color: '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginLeft: 10 }}>{TEXT_LEVELS[textLevel].desc}</span>
                         </div>
-                        {textLevel > 0 && (
-                          <span style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '3px 8px' }}>
-                            KI aktiv — verlangsamt Migration leicht
-                          </span>
-                        )}
+                        <span style={{ fontSize: 11, color: textLevel === 0 ? '#64748b' : '#818cf8', background: textLevel === 0 ? 'transparent' : 'rgba(99,102,241,0.1)', border: `1px solid ${textLevel === 0 ? 'transparent' : 'rgba(99,102,241,0.25)'}`, borderRadius: 6, padding: '3px 8px', transition: 'all 0.2s' }}>
+                          {textLevel === 0 ? 'Kein KI-Eingriff' : 'KI aktiv — verlangsamt Migration leicht'}
+                        </span>
                       </div>
                       <input
                         type="range" min={0} max={5} value={textLevel}
@@ -922,13 +929,13 @@ export default function Home() {
                       <div style={{ marginTop: 10, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{TEXT_LEVELS[textLevel].detail}</div>
                       {textLevel >= 3 && (
                         <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Persona / Zielgruppe</div>
+                          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Persona / Zielgruppe</div>
                           <input style={inputStyle} value={seoPersona} onChange={e => setSeoPersona(e.target.value)} placeholder="z. B. Medizinische Fachkräfte, 35-55 Jahre" />
                         </div>
                       )}
                       {textLevel >= 4 && (
                         <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>SEO-Keywords (optional)</div>
+                          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>SEO-Keywords (optional)</div>
                           <input style={inputStyle} value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="z. B. TENS Gerät kaufen, Reizstromgerät" />
                         </div>
                       )}
@@ -955,13 +962,13 @@ export default function Home() {
                     </span>
                   )}
                   {criticalEdgeCases === 0 && Object.keys(deepCheckResults).length === 0 && (
-                    <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>Noch nicht geprüft</span>
+                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Noch nicht geprüft</span>
                   )}
                   {criticalEdgeCases === 0 && Object.keys(deepCheckResults).length > 0 && (
                     <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Alles in Ordnung</span>
                   )}
                 </div>
-                <span style={{ color: '#475569', fontSize: 12 }}>{edgeCasesOpen ? '▲' : '▼'}</span>
+                <span style={{ color: '#64748b', fontSize: 12 }}>{edgeCasesOpen ? '▲' : '▼'}</span>
               </button>
 
               {edgeCasesOpen && (
@@ -980,25 +987,38 @@ export default function Home() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                           <div>
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Blog-Migration</span>
-                            <span style={{ fontSize: 11, color: '#475569', marginLeft: 8 }}>{inventory.blogs.length} Blogs gefunden</span>
+                            <span style={{ fontSize: 11, color: '#64748b', marginLeft: 8 }}>{inventory.blogs.length} Blogs gefunden</span>
                           </div>
-                          <span style={{ fontSize: 11, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 4, padding: '2px 8px' }}>alle vorausgewählt</span>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => setSelectedBlogs(inventory.blogs.map(b => b.id))}
+                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedBlogs.length === inventory.blogs.length ? '#22c55e' : '#1e293b', color: selectedBlogs.length === inventory.blogs.length ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                            >Alle</button>
+                            <button
+                              onClick={() => setSelectedBlogs([])}
+                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedBlogs.length === 0 ? '#6366f1' : '#1e293b', color: selectedBlogs.length === 0 ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                            >Keine</button>
+                          </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {inventory.blogs.map(b => (
-                            <span
-                              key={b.id}
-                              className="chip"
-                              onClick={() => toggleBlog(b.id)}
-                              style={{
-                                background: selectedBlogs.includes(b.id) ? 'rgba(34,197,94,0.15)' : '#1e293b',
-                                border: `1px solid ${selectedBlogs.includes(b.id) ? '#22c55e44' : '#334155'}`,
-                                color: selectedBlogs.includes(b.id) ? '#22c55e' : '#475569',
-                              }}
-                            >
-                              {selectedBlogs.includes(b.id) ? '✓' : '○'} {b.title}
-                            </span>
-                          ))}
+                          {inventory.blogs.map(b => {
+                            const isSelected = selectedBlogs.includes(b.id)
+                            const isPartial = selectedBlogs.length > 0 && selectedBlogs.length < inventory.blogs.length
+                            return (
+                              <span
+                                key={b.id}
+                                className="chip"
+                                onClick={() => toggleBlog(b.id)}
+                                style={{
+                                  background: isSelected ? (isPartial ? 'rgba(148,163,184,0.15)' : 'rgba(34,197,94,0.15)') : '#1e293b',
+                                  border: `1px solid ${isSelected ? (isPartial ? '#94a3b833' : '#22c55e44') : '#334155'}`,
+                                  color: isSelected ? (isPartial ? '#94a3b8' : '#22c55e') : '#64748b',
+                                }}
+                              >
+                                {isSelected ? '✓' : '○'} {b.title}
+                              </span>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -1008,27 +1028,40 @@ export default function Home() {
                       <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                           <div>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Metafield-Namespaces</span>
-                            <span style={{ fontSize: 11, color: '#475569', marginLeft: 8 }}>{inventory.metafields.length} Felder in {metafieldNamespaces.length} Namespaces</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Meta-Field-Name-Spaces</span>
+                            <span style={{ fontSize: 11, color: '#64748b', marginLeft: 8 }}>{inventory.metafields.length} Felder in {metafieldNamespaces.length} Name-Spaces</span>
                           </div>
-                          <span style={{ fontSize: 11, color: '#22c55e', background: 'rgba(34,197,94,0.1)', borderRadius: 4, padding: '2px 8px' }}>alle vorausgewählt</span>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => setSelectedMetafieldNamespaces(metafieldNamespaces)}
+                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#6366f1' : '#1e293b', color: selectedMetafieldNamespaces.length === metafieldNamespaces.length ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                            >Alle</button>
+                            <button
+                              onClick={() => setSelectedMetafieldNamespaces([])}
+                              style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: selectedMetafieldNamespaces.length === 0 ? '#6366f1' : '#1e293b', color: selectedMetafieldNamespaces.length === 0 ? '#fff' : '#64748b', transition: 'all 0.15s', fontFamily: 'Inter, sans-serif' }}
+                            >Keine</button>
+                          </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {metafieldNamespaces.map(ns => (
-                            <span
-                              key={ns}
-                              className="chip"
-                              onClick={() => toggleNamespace(ns)}
-                              style={{
-                                background: selectedMetafieldNamespaces.includes(ns) ? 'rgba(99,102,241,0.15)' : '#1e293b',
-                                border: `1px solid ${selectedMetafieldNamespaces.includes(ns) ? '#6366f144' : '#334155'}`,
-                                color: selectedMetafieldNamespaces.includes(ns) ? '#a5b4fc' : '#475569',
-                                fontFamily: 'JetBrains Mono, monospace',
-                              }}
-                            >
-                              {selectedMetafieldNamespaces.includes(ns) ? '✓' : '○'} {ns}
-                            </span>
-                          ))}
+                          {metafieldNamespaces.map(ns => {
+                            const isSelected = selectedMetafieldNamespaces.includes(ns)
+                            const isPartial = selectedMetafieldNamespaces.length > 0 && selectedMetafieldNamespaces.length < metafieldNamespaces.length
+                            return (
+                              <span
+                                key={ns}
+                                className="chip"
+                                onClick={() => toggleNamespace(ns)}
+                                style={{
+                                  background: isSelected ? (isPartial ? 'rgba(148,163,184,0.15)' : 'rgba(99,102,241,0.15)') : '#1e293b',
+                                  border: `1px solid ${isSelected ? (isPartial ? '#94a3b833' : '#6366f144') : '#334155'}`,
+                                  color: isSelected ? (isPartial ? '#94a3b8' : '#a5b4fc') : '#64748b',
+                                  fontFamily: 'JetBrains Mono, monospace',
+                                }}
+                              >
+                                {isSelected ? '✓' : '○'} {ns}
+                              </span>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -1040,7 +1073,7 @@ export default function Home() {
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1', display: 'inline-block' }} />
                       Deep Check — Content-Analyse
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
                       Diese Punkte können erst geprüft werden, wenn der tatsächliche Content analysiert wird. Klicke "Check" um den Scan zu starten.
                     </div>
 
@@ -1061,7 +1094,7 @@ export default function Home() {
                                   </span>
                                   <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{check.label}</span>
                                 </div>
-                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>{check.desc}</div>
+                                <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{check.desc}</div>
                                 {result?.status === 'found' && (
                                   <div style={{ marginTop: 8, fontSize: 12, color: hasIssue ? color : '#22c55e', fontWeight: 600 }}>
                                     {hasIssue ? '⚠ ' : '✓ '}{check.resultLabel(result)}
@@ -1088,7 +1121,7 @@ export default function Home() {
                             {/* Folge-Aktion wenn Problem gefunden */}
                             {hasIssue && (
                               <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>{check.action.label}:</span>
+                                <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>{check.action.label}:</span>
                                 <select
                                   value={deepCheckActions[check.id] ?? check.action.default}
                                   onChange={e => setDeepCheckActions(prev => ({ ...prev, [check.id]: parseInt(e.target.value) }))}
@@ -1110,7 +1143,7 @@ export default function Home() {
             </div>
 
             {/* KI Mapping Button */}
-            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
+            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
               {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
             </button>
           </div>
@@ -1120,7 +1153,7 @@ export default function Home() {
         {mapping && (
           <div className="fade-up" style={{ marginTop: 16 }}>
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
               <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
                 <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
@@ -1161,16 +1194,16 @@ export default function Home() {
               {reviewConfirmed && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✓ Namen bestätigt</div>
-                  <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#475569', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
+                  <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#64748b', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
                 </div>
               )}
 
               {reviewConfirmed && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#475569' : deployResultsCT ? '#22c55e' : '#fff' }}>
+                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff' }}>
                     {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ commercetools Model angelegt' : 'commercetools Model anlegen →'}
                   </button>
-                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#475569' : deployResultsContentful ? '#22c55e' : '#000' }}>
+                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#64748b' : deployResultsContentful ? '#22c55e' : '#000' }}>
                     {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen →'}
                   </button>
                 </div>
@@ -1205,7 +1238,7 @@ export default function Home() {
 
               {bothDeployed && (
                 <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
+                  <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
 
                   <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -1213,11 +1246,11 @@ export default function Home() {
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: '#475569' }}>Anzahl Produkte:</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
                       <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
-                      <span style={{ fontSize: 11, color: '#475569' }}>von {inventory?.productCount || 0} gesamt</span>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
                     </div>
-                    <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#475569' : migrateResultsCT ? '#22c55e' : '#fff' }}>
+                    <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
                       {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
                     </button>
                     {migrateResultsCT && (
@@ -1237,10 +1270,10 @@ export default function Home() {
                       <ContentfulLogo />
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages → Contentful</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
                       {inventory?.pages.length || 0} Pages werden migriert
                     </div>
-                    <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#475569' : migrateResultsContentful ? '#22c55e' : '#000' }}>
+                    <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
                       {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren →'}
                     </button>
                     {migrateResultsContentful && (
@@ -1258,10 +1291,10 @@ export default function Home() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#475569' : '#00B2E3' }}>
+                <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
                   {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
                 </button>
-                <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#475569' : '#ef4444' }}>
+                <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
                   {resettingContentful ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
                 </button>
               </div>
