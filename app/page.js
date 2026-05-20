@@ -53,6 +53,20 @@ const TEXT_LEVELS = [
 // Deep-Check Definitionen — was wir nicht aus dem Inventar ableiten können
 const DEEP_CHECKS = [
   {
+    id: 'trend_check',
+    label: 'Trend-Check — Keyword-Relevanz',
+    desc: 'KI analysiert alle Titel und Beschreibungen und bewertet die Suchrelevanz. Ergebnis: Relevanz-Score (1–10) pro Eintrag als Basis für den Relevanz-Filter.',
+    severity: 'info',
+    endpoint: '/api/check-trend',
+    resultKey: 'trendScores',
+    resultLabel: (r) => `${r.highRelevance} Einträge mit hoher Relevanz (Score ≥ 7) von ${r.total}`,
+    action: {
+      label: 'Mindest-Score für Optimierung',
+      options: ['Score ≥ 5 (breit)', 'Score ≥ 7 (empfohlen)', 'Score ≥ 9 (nur Top-Content)', 'Nicht anwenden'],
+      default: 1,
+    }
+  },
+  {
     id: 'inline_images',
     label: 'Inline-Bilder im Content',
     desc: 'Shopify CDN URLs in <img>-Tags werden nach Migration ungültig.',
@@ -232,6 +246,36 @@ export default function Home() {
   const [textLevel, setTextLevel] = useState(0)
   const [seoPersona, setSeoPersona] = useState('')
   const [seoKeyword, setSeoKeyword] = useState('')
+
+  // Relevanz-Filter & Kosten-Estimate
+  const [relevanceMaxAge, setRelevanceMaxAge] = useState('all')
+  const [relevanceMinWords, setRelevanceMinWords] = useState(0)
+
+  // Token-Schätzung pro Level (Input / Output)
+  const TOKEN_ESTIMATES = {
+    1: { input: 200, output: 220 },
+    2: { input: 220, output: 280 },
+    3: { input: 280, output: 320 },
+    4: { input: 320, output: 400 },
+    5: { input: 400, output: 900 }, // L5 FAQ-Erweiterung = viel mehr Output
+  }
+  const inputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.input || 200
+  const outputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.output || 200
+
+  // Relevante Item-Anzahl schätzen (vereinfacht ohne echten Content-Scan)
+  const totalItems = inventory ? inventory.productCount + inventory.pages.length : 0
+  const relevantItemCount = relevanceMaxAge === 'all' && relevanceMinWords === 0
+    ? totalItems
+    : Math.max(1, Math.round(totalItems * (relevanceMaxAge === '1' ? 0.3 : relevanceMaxAge === '2' ? 0.5 : relevanceMaxAge === '3' ? 0.65 : relevanceMaxAge === '5' ? 0.8 : 0.9) * (relevanceMinWords >= 200 ? 0.6 : relevanceMinWords >= 100 ? 0.75 : relevanceMinWords >= 50 ? 0.85 : 1)))
+
+  const totalInputTokens = relevantItemCount * inputTokensPerItem
+  const totalOutputTokens = relevantItemCount * outputTokensPerItem
+  const estimatedCostNum = (totalInputTokens / 1_000_000 * 0.25) + (totalOutputTokens / 1_000_000 * 1.25)
+  const estimatedCost = estimatedCostNum < 0.01 ? '< 0.01' : estimatedCostNum.toFixed(2)
+  const estimatedSeconds = relevantItemCount * 1.8
+  const estimatedTime = estimatedSeconds < 60
+    ? `~${Math.round(estimatedSeconds)} Sekunden`
+    : `~${Math.floor(estimatedSeconds / 60)}–${Math.ceil(estimatedSeconds / 60) + 1} Minuten`
 
   // Edge Cases / Sonderfälle
   const [edgeCasesOpen, setEdgeCasesOpen] = useState(false)
@@ -487,6 +531,7 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 1200 + Math.random() * 800))
       // Mock-Ergebnis basierend auf Inventory
       const mockResults = {
+        trend_check: { count: Math.floor(inventory.pages.length * 0.4), total: inventory.pages.length + inventory.productCount, highRelevance: Math.floor((inventory.pages.length + inventory.productCount) * 0.4) },
         inline_images: { count: Math.floor(inventory.pages.length * 0.6), total: inventory.pages.length },
         internal_links: { count: Math.floor(inventory.pages.length * 0.4), total: inventory.pages.length },
         tables: { count: Math.floor(inventory.pages.length * 0.2), total: inventory.pages.length },
@@ -927,6 +972,7 @@ export default function Home() {
                         ))}
                       </div>
                       <div style={{ marginTop: 10, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{TEXT_LEVELS[textLevel].detail}</div>
+
                       {textLevel >= 3 && (
                         <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Persona / Zielgruppe</div>
@@ -937,6 +983,76 @@ export default function Home() {
                         <div style={{ marginTop: 10 }}>
                           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>SEO-Keywords (optional)</div>
                           <input style={inputStyle} value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="z. B. TENS Gerät kaufen, Reizstromgerät" />
+                        </div>
+                      )}
+
+                      {/* Relevanz-Filter ab L1 */}
+                      {textLevel >= 1 && (
+                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Relevanz-Filter — Welcher Content wird optimiert?</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Content nicht älter als</div>
+                              <select style={{ width: '100%' }} value={relevanceMaxAge} onChange={e => setRelevanceMaxAge(e.target.value)}>
+                                <option value="all">Kein Limit (alle)</option>
+                                <option value="1">1 Jahr</option>
+                                <option value="2">2 Jahre</option>
+                                <option value="3">3 Jahre</option>
+                                <option value="5">5 Jahre</option>
+                                <option value="10">10 Jahre</option>
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Mindest-Wortanzahl</div>
+                              <select style={{ width: '100%' }} value={relevanceMinWords} onChange={e => setRelevanceMinWords(parseInt(e.target.value))}>
+                                <option value={0}>Kein Minimum</option>
+                                <option value={50}>50 Wörter</option>
+                                <option value={100}>100 Wörter</option>
+                                <option value={200}>200 Wörter</option>
+                                <option value={500}>500 Wörter</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
+                            Zu optimieren: <span style={{ color: '#a5b4fc', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{relevantItemCount}</span> von <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{(inventory?.productCount || 0) + (inventory?.pages?.length || 0)}</span> Einträgen
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Kosten/Zeit Estimate ab L1 */}
+                      {textLevel >= 1 && (
+                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>KI-Verbrauch — Schätzung</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                            <tbody>
+                              {[
+                                { label: 'Geschätzte Token (Input)', value: `~${(relevantItemCount * inputTokensPerItem).toLocaleString('de-DE')}` },
+                                { label: 'Geschätzte Token (Output)', value: `~${(relevantItemCount * outputTokensPerItem).toLocaleString('de-DE')}` },
+                                { label: 'Kosten / 1 Mio. Token (Input)', value: '$0.25' },
+                                { label: 'Kosten / 1 Mio. Token (Output)', value: '$1.25' },
+                                { label: 'Geschätzte Kosten Gesamt', value: `~$${estimatedCost}`, highlight: true },
+                                { label: 'Geschätzte Zeit Gesamt', value: estimatedTime, highlight: true },
+                              ].map((row, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #1e293b' }}>
+                                  <td style={{ padding: '7px 0', color: '#64748b', paddingRight: 24 }}>{row.label}</td>
+                                  <td style={{ padding: '7px 0', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: row.highlight ? 700 : 400, color: row.highlight ? '#a5b4fc' : '#94a3b8' }}>{row.value}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div style={{ marginTop: 8, fontSize: 11, color: '#334155' }}>Schätzung basiert auf Ø {inputTokensPerItem} Input / {outputTokensPerItem} Output-Token pro Eintrag.</div>
+                        </div>
+                      )}
+
+                      {/* Starke Warnung ab L4 */}
+                      {textLevel >= 4 && (
+                        <div style={{ marginTop: 16, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: 14 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>⚠ Hoher KI-Verbrauch bei {TEXT_LEVELS[textLevel].label}</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+                            {textLevel === 4
+                              ? 'L4 integriert Keywords und optimiert die gesamte SEO-Struktur jedes Eintrags. Bei großen Datenmengen empfehlen wir den Relevanz-Filter zu nutzen und nur wichtigen Content zu optimieren.'
+                              : 'L5 erweitert jeden Eintrag um FAQ-Blöcke. Das verdreifacht die Output-Tokens. Für mehr als 50 Einträge sollte zwingend der Relevanz-Filter aktiv sein.'}
+                          </div>
                         </div>
                       )}
                     </div>
