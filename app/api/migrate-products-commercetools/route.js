@@ -2,7 +2,7 @@
 // Quellsystem-spezifische Logik (Shopify) liegt in lib/adapters/shopify/products.js
 // Für andere Zielsysteme: migrate-products-{system}/route.js anlegen
 
-import { optimizeText } from '@/lib/pipeline/text-optimizer'
+import { optimizeText } from '../../../lib/pipeline/text-optimizer'
 
 export const runtime = 'nodejs'
 
