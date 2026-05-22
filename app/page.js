@@ -245,10 +245,10 @@ export default function Home() {
 
   // Control Panel
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
+  const [readonlyPanelOpen, setReadonlyPanelOpen] = useState(false)
   const [textLevel, setTextLevel] = useState(0)
   const [seoPersona, setSeoPersona] = useState('')
   const [seoKeyword, setSeoKeyword] = useState('')
-
   const [selectedStatuses, setSelectedStatuses] = useState(['Active', 'Draft', 'Archived'])
   const [trendMinScore, setTrendMinScore] = useState('none')
   const [trendCheckRunning, setTrendCheckRunning] = useState(false)
@@ -432,6 +432,17 @@ export default function Home() {
     } catch (e) { console.error(e) }
     setMappingLoading(false)
   }
+  function goBackToInventory() {
+  setMapping(null)
+  setReviewedCT(null)
+  setReviewedContentful(null)
+  setReviewConfirmed(false)
+  setDeployResultsCT(null)
+  setDeployResultsContentful(null)
+  setMigrateResultsCT(null)
+  setMigrateResultsContentful(null)
+  setReadonlyPanelOpen(false)
+}
 
   function updateReviewedCT(index, field, value) {
     setReviewedCT(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
@@ -1361,6 +1372,58 @@ export default function Home() {
         {/* MACH Mapping + Review */}
         {mapping && (
           <div className="fade-up" style={{ marginTop: 16 }}>
+
+          {/* Read-only Settings Summary + Zurück-Button */}
+            <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, marginBottom: 16, overflow: 'hidden', opacity: 0.8 }}>
+              <button
+                className="panel-toggle"
+                onClick={() => setReadonlyPanelOpen(o => !o)}
+                style={{ width: '100%', padding: '14px 20px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>⚙ Migration Control Panel</span>
+                  <span style={{ fontSize: 11, color: '#334155', background: '#1e293b', padding: '2px 8px', borderRadius: 4 }}>
+                    {TEXT_LEVELS[textLevel].label} · {selectedStatuses.join(', ')}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>nur lesend</span>
+                </div>
+                <span style={{ color: '#334155', fontSize: 12 }}>{readonlyPanelOpen ? '▲' : '▼'}</span>
+              </button>
+              {readonlyPanelOpen && (
+                <div style={{ padding: '0 20px 20px', borderTop: '1px solid #1a2030' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
+                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Produkt-Status</div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {['Active', 'Draft', 'Archived'].map(s => (
+                          <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: selectedStatuses.includes(s) ? 'rgba(99,102,241,0.12)' : 'transparent', color: selectedStatuses.includes(s) ? '#6366f1' : '#2d3748', border: `1px solid ${selectedStatuses.includes(s) ? '#6366f133' : '#1e293b'}` }}>{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Text-Qualität</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: textLevel === 0 ? '#334155' : '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
+                        <span style={{ fontSize: 11, color: '#475569' }}>{TEXT_LEVELS[textLevel].desc}</span>
+                      </div>
+                    </div>
+                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Edge Cases</div>
+                      <div style={{ fontSize: 12, color: criticalEdgeCases > 0 ? '#ef4444' : '#475569' }}>
+                        {criticalEdgeCases > 0 ? `${criticalEdgeCases} kritische Punkte` : Object.keys(deepCheckResults).length > 0 ? 'Alles geprüft ✓' : 'Nicht geprüft'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={goBackToInventory}
+                    style={{ marginTop: 14, width: '100%', padding: '10px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                  >
+                    ← Zurück zur Inventar-Analyse
+                  </button>
+                </div>
+              )}
+            </div>
+          
             <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
