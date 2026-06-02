@@ -13,6 +13,12 @@
     "react": "^18",
     "react-dom": "^18"
   },
+"dependencies": {
+  "next": "14.2.15",
+  "papaparse": "^5.4.1",
+  "react": "^18",
+  "react-dom": "^18"
+}, 
   "eslintConfig": {
     "extends": "next/core-web-vitals"
   }
