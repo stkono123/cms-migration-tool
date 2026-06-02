@@ -376,7 +376,7 @@ async function handleCSVUpload(file) {
     deepCheckResults[c.id]?.count > 0
   ).length
 
-  const allConnected = shopifyStatus === 'connected' && ctStatus === 'connected' && contentfulStatus === 'connected'
+  const allConnected = (sourceSystem === 'csv' ? !!csvFile : shopifyStatus === 'connected') && ctStatus === 'connected' && contentfulStatus === 'connected'
   const bothDeployed = deployResultsCT && deployResultsContentful
   const bothMigrated = migrateResultsCT && migrateResultsContentful
 
@@ -796,16 +796,50 @@ async function handleCSVUpload(file) {
                   </div>
                 )}
               </div>
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
-                <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
-              </div>
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
-                <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
-              </div>
+
+{sourceSystem !== 'csv' && (
+                <>
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
+                    <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Admin API Token</div>
+                    <input style={inputStyle} value={shopifyTokenEditing ? shopifyTokenReal : shopifyToken} onChange={e => setShopifyTokenReal(e.target.value)} onFocus={() => { setShopifyTokenEditing(true); setShopifyTokenReal('') }} onBlur={() => { if (!shopifyTokenReal) setShopifyTokenEditing(false) }} placeholder="Token eingeben..." type={shopifyTokenEditing ? 'text' : 'password'} />
+                  </div>
+                </>
+              )}
+              {sourceSystem === 'csv' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCsvDragOver(true) }}
+                    onDragLeave={() => setCsvDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setCsvDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleCSVUpload(file) }}
+                    onClick={() => document.getElementById('csv-file-input').click()}
+                    style={{ border: `2px dashed ${csvDragOver ? '#22c55e' : csvFile ? '#22c55e44' : '#1e293b'}`, borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer', background: csvDragOver ? 'rgba(34,197,94,0.05)' : '#080b12', transition: 'all 0.2s' }}
+                  >
+                    {csvFile ? (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#22c55e', marginBottom: 4 }}>✓ {csvFile.name}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken um andere Datei wählen</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>📂</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>CSV hier ablegen</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>oder klicken zum Auswählen · CSV, TSV · UTF-8 oder Latin-1</div>
+                      </div>
+                    )}
+                  </div>
+                  <input id="csv-file-input" type="file" accept=".csv,.tsv" style={{ display: 'none' }} onChange={e => { if (e.target.files[0]) handleCSVUpload(e.target.files[0]) }} />
+                  {csvParseError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{csvParseError}</div>}
+                </div>
+              )}
             </div>
-            <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
+           {sourceSystem === 'csv'
+              ? <ConnectButton status={csvFile ? 'connected' : 'idle'} onClick={() => {}} label="CSV bereit" />
+              : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
+            }
           </div>
 
           {/* commercetools */}
