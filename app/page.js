@@ -250,6 +250,9 @@ export default function Home() {
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
+  const [csvFile, setCsvFile] = useState(null)
+  const [csvDragOver, setCsvDragOver] = useState(false)
+  const [csvParseError, setCsvParseError] = useState(null)
 
   // Control Panel
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
@@ -270,6 +273,49 @@ export default function Home() {
     setTrendCheckRunning(false)
   }
 
+async function handleCSVUpload(file) {
+  if (!file) return
+  setCsvFile(file)
+  setCsvParseError(null)
+  const Papa = (await import('papaparse')).default
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    encoding: 'UTF-8',
+    delimitersToGuess: [',', ';', '\t', '|'],
+    complete: async (results) => {
+      if (results.errors.length > 0 && results.data.length === 0) {
+        setCsvParseError('CSV konnte nicht gelesen werden. Bitte Format prüfen.')
+        return
+      }
+      setAnalyzing(true)
+      setAnimateNumbers(false)
+      setAnalyzeStep(0)
+      const stepInterval = setInterval(() => {
+        setAnalyzeStep(s => s >= analyzeSteps.length - 1 ? s : s + 1)
+      }, 600)
+      try {
+        const res = await fetch('/api/analyze-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: results.data, fileName: file.name })
+        })
+        const data = await res.json()
+        clearInterval(stepInterval)
+        setAnalyzeStep(analyzeSteps.length - 1)
+        await new Promise(r => setTimeout(r, 800))
+        setInventory(data)
+        setTimeout(() => setAnimateNumbers(true), 100)
+      } catch (e) {
+        clearInterval(stepInterval)
+        setCsvParseError('Fehler beim Verarbeiten der CSV.')
+        console.error(e)
+      }
+      setAnalyzing(false)
+    }
+  })
+}
+  
   // Relevanz-Filter & Kosten-Estimate
   const [relevanceMaxAge, setRelevanceMaxAge] = useState('all')
   const [relevanceMinWords, setRelevanceMinWords] = useState(0)
