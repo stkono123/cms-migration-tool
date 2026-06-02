@@ -785,7 +785,9 @@ async function handleCSVUpload(file) {
                 <StatusDot status={shopifyStatus} />
               </div>
                 <div ref={sourceDropdownRef} style={{ position: 'relative', marginBottom: 16 }}>
-                <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>                    {selectedSource?.logo && <selectedSource.logo />}
+                <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {selectedSource?.logo && <selectedSource.logo />}
                     {selectedSource?.label}
                   </div>
                   <span style={{ color: '#64748b', fontSize: 10 }}>▼</span>
