@@ -63,7 +63,7 @@ export async function POST(request) {
       totalContentRows: hasContent && !hasCommerce ? cleanRows.length : 0,
       blogs: [],
       metafields: columns
-        .filter(c => !detectedContentCols.includes(c) && !detectedCommerceCols.includes(c) && c !== slugCol && c !== titleCol)
+        .filter(c => !detectedContentCols.includes(c) && !detectedCommerceCols.includes(c) && c !== slugCol && c !== titleCol && /^[a-zA-Z0-9_]/.test(c.trim()))
         .map(c => ({ namespace: 'csv', key: c, source: 'csv' })),
       metafieldSources: { shop: 0, product: 0 },
       totalRows: cleanRows.length,
