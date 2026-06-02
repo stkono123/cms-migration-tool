@@ -4,7 +4,8 @@
 
 export const runtime = 'nodejs'
 
-import { buildMappingPrompt } from '../../../lib/adapters/shopify/ai-prompt.js'
+import { buildMappingPrompt as buildShopifyPrompt } from '../../../lib/adapters/shopify/ai-prompt.js'
+import { buildMappingPrompt as buildCSVPrompt } from '../../../lib/adapters/csv/ai-prompt.js'
 
 export async function POST(request) {
   try {
@@ -16,8 +17,11 @@ export async function POST(request) {
 
     // Prompt aus Quellsystem-Adapter holen
     // Später: dynamisch anhand von inventory.source wählen
-    const prompt = buildMappingPrompt(inventory, targets)
-
+   
+    const prompt = inventory.source === 'csv'
+      ? buildCSVPrompt(inventory, targets)
+      : buildShopifyPrompt(inventory, targets)
+    
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
