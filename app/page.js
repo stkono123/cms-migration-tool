@@ -250,6 +250,7 @@ export default function Home() {
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [mounted, setMounted] = useState(false)
+  const sourceDropdownRef = useRef(null)
   const [csvFile, setCsvFile] = useState(null)
   const [csvDragOver, setCsvDragOver] = useState(false)
   const [csvParseError, setCsvParseError] = useState(null)
@@ -355,6 +356,15 @@ async function handleCSVUpload(file) {
   const [runningChecks, setRunningChecks] = useState({}) // { checkId: true/false }
 
   useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+  function handleClickOutside(e) {
+    if (sourceDropdownRef.current && !sourceDropdownRef.current.contains(e.target)) {
+      setSourceDropdownOpen(false)
+    }
+  }
+  document.addEventListener('mousedown', handleClickOutside)
+  return () => document.removeEventListener('mousedown', handleClickOutside)
+}, [])
 
   // Wenn Analyse fertig: Blogs und Metafield-Namespaces vorauswählen
   useEffect(() => {
@@ -774,9 +784,8 @@ async function handleCSVUpload(file) {
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
                 <StatusDot status={shopifyStatus} />
               </div>
-              <div style={{ position: 'relative', marginBottom: 16 }}>
-                <button onMouseDown={(e) => { e.preventDefault(); setSourceDropdownOpen(o => !o) }} onClick={() => setSourceDropdownOpen(o => !o)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {selectedSource?.logo && <selectedSource.logo />}
+                <div ref={sourceDropdownRef} style={{ position: 'relative', marginBottom: 16 }}>
+                <button onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)} style={{ width: '100%', background: '#080b12', border: '1px solid #1e293b', borderRadius: 8, padding: '10px 14px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600 }}>                    {selectedSource?.logo && <selectedSource.logo />}
                     {selectedSource?.label}
                   </div>
                   <span style={{ color: '#64748b', fontSize: 10 }}>▼</span>
