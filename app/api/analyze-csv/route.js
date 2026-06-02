@@ -8,7 +8,6 @@ export async function POST(request) {
 
     const columns = Object.keys(rows[0])
 
-    // Encoding-Reparatur: kaputte UTF-8 Sequenzen aus Latin-1-Exports fixen
     const fixEncoding = (str) => {
       if (typeof str !== 'string') return str
       try {
@@ -26,7 +25,6 @@ export async function POST(request) {
       return clean
     })
 
-    // Spalten-Klassifizierung: Content (CF) vs Commerce (CT)
     const contentColumns = ['title', 'name', 'label', 'description', 'body', 'content', 'text', 'summary', 'excerpt', 'meta_description', 'seo_description']
     const commerceColumns = ['price', 'sku', 'stock', 'inventory', 'weight', 'quantity', 'vendor', 'barcode', 'compare_at_price']
 
@@ -34,21 +32,23 @@ export async function POST(request) {
     const detectedCommerceCols = columns.filter(c => commerceColumns.some(k => c.toLowerCase().includes(k)))
 
     const hasCommerce = detectedCommerceCols.length > 0
-    const hasContent = detectedContentCols.length > 0 || (!hasCommerce)
+    const hasContent = detectedContentCols.length > 0 || !hasCommerce
 
-    // Slug-Kandidat ermitteln
     const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path', 'id'].some(k => c.toLowerCase().includes(k)))
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k)))
     const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label'].some(k => c.toLowerCase().includes(k)))
 
-    // Pages aus Rows bauen
-    const pages = cleanRows.map((row, i) => ({
+    // Alle Rows als vollständige Datenbasis — aber nur Preview für UI
+    const allPages = cleanRows.map((row, i) => ({
       id: row[slugCol] || row[columns[0]] || `csv-entry-${i}`,
       title: row[titleCol] || row[columns[1]] || `Eintrag ${i + 1}`,
       body: row[bodyCol] || '',
       handle: (row[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-'),
       sourceRow: row,
     }))
+
+    // UI bekommt nur 5 Preview-Einträge zum Anzeigen als Tags
+    const previewPages = allPages.slice(0, 5).map(p => ({ id: p.id, title: p.title }))
 
     const inventory = {
       shopName: fileName || 'CSV Import',
@@ -58,8 +58,9 @@ export async function POST(request) {
       detectedCommerceCols,
       hasCommerce,
       hasContent,
-      productCount: hasCommerce ? pages.length : 0,
-      pages: hasContent && !hasCommerce ? pages : [],
+      productCount: hasCommerce ? cleanRows.length : 0,
+      pages: hasContent ? previewPages : [],
+      totalContentRows: hasContent && !hasCommerce ? cleanRows.length : 0,
       blogs: [],
       metafields: columns
         .filter(c => !detectedContentCols.includes(c) && !detectedCommerceCols.includes(c) && c !== slugCol && c !== titleCol)
