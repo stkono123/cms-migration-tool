@@ -941,7 +941,7 @@ async function handleCSVUpload(file) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
                 {[
                   { label: 'Produkte', value: inventory.productCount },
-                  { label: 'Pages', value: inventory.pages.length },
+                  { label: 'Pages', value: inventory.totalContentRows || inventory.pages.length },
                   { label: 'Blogs', value: inventory.blogs.length },
                   { label: 'Metafields', value: inventory.metafields.length },
                 ].map(s => (
