@@ -24,8 +24,16 @@ const CTLogo = () => (
   </svg>
 )
 
+const CSVLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="4" fill="#22c55e" opacity="0.15"/>
+    <text x="12" y="16" textAnchor="middle" fill="#22c55e" fontSize="9" fontWeight="bold" fontFamily="monospace">CSV</text>
+  </svg>
+)
+
 const SOURCE_SYSTEMS = [
   { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
+  { id: 'csv', label: 'CSV / Manuell', logo: CSVLogo, available: true },
   { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
   { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
