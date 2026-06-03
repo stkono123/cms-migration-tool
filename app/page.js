@@ -857,7 +857,7 @@ async function handleCSVUpload(file) {
                     {csvFile ? (
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#22c55e', marginBottom: 4 }}>✓ {csvFile.name}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken um andere Datei wählen</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Datei wählen</div>
                       </div>
                     ) : (
                       <div>
