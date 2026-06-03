@@ -9,6 +9,7 @@ export async function POST(request) {
     if (!rows || rows.length === 0) {
       return Response.json({ error: 'Keine Rows übergeben' }, { status: 400 })
     }
+    console.log('Rows erhalten:', rows.length, 'contentCols:', contentCols)
 
     const spaceId = process.env.CONTENTFUL_SPACE_ID
     const token = process.env.CONTENTFUL_CMA_TOKEN
