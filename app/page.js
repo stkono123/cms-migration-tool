@@ -254,6 +254,7 @@ export default function Home() {
   const [csvFile, setCsvFile] = useState(null)
   const [csvDragOver, setCsvDragOver] = useState(false)
   const [csvParseError, setCsvParseError] = useState(null)
+  const [csvTarget, setCsvTarget] = useState('contentful')
 
   // Control Panel
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
@@ -366,9 +367,12 @@ async function handleCSVUpload(file) {
   return () => document.removeEventListener('mousedown', handleClickOutside)
 }, [])
 
-  // Wenn Analyse fertig: Blogs und Metafield-Namespaces vorauswählen
+ // Wenn Analyse fertig: Blogs und Metafield-Namespaces vorauswählen
   useEffect(() => {
     if (inventory) {
+      if (inventory.source === 'csv') {
+        setCsvTarget(inventory.hasCommerce && inventory.hasContent ? 'both' : inventory.hasCommerce ? 'commercetools' : 'contentful')
+      }
       setSelectedBlogs(inventory.blogs.map(b => b.id))
       const namespaces = [...new Set(inventory.metafields.map(m => m.namespace))]
       setSelectedMetafieldNamespaces(namespaces)
@@ -486,8 +490,7 @@ async function handleCSVUpload(file) {
       const res = await fetch('/api/ai-mapping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inventory })
-      })
+        body: JSON.stringify({ inventory, csvTarget })      })
       const parsed = await res.json()
       setMapping(parsed)
       setReviewedCT(parsed.commercetools?.contentTypes?.map(ct => ({ ...ct })) || [])
@@ -1459,6 +1462,32 @@ async function handleCSVUpload(file) {
                 </div>
               )}
             </div>
+
+{/* CSV Ziel-Auswahl */}
+            {inventory.source === 'csv' && (
+              <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Erkanntes Migrationsziel</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+                  Basierend auf den Spalten haben wir das Ziel vorausgewählt. Du kannst es übersteuern.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { id: 'contentful', label: 'Contentful', color: '#FAE501', desc: 'Pages, redaktionelle Inhalte' },
+                    { id: 'commercetools', label: 'commercetools', color: '#00B2E3', desc: 'Produkte, Preise, SKUs' },
+                    { id: 'both', label: 'Beides', color: '#a5b4fc', desc: 'Gemischte Daten aufteilen' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setCsvTarget(opt.id)}
+                      style={{ flex: 1, padding: '12px 16px', borderRadius: 10, border: `1px solid ${csvTarget === opt.id ? opt.color + '66' : '#1e293b'}`, background: csvTarget === opt.id ? opt.color + '15' : '#080b12', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.2s' }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, color: csvTarget === opt.id ? opt.color : '#64748b', marginBottom: 4 }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: '#475569' }}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* KI Mapping Button */}
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
