@@ -2,8 +2,8 @@
 // Aktuell: Pages aus Shopify nach Contentful
 // Für andere Zielsysteme: migrate-content-{system}/route.js anlegen
 
-export const runtime = 'nodejs'
 import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
+export const runtime = 'nodejs'
 
 export async function POST(request) {
   try {
