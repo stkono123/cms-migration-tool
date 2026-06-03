@@ -561,6 +561,29 @@ async function handleCSVUpload(file) {
     setMigratingCT(false)
   }
 
+  async function migrateCSVContent() {
+      setMigratingContentful(true)
+      try {
+        const res = await fetch('/api/migrate-content-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rows: inventory.pages.map(p => p.sourceRow || p),
+            contentCols: inventory.detectedContentCols || [],
+            settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+            target: csvTarget,
+          })
+        })
+        const data = await res.json()
+        setMigrateResultsContentful(data.results?.slice(0, 50).map(r => ({
+          title: r.data?.[inventory.detectedContentCols?.[0]] || `Eintrag ${r.index + 1}`,
+          status: r.status,
+          error: r.error,
+        })) || [])
+      } catch (e) { console.error(e) }
+      setMigratingContentful(false)
+    }
+  
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
@@ -1672,7 +1695,7 @@ async function handleCSVUpload(file) {
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
                       {inventory?.pages.length || 0} Pages werden migriert
                     </div>
-                    <button onClick={migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
+                    <button onClick={inventory.source === 'csv' ? migrateCSVContent : migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
                       {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren →'}
                     </button>
                     {migrateResultsContentful && (
