@@ -1661,31 +1661,32 @@ async function handleCSVUpload(file) {
               {bothDeployed && (
                 <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
                   <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
-
-                  <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <CTLogo />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
-                      <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
-                      <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
-                    </div>
-                    <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
-                      {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
-                    </button>
-                    {migrateResultsCT && (
-                      <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
-                        {migrateResultsCT.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
-                            <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
-                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
-                          </div>
-                        ))}
+                  {(inventory?.source !== 'csv' || csvTarget === 'commercetools' || csvTarget === 'both') && (
+                    <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                        <CTLogo />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte → commercetools</span>
                       </div>
-                    )}
-                  </div>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
+                        <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
+                        <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
+                      </div>
+                      <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
+                        {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren →`}
+                      </button>
+                      {migrateResultsCT && (
+                        <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
+                          {migrateResultsCT.map((r, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                              <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
+                              <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -1693,7 +1694,7 @@ async function handleCSVUpload(file) {
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages → Contentful</span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-                      {inventory?.pages.length || 0} Pages werden migriert
+                      {inventory?.totalContentRows || inventory?.pages.length || 0} Pages werden migriert
                     </div>
                     <button onClick={inventory.source === 'csv' ? migrateCSVContent : migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
                       {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren →'}
@@ -1711,7 +1712,7 @@ async function handleCSVUpload(file) {
                   </div>
                 </div>
               )}
-
+              {!bothMigrated && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
                   {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
@@ -1720,6 +1721,7 @@ async function handleCSVUpload(file) {
                   {resettingContentful ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
                 </button>
               </div>
+              )}
             </div>
           </div>
         )}
