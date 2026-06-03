@@ -254,6 +254,7 @@ export default function Home() {
   const [csvFile, setCsvFile] = useState(null)
   const [csvDragOver, setCsvDragOver] = useState(false)
   const [csvParseError, setCsvParseError] = useState(null)
+  const [csvRawRows, setCsvRawRows] = useState([])
   const [csvTarget, setCsvTarget] = useState('contentful')
 
   // Control Panel
@@ -290,6 +291,7 @@ async function handleCSVUpload(file) {
         setCsvParseError('CSV konnte nicht gelesen werden. Bitte Format prüfen.')
         return
       }
+      setCsvRawRows(results.data)
       setAnalyzing(true)
       setAnimateNumbers(false)
       setAnalyzeStep(0)
@@ -568,7 +570,7 @@ async function handleCSVUpload(file) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            rows: inventory.pages.map(p => p.sourceRow || p),
+            rows: csvRawRows,
             contentCols: inventory.detectedContentCols || [],
             settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
             target: csvTarget,
@@ -576,7 +578,7 @@ async function handleCSVUpload(file) {
         })
         const data = await res.json()
         setMigrateResultsContentful(data.results?.slice(0, 50).map(r => ({
-          title: r.data?.[inventory.detectedContentCols?.[0]] || `Eintrag ${r.index + 1}`,
+          title: r.data?.[inventory.columns?.find(c => ['title', 'name', 'label', 'headline', 'uid'].some(k => c.toLowerCase().includes(k)))] || r.data?.[inventory.columns?.[1]] || `Eintrag ${r.index + 1}`,
           status: r.status,
           error: r.error,
         })) || [])
