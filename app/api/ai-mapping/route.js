@@ -9,8 +9,7 @@ import { buildMappingPrompt as buildCSVPrompt } from '../../../lib/adapters/csv/
 
 export async function POST(request) {
   try {
-    const { inventory, targets = ['commercetools', 'Contentful'] } = await request.json()
-
+    const { inventory, targets = ['commercetools', 'Contentful'], csvTarget } = await request.json()
     if (!inventory) {
       return Response.json({ error: 'Kein Inventar übergeben. Bitte zuerst die Analyse ausführen.' }, { status: 400 })
     }
@@ -19,7 +18,7 @@ export async function POST(request) {
     // Später: dynamisch anhand von inventory.source wählen
    
     const prompt = inventory.source === 'csv'
-      ? buildCSVPrompt(inventory, targets)
+      ? buildCSVPrompt(inventory, targets, csvTarget)
       : buildShopifyPrompt(inventory, targets)
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
