@@ -1,5 +1,6 @@
-export const runtime = 'nodejs'
 import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
 export async function POST(request) {
   try {
