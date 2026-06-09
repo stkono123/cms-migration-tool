@@ -58,6 +58,12 @@ const TEXT_LEVELS = [
   { level: 5, label: 'L5', desc: 'FAQ & AIO-Erweiterung', detail: 'L4 + FAQ-Blöcke für Featured Snippets und AIO.' },
 ]
 
+// ─────────────────────────────────────────────────────────────────
+// SYSTEM-SEITEN: Handles die nie optimiert werden sollten (Default)
+// Wird im Optimierungsfilter als eigene Gruppe behandelt.
+// ─────────────────────────────────────────────────────────────────
+const SYSTEM_PAGE_HANDLES = ['cookie', 'datenschutz', 'impressum', 'agb', 'privacy-policy', 'legal']
+
 // Deep-Check Definitionen — was wir nicht aus dem Inventar ableiten können
 const DEEP_CHECKS = [
   {
@@ -324,6 +330,17 @@ async function handleCSVUpload(file) {
   const [relevanceMaxAge, setRelevanceMaxAge] = useState('all')
   const [relevanceMinWords, setRelevanceMinWords] = useState(0)
 
+// ─────────────────────────────────────────────────────────────────
+  // OPTIMIERUNGSFILTER — Welche Einträge werden optimiert?
+  // Logik: ODER innerhalb einer Gruppe, UND zwischen aktiven Gruppen.
+  // Systemseiten sind per Default ausgeschlossen.
+  // ─────────────────────────────────────────────────────────────────
+  const [includeSystemPages, setIncludeSystemPages] = useState(false)
+  const [optimizeFilterType, setOptimizeFilterType] = useState('all') // 'all' | 'status' | 'tag' | 'age'
+  const [optimizeByStatus, setOptimizeByStatus] = useState([])        // z.B. ['Active']
+  const [optimizeByTag, setOptimizeByTag] = useState('')               // Freitext, Semikolon-getrennt
+  const [optimizeByAge, setOptimizeByAge] = useState('all')           // 'all' | '1' | '2' | '3' | '5' | '10'
+  
   // Token-Schätzung pro Level (Input / Output)
   const TOKEN_ESTIMATES = {
     1: { input: 200, output: 220 },
@@ -1215,14 +1232,68 @@ async function handleCSVUpload(file) {
                         </div>
                       )}
 
-                      {/* Relevanz-Filter ab L1 */}
+                      {/* ── OPTIMIERUNGSFILTER ab L1 ── */}
                       {textLevel >= 1 && (
                         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Relevanz-Filter — Welcher Content wird optimiert?</div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Optimierungsfilter — Welcher Content wird optimiert?</div>
+
+                          {/* Dropdown: Filterkriterium wählen */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Filtern nach</div>
+                            <select style={{ width: '100%' }} value={optimizeFilterType} onChange={e => setOptimizeFilterType(e.target.value)}>
+                              <option value="all">Alle Einträge optimieren</option>
+                              <option value="status">Status (Active / Draft / Archived)</option>
+                              <option value="tag">Tag</option>
+                              <option value="age">Content-Alter</option>
+                            </select>
+                          </div>
+
+                          {/* Status-Filter */}
+                          {optimizeFilterType === 'status' && (
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Status einschliessen (ODER-Logik)</div>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {['Active', 'Draft', 'Archived'].map(s => {
+                                  const isOn = optimizeByStatus.includes(s)
+                                  return (
+                                    <span
+                                      key={s}
+                                      className="chip"
+                                      onClick={() => setOptimizeByStatus(prev =>
+                                        prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+                                      )}
+                                      style={{
+                                        background: isOn ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.08)',
+                                        border: `1px solid ${isOn ? '#22c55e44' : '#6366f122'}`,
+                                        color: isOn ? '#22c55e' : '#6366f1',
+                                        cursor: 'pointer',
+                                      }}
+                                    >{isOn ? '✓ ' : ''}{s}</span>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Tag-Filter */}
+                          {optimizeFilterType === 'tag' && (
+                            <div style={{ marginBottom: 12 }}>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Tags einschliessen (ODER-Logik)</div>
+                              <div style={{ fontSize: 10, color: '#334155', marginBottom: 6 }}>Mehrere Tags mit Semikolon trennen — ein Eintrag mit einem dieser Tags wird optimiert</div>
+                              <input
+                                style={{ ...inputStyle, width: '100%' }}
+                                value={optimizeByTag}
+                                onChange={e => setOptimizeByTag(e.target.value)}
+                                placeholder="z. B. seo-relevant;topprodukt;highlight"
+                              />
+                            </div>
+                          )}
+
+                          {/* Alters-Filter */}
+                          {optimizeFilterType === 'age' && (
+                            <div style={{ marginBottom: 12 }}>
                               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Content nicht älter als</div>
-                              <select style={{ width: '100%' }} value={relevanceMaxAge} onChange={e => setRelevanceMaxAge(e.target.value)}>
+                              <select style={{ width: '100%' }} value={optimizeByAge} onChange={e => setOptimizeByAge(e.target.value)}>
                                 <option value="all">Kein Limit (alle)</option>
                                 <option value="1">1 Jahr</option>
                                 <option value="2">2 Jahre</option>
@@ -1231,22 +1302,47 @@ async function handleCSVUpload(file) {
                                 <option value="10">10 Jahre</option>
                               </select>
                             </div>
+                          )}
+
+                          {/* Systemseiten — immer sichtbar wenn textLevel > 0 */}
+                          <div style={{ marginTop: 8, padding: 12, background: '#080b12', borderRadius: 8, border: '1px solid #1e293b', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <input
+                              type="checkbox"
+                              id="include-system-pages"
+                              checked={includeSystemPages}
+                              onChange={e => setIncludeSystemPages(e.target.checked)}
+                              style={{ accentColor: '#6366f1', marginTop: 2, flexShrink: 0 }}
+                            />
                             <div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Mindest-Wortanzahl</div>
-                              <select style={{ width: '100%' }} value={relevanceMinWords} onChange={e => setRelevanceMinWords(parseInt(e.target.value))}>
-                                <option value={0}>Kein Minimum</option>
-                                <option value={50}>50 Wörter</option>
-                                <option value={100}>100 Wörter</option>
-                                <option value={200}>200 Wörter</option>
-                                <option value={500}>500 Wörter</option>
-                              </select>
+                              <label htmlFor="include-system-pages" style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                Systemseiten optimieren
+                                {/* Tooltip */}
+                                <span
+                                  title={`Systemseiten werden standardmässig von der KI-Optimierung ausgeschlossen:\n${SYSTEM_PAGE_HANDLES.join(', ')}\n\nDiese Seiten sind rechtlich oder technisch vorgegeben und profitieren selten von einer inhaltlichen Optimierung.`}
+                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#1e293b', color: '#64748b', fontSize: 9, fontWeight: 700, cursor: 'help', border: '1px solid #334155', flexShrink: 0 }}
+                                >?</span>
+                              </label>
+                              <div style={{ fontSize: 11, color: '#334155', marginTop: 2 }}>
+                                Betrifft: {SYSTEM_PAGE_HANDLES.join(', ')}
+                              </div>
                             </div>
                           </div>
+
+                          {/* Live-Zähler */}
                           <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
-                            Zu optimieren: <span style={{ color: '#a5b4fc', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{relevantItemCount}</span> von <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{(inventory?.productCount || 0) + (inventory?.pages?.length || 0)}</span> Einträgen
+                            Zu optimieren:{' '}
+                            <span style={{ color: '#a5b4fc', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{relevantItemCount}</span>
+                            {' '}von{' '}
+                            <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{(inventory?.productCount || 0) + (inventory?.pages?.length || 0)}</span>
+                            {' '}Einträgen
+                            {!includeSystemPages && (
+                              <span style={{ color: '#334155', marginLeft: 6, fontSize: 11 }}>(Systemseiten ausgeschlossen)</span>
+                            )}
                           </div>
                         </div>
                       )}
+
+                      {/* ── KOSTEN/ZEIT-SCHÄTZUNG ab L1 ── */}
 
                       {/* Kosten/Zeit Estimate ab L1 */}
                       {textLevel >= 1 && (
