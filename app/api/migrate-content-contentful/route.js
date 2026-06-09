@@ -114,4 +114,89 @@ export async function POST(request) {
 
     if (!pageContentType) {
       return Response.json({
-        error: 'Kein passender Conte
+        error: 'Kein passender Content Type gefunden',
+        availableTypes: contentTypes.map(ct => ct.sys.id)
+      }, { status: 400 })
+    }
+
+    const contentTypeId = pageContentType.sys.id
+    const fields = pageContentType.fields || []
+
+    const titleField = fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
+    const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
+    const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
+
+    const columns = Object.keys(rows[0])
+    const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
+    const slugCol  = columns.find(c => ['uid', 'slug', 'handle', 'url'].some(k => c.toLowerCase().includes(k))) || columns[0]
+    const bodyCol  = columns.find(c => ['description', 'body', 'content', 'text'].some(k => c.toLowerCase().includes(k)))
+
+    const results = []
+    const migrationLog = []
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      try {
+        const { optimized, log } = await optimizeCSVRow(row, contentCols, settings)
+        if (log.length > 0) migrationLog.push({ index: i, entries: log })
+
+        const entryFields = {}
+        const titleValue = optimized[titleCol] || `Eintrag ${i + 1}`
+        const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        const bodyValue = bodyCol ? (optimized[bodyCol] || '') : ''
+
+        if (titleField) entryFields[titleField.id] = { 'en-US': titleValue }
+        if (slugField)  entryFields[slugField.id]  = { 'en-US': slugValue }
+        if (bodyField)  entryFields[bodyField.id]  = { 'en-US': bodyValue }
+
+        for (const field of fields) {
+          if (entryFields[field.id]) continue
+          const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
+          if (matchingCol && optimized[matchingCol]) {
+            entryFields[field.id] = { 'en-US': optimized[matchingCol].toString() }
+          }
+        }
+
+        const res = await fetch(
+          `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/vnd.contentful.management.v1+json',
+              'X-Contentful-Content-Type': contentTypeId
+            },
+            body: JSON.stringify({ fields: entryFields })
+          }
+        )
+        const data = await res.json()
+        if (res.ok) {
+          results.push({ index: i, status: 'success', title: titleValue })
+        } else {
+          results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler' })
+        }
+      } catch (e) {
+        results.push({ index: i, status: 'error', title: `Eintrag ${i + 1}`, error: e.message })
+        migrationLog.push({ index: i, entries: [{ action: 'error', error: e.message }] })
+      }
+    }
+
+    const successCount = results.filter(r => r.status === 'success').length
+    return Response.json({
+      results,
+      summary: {
+        total: rows.length,
+        success: successCount,
+        errors: rows.length - successCount,
+        encodingFixed: migrationLog.flatMap(l => l.entries).filter(e => e.action === 'encoding_fixed').length,
+        enhanced: migrationLog.flatMap(l => l.entries).filter(e => e.action?.startsWith('l')).length,
+      },
+      migrationLog,
+      contentTypeUsed: contentTypeId,
+    })
+
+  } catch (e) {
+    console.error(e)
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
