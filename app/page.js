@@ -1075,7 +1075,7 @@ async function handleCSVUpload(file) {
               )}
             </div>
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
-              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
+              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten \u2192'}
             </button>
           </div>
         )}
@@ -1654,7 +1654,7 @@ async function handleCSVUpload(file) {
 
             {/* KI Mapping Button */}
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
-              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
+              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten \u2192'}
             </button>
           </div>
         )}
