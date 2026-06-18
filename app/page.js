@@ -987,55 +987,98 @@ async function handleCSVUpload(file) {
             <div style={{ background: '#0f1623', border: '1px solid #166534', borderRadius: 14, padding: 28, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                  <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
+                  <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
                   <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
                 </div>
-                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
+                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-                {[
-                  { label: 'Produkte', value: inventory.productCount },
-                  { label: 'Pages', value: inventory.totalContentRows || inventory.pages.length },
-                  { label: 'Blogs', value: inventory.blogs.length },
-                  { label: 'Metafields', value: inventory.metafields.length },
-                ].map(s => (
-                  <div key={s.label} style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
-                      <AnimatedNumber value={s.value} animate={animateNumbers} />
-                    </div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+
+                {/* Produkte */}
+                <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <AnimatedNumber value={inventory.productCount} animate={animateNumbers} />
                   </div>
-                ))}
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Produkte</div>
+                  {(inventory.productCountDraft > 0 || inventory.productCountArchived > 0) && (
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
+                      {inventory.productCountDraft > 0 && <span style={{ marginRight: 6 }}>{inventory.productCountDraft} Entwurf</span>}
+                      {inventory.productCountArchived > 0 && <span>{inventory.productCountArchived} archiviert</span>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pages */}
+                <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <AnimatedNumber value={inventory.pages.length} animate={animateNumbers} />
+                  </div>
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pages</div>
+                  {inventory.pagesHidden > 0 && (
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
+                      <span style={{ marginRight: 6 }}>{inventory.pagesPublished} sichtbar</span>
+                      <span>{inventory.pagesHidden} versteckt</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Blogs */}
+                <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <AnimatedNumber value={inventory.blogs.length} animate={animateNumbers} />
+                  </div>
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Blogs</div>
+                  {inventory.blogs.some(b => b.articleCountUnpublished > 0) && (
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
+                      <span style={{ marginRight: 6 }}>{inventory.blogs.reduce((s, b) => s + b.articleCountPublished, 0)} pub.</span>
+                      <span>{inventory.blogs.reduce((s, b) => s + b.articleCountUnpublished, 0)} unveröff.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metafields */}
+                <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <AnimatedNumber value={inventory.metafields.length} animate={animateNumbers} />
+                  </div>
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Metafields</div>
+                </div>
+
               </div>
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
-                  {inventory.pages.map(p => <span key={p.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{p.title}</span>)}
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>pages: </span>
+                  {inventory.pages.map(p => (
+                    <span key={p.id} style={{ background: p.published ? '#1e293b' : '#2d1a1a', border: p.published ? 'none' : '1px solid #7f1d1d', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block', color: p.published ? '#cbd5e1' : '#f87171' }}>
+                      {p.title}{!p.published && ' ·versteckt'}
+                    </span>
+                  ))}
                 </div>
               )}
               {inventory.blogs.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
-                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
-                  {inventory.blogs.map(b => <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>{b.title}</span>)}
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>blogs: </span>
+                  {inventory.blogs.map(b => (
+                    <span key={b.id} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6 }}>
+                      {b.title}
+                      {b.articleCountUnpublished > 0 && <span style={{ color: '#f59e0b', marginLeft: 4 }}>({b.articleCountPublished}+{b.articleCountUnpublished})</span>}
+                    </span>
+                  ))}
                 </div>
               )}
               {inventory.metafields.length > 0 && (
                 <div style={{ fontSize: 13 }}>
-                  <span style={{ color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>meta-fields: </span>
-                  {inventory.metafieldSources && (
-                    <span style={{ fontSize: 11, color: '#64748b', marginRight: 8 }}>
-                      ({inventory.metafieldSources.shop} Shop-Level, {inventory.metafieldSources.product} Produkt-Level)
-                    </span>
-                  )}
-                  {inventory.metafields.slice(0, 10).map(m => (
-                    <span key={`${m.namespace}.${m.key}`} style={{ background: m.source === 'product' ? 'rgba(99,102,241,0.12)' : '#1e293b', border: m.source === 'product' ? '1px solid #6366f122' : 'none', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block', color: m.source === 'product' ? '#a5b4fc' : '#cbd5e1' }}>
-                      {m.namespace}.{m.key}
-                    </span>
-                  ))}
-                  {inventory.metafields.length > 10 && <span style={{ color: '#64748b', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
+                  <span style={{ color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>metafields: </span>
+                  {inventory.metafields.slice(0, 10).map(m => <span key={`${m.namespace}.${m.key}`} style={{ background: '#1e293b', borderRadius: 4, padding: '2px 8px', fontSize: 12, marginRight: 6, marginBottom: 4, display: 'inline-block' }}>{m.namespace}.{m.key}</span>)}
+                  {inventory.metafields.length > 10 && <span style={{ color: '#475569', fontSize: 12 }}>+{inventory.metafields.length - 10} weitere</span>}
                 </div>
               )}
             </div>
+            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
+              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten →'}
+            </button>
+          </div>
+        )}
 
             {/* ═══════════════════════════════════════════════════
                 SEKTION 1 — MIGRATION CONTROL PANEL
