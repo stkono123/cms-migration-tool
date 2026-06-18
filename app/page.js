@@ -1865,7 +1865,7 @@ async function handleCSVUpload(file) {
         </div>
       </div>
     )}
-  </div>
-</>
+      </div>
+    </>
   )
 }
