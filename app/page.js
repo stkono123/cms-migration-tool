@@ -1857,7 +1857,7 @@ async function handleCSVUpload(file) {
                 <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
                   {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
                 </button>
-                <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
+              <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
                   {resettingContentful ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
                 </button>
               </div>
