@@ -1626,246 +1626,246 @@ async function handleCSVUpload(file) {
               )}
             </div>
 
+
 {/* CSV Ziel-Auswahl */}
-            {inventory.source === 'csv' && (
-              <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Erkanntes Migrationsziel</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
-                  Basierend auf den Spalten haben wir das Ziel vorausgewählt. Du kannst es übersteuern.
+        {inventory.source === 'csv' && (
+          <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Erkanntes Migrationsziel</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+              Basierend auf den Spalten haben wir das Ziel vorausgewählt. Du kannst es übersteuern.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { id: 'contentful', label: 'Contentful', color: '#FAE501', desc: 'Pages, redaktionelle Inhalte' },
+                { id: 'commercetools', label: 'commercetools', color: '#00B2E3', desc: 'Produkte, Preise, SKUs' },
+                { id: 'both', label: 'Beides', color: '#a5b4fc', desc: 'Gemischte Daten aufteilen' },
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setCsvTarget(opt.id)}
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: 10, border: `1px solid ${csvTarget === opt.id ? opt.color + '66' : '#1e293b'}`, background: csvTarget === opt.id ? opt.color + '15' : '#080b12', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.2s' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: csvTarget === opt.id ? opt.color : '#64748b', marginBottom: 4 }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: '#475569' }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* KI Mapping Button */}
+        <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
+          {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten \u2192'}
+        </button>
+      </div>
+    )}
+
+    {/* MACH Mapping + Review */}
+    {mapping && (
+      <div className="fade-up" style={{ marginTop: 16 }}>
+
+        {/* Read-only Settings Summary + Zurück-Button */}
+        <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, marginBottom: 16, overflow: 'hidden', opacity: 0.8 }}>
+          <button
+            className="panel-toggle"
+            onClick={() => setReadonlyPanelOpen(o => !o)}
+            style={{ width: '100%', padding: '14px 20px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>⚙ Migration Control Panel</span>
+              <span style={{ fontSize: 11, color: '#334155', background: '#1e293b', padding: '2px 8px', borderRadius: 4 }}>
+                {TEXT_LEVELS[textLevel].label} · {selectedStatuses.join(', ')}
+              </span>
+              <span style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>nur lesend</span>
+            </div>
+            <span style={{ color: '#334155', fontSize: 12 }}>{readonlyPanelOpen ? '▲' : '▼'}</span>
+          </button>
+          {readonlyPanelOpen && (
+            <div style={{ padding: '0 20px 20px', borderTop: '1px solid #1a2030' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
+                <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Produkt-Status</div>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {['Active', 'Draft', 'Archived'].map(s => (
+                      <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: selectedStatuses.includes(s) ? 'rgba(99,102,241,0.12)' : 'transparent', color: selectedStatuses.includes(s) ? '#6366f1' : '#2d3748', border: `1px solid ${selectedStatuses.includes(s) ? '#6366f133' : '#1e293b'}` }}>{s}</span>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[
-                    { id: 'contentful', label: 'Contentful', color: '#FAE501', desc: 'Pages, redaktionelle Inhalte' },
-                    { id: 'commercetools', label: 'commercetools', color: '#00B2E3', desc: 'Produkte, Preise, SKUs' },
-                    { id: 'both', label: 'Beides', color: '#a5b4fc', desc: 'Gemischte Daten aufteilen' },
-                  ].map(opt => (
-                    <button
-                      key={opt.id}
-                      onClick={() => setCsvTarget(opt.id)}
-                      style={{ flex: 1, padding: '12px 16px', borderRadius: 10, border: `1px solid ${csvTarget === opt.id ? opt.color + '66' : '#1e293b'}`, background: csvTarget === opt.id ? opt.color + '15' : '#080b12', cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all 0.2s' }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: csvTarget === opt.id ? opt.color : '#64748b', marginBottom: 4 }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: '#475569' }}>{opt.desc}</div>
-                    </button>
+                <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Text-Qualität</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: textLevel === 0 ? '#334155' : '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
+                    <span style={{ fontSize: 11, color: '#475569' }}>{TEXT_LEVELS[textLevel].desc}</span>
+                  </div>
+                </div>
+                <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Edge Cases</div>
+                  <div style={{ fontSize: 12, color: criticalEdgeCases > 0 ? '#ef4444' : '#475569' }}>
+                    {criticalEdgeCases > 0 ? `${criticalEdgeCases} kritische Punkte` : Object.keys(deepCheckResults).length > 0 ? 'Alles geprüft \u2713' : 'Nicht geprüft'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={goBackToInventory}
+                style={{ marginTop: 14, width: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+              >
+                \u2190 Zurück zur Inventar-Analyse
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
+          <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
+            <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+            <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <CTLogo />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>commercetools</span>
+              </div>
+              <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.commercetools?.description}</p>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#00B2E3' }}>{mapping.commercetools?.contentTypes?.length || 0} Types</div>
+            </div>
+            <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <ContentfulLogo />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Contentful</span>
+              </div>
+              <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.contentful?.description}</p>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#FAE501' }}>{mapping.contentful?.contentTypes?.length || 0} Types</div>
+            </div>
+          </div>
+
+          {!reviewConfirmed && reviewedCT && reviewedContentful && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
+                \u26a0 Bitte prüfe die Namen vor dem Anlegen. Du kannst Name und ID direkt bearbeiten. Erst nach Deiner Bestätigung wird das Model angelegt.
+              </div>
+              <ReviewSection title="commercetools — Produkte & Commerce" color="#00B2E3" items={reviewedCT} onUpdate={updateReviewedCT} logo={CTLogo} />
+              <ReviewSection title="Contentful — Content & Redaktion" color="#FAE501" items={reviewedContentful} onUpdate={updateReviewedContentful} logo={ContentfulLogo} />
+              <button onClick={() => setReviewConfirmed(true)} style={{ width: '100%', marginTop: 8, padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', color: '#000', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
+                \u2713 Namen bestätigen und weiter
+              </button>
+            </div>
+          )}
+
+          {reviewConfirmed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>\u2713 Namen bestätigt</div>
+              <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#64748b', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
+            </div>
+          )}
+
+          {reviewConfirmed && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+              <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff' }}>
+                {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '\u2713 commercetools Model angelegt' : 'commercetools Model anlegen \u2192'}
+              </button>
+              <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#64748b' : deployResultsContentful ? '#22c55e' : '#000' }}>
+                {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '\u2713 Contentful Model angelegt' : 'Contentful Model anlegen \u2192'}
+              </button>
+            </div>
+          )}
+
+          {(deployResultsCT || deployResultsContentful) && (
+            <div style={{ marginBottom: 24 }}>
+              {deployResultsCT && (
+                <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 16, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#00B2E3', fontWeight: 700, marginBottom: 10 }}>commercetools — Product Types</div>
+                  {deployResultsCT.map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
+                      <span>{r.name}</span>
+                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '\u2713 angelegt' : `\u2717 ${r.error}`}</span>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* KI Mapping Button */}
-            <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
-              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten \u2192'}
-            </button>
-          </div>
-        )}
-
-        {/* MACH Mapping + Review */}
-        {mapping && (
-          <div className="fade-up" style={{ marginTop: 16 }}>
-
-          {/* Read-only Settings Summary + Zurück-Button */}
-            <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, marginBottom: 16, overflow: 'hidden', opacity: 0.8 }}>
-              <button
-                className="panel-toggle"
-                onClick={() => setReadonlyPanelOpen(o => !o)}
-                style={{ width: '100%', padding: '14px 20px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>⚙ Migration Control Panel</span>
-                  <span style={{ fontSize: 11, color: '#334155', background: '#1e293b', padding: '2px 8px', borderRadius: 4 }}>
-                    {TEXT_LEVELS[textLevel].label} · {selectedStatuses.join(', ')}
-                  </span>
-                  <span style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>nur lesend</span>
-                </div>
-                <span style={{ color: '#334155', fontSize: 12 }}>{readonlyPanelOpen ? '▲' : '▼'}</span>
-              </button>
-              {readonlyPanelOpen && (
-                <div style={{ padding: '0 20px 20px', borderTop: '1px solid #1a2030' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
-                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Produkt-Status</div>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {['Active', 'Draft', 'Archived'].map(s => (
-                          <span key={s} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: selectedStatuses.includes(s) ? 'rgba(99,102,241,0.12)' : 'transparent', color: selectedStatuses.includes(s) ? '#6366f1' : '#2d3748', border: `1px solid ${selectedStatuses.includes(s) ? '#6366f133' : '#1e293b'}` }}>{s}</span>
-                        ))}
-                      </div>
+              )}
+              {deployResultsContentful && (
+                <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 12, color: '#FAE501', fontWeight: 700, marginBottom: 10 }}>Contentful — Content Types</div>
+                  {deployResultsContentful.map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
+                      <span>{r.name}</span>
+                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '\u2713 angelegt' : `\u2717 ${r.error}`}</span>
                     </div>
-                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Text-Qualität</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 18, fontWeight: 800, color: textLevel === 0 ? '#334155' : '#6366f1', fontFamily: 'JetBrains Mono, monospace' }}>{TEXT_LEVELS[textLevel].label}</span>
-                        <span style={{ fontSize: 11, color: '#475569' }}>{TEXT_LEVELS[textLevel].desc}</span>
-                      </div>
-                    </div>
-                    <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Edge Cases</div>
-                      <div style={{ fontSize: 12, color: criticalEdgeCases > 0 ? '#ef4444' : '#475569' }}>
-                        {criticalEdgeCases > 0 ? `${criticalEdgeCases} kritische Punkte` : Object.keys(deepCheckResults).length > 0 ? 'Alles geprüft ✓' : 'Nicht geprüft'}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={goBackToInventory}
-                    style={{ marginTop: 14, width: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-                  >
-                    ← Zurück zur Inventar-Analyse
-                  </button>
+                  ))}
                 </div>
               )}
             </div>
-          
-            <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
-              <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
-              </div>
+          )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          {bothDeployed && (
+            <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
+              {(inventory?.source !== 'csv' || csvTarget === 'commercetools' || csvTarget === 'both') && (
+                <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <CTLogo />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>commercetools</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte \u2192 commercetools</span>
                   </div>
-                  <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.commercetools?.description}</p>
-                  <div style={{ marginTop: 8, fontSize: 11, color: '#00B2E3' }}>{mapping.commercetools?.contentTypes?.length || 0} Types</div>
-                </div>
-                <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <ContentfulLogo />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Contentful</span>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
+                    <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
+                    <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
                   </div>
-                  <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.contentful?.description}</p>
-                  <div style={{ marginTop: 8, fontSize: 11, color: '#FAE501' }}>{mapping.contentful?.contentTypes?.length || 0} Types</div>
+                  <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
+                    {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `\u2713 ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren \u2192`}
+                  </button>
+                  {migrateResultsCT && (
+                    <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
+                      {migrateResultsCT.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                          <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
+                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '\u2713' : `\u2717 ${r.error}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              )}
+              <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <ContentfulLogo />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages \u2192 Contentful</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
+                  {inventory?.totalContentRows || inventory?.pages.length || 0} Pages werden migriert
+                </div>
+                <button onClick={inventory.source === 'csv' ? migrateCSVContent : migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
+                  {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `\u2713 ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren \u2192'}
+                </button>
+                {migrateResultsContentful && (
+                  <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
+                    {migrateResultsContentful.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                        <span style={{ color: '#94a3b8' }}>{r.title}</span>
+                        <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '\u2713' : `\u2717 ${r.error}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {!reviewConfirmed && reviewedCT && reviewedContentful && (
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
-                    ⚠ Bitte prüfe die Namen vor dem Anlegen. Du kannst Name und ID direkt bearbeiten. Erst nach Deiner Bestätigung wird das Model angelegt.
-                  </div>
-                  <ReviewSection title="commercetools — Produkte & Commerce" color="#00B2E3" items={reviewedCT} onUpdate={updateReviewedCT} logo={CTLogo} />
-                  <ReviewSection title="Contentful — Content & Redaktion" color="#FAE501" items={reviewedContentful} onUpdate={updateReviewedContentful} logo={ContentfulLogo} />
-                  <button onClick={() => setReviewConfirmed(true)} style={{ width: '100%', marginTop: 8, padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', color: '#000', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
-                    ✓ Namen bestätigen und weiter
-                  </button>
-                </div>
-              )}
-
-              {reviewConfirmed && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>✓ Namen bestätigt</div>
-                  <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#64748b', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
-                </div>
-              )}
-
-              {reviewConfirmed && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                  <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff' }}>
-                    {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '✓ commercetools Model angelegt' : 'commercetools Model anlegen \u2192'}
-                  </button>
-                  <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#64748b' : deployResultsContentful ? '#22c55e' : '#000' }}>
-                    {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '✓ Contentful Model angelegt' : 'Contentful Model anlegen \u2192'}
-                  </button>
-                </div>
-              )}
-
-              {(deployResultsCT || deployResultsContentful) && (
-                <div style={{ marginBottom: 24 }}>
-                  {deployResultsCT && (
-                    <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 16, marginBottom: 10 }}>
-                      <div style={{ fontSize: 12, color: '#00B2E3', fontWeight: 700, marginBottom: 10 }}>commercetools — Product Types</div>
-                      {deployResultsCT.map(r => (
-                        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
-                          <span>{r.name}</span>
-                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {deployResultsContentful && (
-                    <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 16 }}>
-                      <div style={{ fontSize: 12, color: '#FAE501', fontWeight: 700, marginBottom: 10 }}>Contentful — Content Types</div>
-                      {deployResultsContentful.map(r => (
-                        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
-                          <span>{r.name}</span>
-                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '✓ angelegt' : `✗ ${r.error}`}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {bothDeployed && (
-                <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
-                  {(inventory?.source !== 'csv' || csvTarget === 'commercetools' || csvTarget === 'both') && (
-                    <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <CTLogo />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte \u2192 commercetools</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
-                        <input type="number" min={1} value={productLimit} onChange={e => setProductLimit(parseInt(e.target.value) || 10)} style={{ ...inputStyle, width: 80 }} />
-                        <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
-                      </div>
-                      <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
-                        {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `✓ ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren \u2192`}
-                      </button>
-                      {migrateResultsCT && (
-                        <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
-                          {migrateResultsCT.map((r, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
-                              <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
-                              <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <ContentfulLogo />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages \u2192 Contentful</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-                      {inventory?.totalContentRows || inventory?.pages.length || 0} Pages werden migriert
-                    </div>
-                    <button onClick={inventory.source === 'csv' ? migrateCSVContent : migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
-                      {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `✓ ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren \u2192'}
-                    </button>
-                    {migrateResultsContentful && (
-                      <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
-                        {migrateResultsContentful.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
-                            <span style={{ color: '#94a3b8' }}>{r.title}</span>
-                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '✓' : `✗ ${r.error}`}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {!bothMigrated && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-                  <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
-                    {resettingCT ? 'Wird geleert...' : '↺ commercetools zurücksetzen'}
-                  </button>
-                  <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
-                    {resettingContentful ? 'Wird geleert...' : '↺ Contentful zurücksetzen'}
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          )}
+          {!bothMigrated && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
+                {resettingCT ? 'Wird geleert...' : '\u21ba commercetools zurücksetzen'}
+              </button>
+              <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
+                {resettingContentful ? 'Wird geleert...' : '\u21ba Contentful zurücksetzen'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    )}
+  </div>
+</>
   )
 }
