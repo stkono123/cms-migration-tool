@@ -1850,7 +1850,8 @@ async function handleCSVUpload(file) {
                       </div>
                     )}
                   </div>
-                </div>
+                 </div>
+              <div>
               {!bothMigrated && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                   <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
@@ -1861,6 +1862,7 @@ async function handleCSVUpload(file) {
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </div>
         )}
