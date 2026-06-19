@@ -1265,7 +1265,7 @@ export default function Home() {
                   {(inventory.pagesHidden || 0) > 0 && (
                     <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
                       <span style={{ marginRight: 6 }}>{inventory.pagesPublished} sichtbar</span>
-                      <span>{inventory.pagesHidden} versteckt</span>
+                      <span>{inventory.pagesHidden} (hidden)</span>
                     </div>
                   )}
                 </div>
@@ -1306,7 +1306,7 @@ export default function Home() {
                         color: p.published ? '#cbd5e1' : '#f87171',
                       }}
                     >
-                      {p.title}{!p.published && ' versteckt'}
+                      {p.title}{!p.published && ' (hidden)'}
                     </span>
                   ))}
                 </div>
