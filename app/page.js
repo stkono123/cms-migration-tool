@@ -1,36 +1,30 @@
 'use client'
-
 import { useState, useEffect, useRef } from 'react'
-
 const ShopifyLogo = () => (
   <svg width="18" height="18" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg">
     <path d="M223.773 57.334c-.226-1.68-1.698-2.578-2.914-2.692-1.209-.12-26.69-1.98-26.69-1.98s-17.811-17.698-19.718-19.605c-1.907-1.907-5.608-1.335-7.065-.904-.21.061-3.886 1.196-10.02 3.09C151.693 23.961 141.254 8 124.076 8c-.452 0-.904.015-1.363.045C118.6 2.699 113.37 0 108.84 0 73.255 0 56.16 44.567 50.69 67.184c-13.883 4.299-23.72 7.34-24.895 7.717-7.718 2.428-7.958 2.669-8.968 9.946C15.889 90.748 0 211.688 0 211.688l165.973 31.16L256 218.109S223.999 59.013 223.773 57.334z" fill="#95BF47"/>
   </svg>
 )
-
 const ContentfulLogo = () => (
   <svg width="18" height="18" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
     <circle cx="64" cy="64" r="64" fill="#FAE501"/>
     <path d="M48.9 88.1c-8.5-8.5-8.5-22.3 0-30.8 4.1-4.1 9.5-6.4 15.4-6.4s11.3 2.3 15.4 6.4l9.2-9.2c-6.6-6.6-15.4-10.3-24.6-10.3S47.1 41.5 40.5 48.1c-13.6 13.6-13.6 35.7 0 49.3 6.6 6.6 15.4 10.3 24.6 10.3s18-3.7 24.6-10.3l-9.2-9.2c-4.1 4.1-9.5 6.4-15.4 6.4s-11.3-2.3-15.2-6.5z" fill="#2478CC"/>
     <circle cx="43.5" cy="43.5" r="8.5" fill="#E5422B"/>
-    <circle cx="84.5" cy="84.5" r="8.5" fill="#219D6E"/> 
+    <circle cx="84.5" cy="84.5" r="8.5" fill="#219D6E"/>
   </svg>
 )
-
 const CTLogo = () => (
   <svg width="18" height="18" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="50" fill="#00B2E3"/>
     <text x="50" y="67" textAnchor="middle" fill="white" fontSize="42" fontWeight="bold" fontFamily="Arial">ct</text>
   </svg>
 )
-
 const CSVLogo = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <rect width="24" height="24" rx="4" fill="#22c55e" opacity="0.15"/>
     <text x="12" y="16" textAnchor="middle" fill="#22c55e" fontSize="9" fontWeight="bold" fontFamily="monospace">CSV</text>
   </svg>
 )
-
 const SOURCE_SYSTEMS = [
   { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
   { id: 'csv', label: 'CSV / Manuell', logo: CSVLogo, available: true },
@@ -38,7 +32,6 @@ const SOURCE_SYSTEMS = [
   { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
 ]
-
 const PIPELINE_STEPS = [
   { id: 'connect', label: 'Verbinden' },
   { id: 'analyse', label: 'Analysieren' },
@@ -48,7 +41,6 @@ const PIPELINE_STEPS = [
   { id: 'migrate', label: 'Migrieren' },
   { id: 'done', label: 'Fertig' },
 ]
-
 const TEXT_LEVELS = [
   { level: 0, label: 'L0', desc: 'Text 1:1 übernehmen', detail: 'Kein KI-Eingriff. Originaltext bleibt unverändert.' },
   { level: 1, label: 'L1', desc: 'Rechtschreibung & Grammatik', detail: 'Fehler werden korrigiert, Stil bleibt erhalten.' },
@@ -57,13 +49,11 @@ const TEXT_LEVELS = [
   { level: 4, label: 'L4', desc: 'SEO-Optimierung', detail: 'L3 + Keyword-Integration und SEO-Struktur.' },
   { level: 5, label: 'L5', desc: 'FAQ & AIO-Erweiterung', detail: 'L4 + FAQ-Blöcke für Featured Snippets und AIO.' },
 ]
-
 // ─────────────────────────────────────────────────────────────────
 // SYSTEM-SEITEN: Handles die nie optimiert werden sollten (Default)
 // Wird im Optimierungsfilter als eigene Gruppe behandelt.
 // ─────────────────────────────────────────────────────────────────
 const SYSTEM_PAGE_HANDLES = ['cookie', 'datenschutz', 'impressum', 'agb', 'privacy-policy', 'legal']
-
 // Deep-Check Definitionen — was wir nicht aus dem Inventar ableiten können
 const DEEP_CHECKS = [
   {
@@ -195,7 +185,6 @@ const DEEP_CHECKS = [
     }
   },
 ]
-
 function useCountUp(target, duration = 1200, start = false) {
   const [value, setValue] = useState(0)
   const frameRef = useRef(null)
@@ -214,12 +203,10 @@ function useCountUp(target, duration = 1200, start = false) {
   }, [target, start, duration])
   return value
 }
-
 function AnimatedNumber({ value, animate }) {
   const displayed = useCountUp(value, 1200, animate)
   return <>{displayed}</>
 }
-
 export default function Home() {
   const [sourceSystem, setSourceSystem] = useState('shopify')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
@@ -262,7 +249,6 @@ export default function Home() {
   const [csvParseError, setCsvParseError] = useState(null)
   const [csvRawRows, setCsvRawRows] = useState([])
   const [csvTarget, setCsvTarget] = useState('contentful')
-
   // Control Panel
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
   const [readonlyPanelOpen, setReadonlyPanelOpen] = useState(false)
@@ -273,7 +259,6 @@ export default function Home() {
   const [trendMinScore, setTrendMinScore] = useState('none')
   const [trendCheckRunning, setTrendCheckRunning] = useState(false)
   const [trendCheckResult, setTrendCheckResult] = useState(null)
-
   async function runTrendCheck() {
     setTrendCheckRunning(true)
     await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000))
@@ -281,7 +266,6 @@ export default function Home() {
     setTrendCheckResult({ total, highRelevance: Math.round(total * 0.38) })
     setTrendCheckRunning(false)
   }
-
 async function handleCSVUpload(file) {
   if (!file) return
   setCsvFile(file)
@@ -325,11 +309,12 @@ async function handleCSVUpload(file) {
     }
   })
 }
-  
+
+
+
   // Relevanz-Filter & Kosten-Estimate
   const [relevanceMaxAge, setRelevanceMaxAge] = useState('all')
   const [relevanceMinWords, setRelevanceMinWords] = useState(0)
-
 // ─────────────────────────────────────────────────────────────────
   // OPTIMIERUNGSFILTER — Welche Einträge werden optimiert?
   // Logik: ODER innerhalb einer Gruppe, UND zwischen aktiven Gruppen.
@@ -340,7 +325,9 @@ async function handleCSVUpload(file) {
   const [optimizeByStatus, setOptimizeByStatus] = useState([])        // z.B. ['Active']
   const [optimizeByTag, setOptimizeByTag] = useState('')               // Freitext, Semikolon-getrennt
   const [optimizeByAge, setOptimizeByAge] = useState('all')           // 'all' | '1' | '2' | '3' | '5' | '10'
-  
+
+
+
   // Token-Schätzung pro Level (Input / Output)
   const TOKEN_ESTIMATES = {
     1: { input: 200, output: 220 },
@@ -351,13 +338,11 @@ async function handleCSVUpload(file) {
   }
   const inputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.input || 200
   const outputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.output || 200
-
   // Relevante Item-Anzahl schätzen (vereinfacht ohne echten Content-Scan)
   const totalItems = inventory ? inventory.productCount + inventory.pages.length : 0
   const relevantItemCount = relevanceMaxAge === 'all' && relevanceMinWords === 0
     ? totalItems
     : Math.max(1, Math.round(totalItems * (relevanceMaxAge === '1' ? 0.3 : relevanceMaxAge === '2' ? 0.5 : relevanceMaxAge === '3' ? 0.65 : relevanceMaxAge === '5' ? 0.8 : 0.9) * (relevanceMinWords >= 200 ? 0.6 : relevanceMinWords >= 100 ? 0.75 : relevanceMinWords >= 50 ? 0.85 : 1)))
-
   const totalInputTokens = relevantItemCount * inputTokensPerItem
   const totalOutputTokens = relevantItemCount * outputTokensPerItem
   const estimatedCostNum = (totalInputTokens / 1_000_000 * 0.25) + (totalOutputTokens / 1_000_000 * 1.25)
@@ -366,7 +351,6 @@ async function handleCSVUpload(file) {
   const estimatedTime = estimatedSeconds < 60
     ? `~${Math.round(estimatedSeconds)} Sekunden`
     : `~${Math.floor(estimatedSeconds / 60)}–${Math.ceil(estimatedSeconds / 60) + 1} Minuten`
-
   // Edge Cases / Sonderfälle
   const [edgeCasesOpen, setEdgeCasesOpen] = useState(false)
   const [selectedBlogs, setSelectedBlogs] = useState([])
@@ -374,7 +358,6 @@ async function handleCSVUpload(file) {
   const [deepCheckResults, setDeepCheckResults] = useState({}) // { checkId: { status, count, total, ... } }
   const [deepCheckActions, setDeepCheckActions] = useState({}) // { checkId: selectedOptionIndex }
   const [runningChecks, setRunningChecks] = useState({}) // { checkId: true/false }
-
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
   function handleClickOutside(e) {
@@ -385,7 +368,6 @@ async function handleCSVUpload(file) {
   document.addEventListener('mousedown', handleClickOutside)
   return () => document.removeEventListener('mousedown', handleClickOutside)
 }, [])
-
  // Wenn Analyse fertig: Blogs und Metafield-Namespaces vorauswählen
   useEffect(() => {
     if (inventory) {
@@ -401,18 +383,15 @@ async function handleCSVUpload(file) {
       setDeepCheckActions(defaults)
     }
   }, [inventory])
-
   // Anzahl kritischer Edge Cases (gefunden und nicht behandelt)
   const criticalEdgeCases = DEEP_CHECKS.filter(c =>
     c.severity === 'critical' &&
     deepCheckResults[c.id]?.status === 'found' &&
     deepCheckResults[c.id]?.count > 0
   ).length
-
   const allConnected = (sourceSystem === 'csv' ? !!csvFile : shopifyStatus === 'connected') && ctStatus === 'connected' && contentfulStatus === 'connected'
   const bothDeployed = deployResultsCT && deployResultsContentful
   const bothMigrated = migrateResultsCT && migrateResultsContentful
-
   const currentStep = () => {
     if (bothMigrated) return 'done'
     if (migratingCT || migratingContentful) return 'migrate'
@@ -427,7 +406,6 @@ async function handleCSVUpload(file) {
     if (allConnected) return 'analyse'
     return 'connect'
   }
-
   const getStepStatus = (stepId) => {
     const order = PIPELINE_STEPS.map(s => s.id)
     const current = currentStep()
@@ -438,7 +416,6 @@ async function handleCSVUpload(file) {
     if (stepIdx === currentIdx) return 'active'
     return 'pending'
   }
-
   const analyzeSteps = [
     'Verbinde mit Shopify...',
     'Lade Produkte...',
@@ -447,7 +424,6 @@ async function handleCSVUpload(file) {
     'Untersuche Theme & Sections...',
     'KI bereitet MACH-Mapping vor...',
   ]
-
   async function testShopify() {
     setShopifyStatus('loading')
     try {
@@ -457,7 +433,6 @@ async function handleCSVUpload(file) {
       else setShopifyStatus('error')
     } catch { setShopifyStatus('error') }
   }
-
   async function testCT() {
     setCtStatus('loading')
     try {
@@ -467,7 +442,6 @@ async function handleCSVUpload(file) {
       else setCtStatus('error')
     } catch { setCtStatus('error') }
   }
-
   async function testContentful() {
     setContentfulStatus('loading')
     try {
@@ -477,7 +451,6 @@ async function handleCSVUpload(file) {
       else setContentfulStatus('error')
     } catch { setContentfulStatus('error') }
   }
-
   async function analyze() {
     setAnalyzing(true)
     setAnimateNumbers(false)
@@ -502,7 +475,6 @@ async function handleCSVUpload(file) {
     }
     setAnalyzing(false)
   }
-
   async function startMapping() {
     setMappingLoading(true)
     try {
@@ -519,25 +491,22 @@ async function handleCSVUpload(file) {
     setMappingLoading(false)
   }
   function goBackToInventory() {
-  setMapping(null)
-  setReviewedCT(null)
-  setReviewedContentful(null)
-  setReviewConfirmed(false)
-  setDeployResultsCT(null)
-  setDeployResultsContentful(null)
-  setMigrateResultsCT(null)
-  setMigrateResultsContentful(null)
-  setReadonlyPanelOpen(false)
-}
-
+    setMapping(null)
+    setReviewedCT(null)
+    setReviewedContentful(null)
+    setReviewConfirmed(false)
+    setDeployResultsCT(null)
+    setDeployResultsContentful(null)
+    setMigrateResultsCT(null)
+    setMigrateResultsContentful(null)
+    setReadonlyPanelOpen(false)
+  }
   function updateReviewedCT(index, field, value) {
     setReviewedCT(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
   }
-
   function updateReviewedContentful(index, field, value) {
     setReviewedContentful(prev => prev.map((ct, i) => i === index ? { ...ct, [field]: value } : ct))
   }
-
   async function deployCTModel() {
     setDeployingCT(true)
     try {
@@ -551,7 +520,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setDeployingCT(false)
   }
-
   async function deployContentfulModel() {
     setDeployingContentful(true)
     try {
@@ -565,7 +533,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setDeployingContentful(false)
   }
-
   async function migrateProductsToCT() {
     setMigratingCT(true)
     try {
@@ -579,7 +546,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setMigratingCT(false)
   }
-
   async function migrateCSVContent() {
       setMigratingContentful(true)
       try {
@@ -602,7 +568,9 @@ async function handleCSVUpload(file) {
       } catch (e) { console.error(e) }
       setMigratingContentful(false)
     }
-  
+
+
+
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
@@ -616,7 +584,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setMigratingContentful(false)
   }
-
   async function resetContentful() {
     if (!confirm('Alle Contentful Entries und Content Types löschen?')) return
     setResettingContentful(true)
@@ -627,7 +594,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setResettingContentful(false)
   }
-
   async function resetCT() {
     if (!confirm('Alle commercetools Produkte und Product Types löschen?')) return
     setResettingCT(true)
@@ -638,7 +604,6 @@ async function handleCSVUpload(file) {
     } catch (e) { console.error(e) }
     setResettingCT(false)
   }
-
   function reset() {
     setInventory(null)
     setAnimateNumbers(false)
@@ -657,7 +622,6 @@ async function handleCSVUpload(file) {
     setDeepCheckResults({})
     setRunningChecks({})
   }
-
   async function runDeepCheck(check) {
     setRunningChecks(prev => ({ ...prev, [check.id]: true }))
     try {
@@ -686,45 +650,37 @@ async function handleCSVUpload(file) {
     }
     setRunningChecks(prev => ({ ...prev, [check.id]: false }))
   }
-
   function toggleBlog(blogId) {
     setSelectedBlogs(prev =>
       prev.includes(blogId) ? prev.filter(id => id !== blogId) : [...prev, blogId]
     )
   }
-
   function toggleNamespace(ns) {
     setSelectedMetafieldNamespaces(prev =>
       prev.includes(ns) ? prev.filter(n => n !== ns) : [...prev, ns]
     )
   }
-
   const selectedSource = SOURCE_SYSTEMS.find(s => s.id === sourceSystem)
   if (!mounted) return null
-
   const inputStyle = {
     width: '100%', background: '#080b12', border: '1px solid #1e293b',
     borderRadius: 6, padding: '8px 12px', color: '#e2e8f0',
     fontFamily: 'JetBrains Mono, monospace', fontSize: 12, outline: 'none'
   }
-
   const reviewInputStyle = {
     background: '#080b12', border: '1px solid #312e81',
     borderRadius: 6, padding: '6px 10px', color: '#e2e8f0',
     fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600,
     outline: 'none', width: '100%'
   }
-
   const StatusDot = ({ status }) => (
     <div style={{ width: 10, height: 10, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : status === 'loading' ? '#f59e0b' : '#334155', boxShadow: status === 'connected' ? '0 0 8px #22c55e' : 'none', ...(status === 'loading' ? { animation: 'pulse 1s infinite' } : {}) }} />
   )
-
   const ConnectButton = ({ status, onClick, label }) => (
     <button onClick={onClick} style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', background: status === 'connected' ? 'rgba(34,197,94,0.15)' : status === 'error' ? 'rgba(239,68,68,0.15)' : '#1e293b', color: status === 'connected' ? '#22c55e' : status === 'error' ? '#ef4444' : '#94a3b8', transition: 'all 0.2s' }}>
-      {status === 'loading' ? 'Verbinde...' : status === 'connected' ? `✓ ${label} verbunden` : status === 'error' ? '✗ Fehler – Erneut versuchen' : 'Verbindung testen'}
+      {status === 'loading' ? 'Verbinde...' : status === 'connected' ? `[OK] ${label} verbunden` : status === 'error' ? '[X] Fehler – Erneut versuchen' : 'Verbindung testen'}
     </button>
   )
-
   const ReviewSection = ({ title, color, items, onUpdate, logo: Logo }) => (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -753,16 +709,13 @@ async function handleCSVUpload(file) {
       </div>
     </div>
   )
-
   // Severity Farben
   const severityColor = { critical: '#ef4444', warning: '#f59e0b', info: '#6366f1' }
   const severityLabel = { critical: 'Kritisch', warning: 'Warnung', info: 'Info' }
-
   // Metafield-Namespaces aus Inventar
   const metafieldNamespaces = inventory
     ? [...new Set(inventory.metafields.map(m => m.namespace))]
     : []
-
   return (
     <>
       <style>{`
@@ -787,7 +740,6 @@ async function handleCSVUpload(file) {
         select { background: #080b12; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 10px; color: #e2e8f0; font-family: Inter, sans-serif; font-size: 12px; outline: none; cursor: pointer; }
         select:focus { border-color: #6366f1; }
       `}</style>
-
       {/* Sticky Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 0' }}>
@@ -802,7 +754,7 @@ async function handleCSVUpload(file) {
                   <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                       <div style={{ width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b', color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#64748b', border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent', boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none', transition: 'all 0.3s', ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {}) }}>
-                        {status === 'done' ? '✓' : i + 1}
+                        {status === 'done' ? '[OK]' : i + 1}
                       </div>
                       <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155', whiteSpace: 'nowrap', transition: 'color 0.3s' }}>{step.label}</div>
                     </div>
@@ -816,12 +768,9 @@ async function handleCSVUpload(file) {
           </div>
         </div>
       </div>
-
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 48px' }}>
-
         {/* CONNECTION CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-
           {/* Shopify */}
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${shopifyStatus === 'connected' ? '#166534' : shopifyStatus === 'error' ? '#7f1d1d' : '#1e293b'}`, borderRadius: 14, padding: 24, animationDelay: '0.1s', transition: 'border-color 0.3s', overflow: 'visible' }}>
             <div className="card-body">
@@ -850,7 +799,6 @@ async function handleCSVUpload(file) {
                   </div>
                 )}
               </div>
-
 {sourceSystem !== 'csv' && (
                 <>
                   <div style={{ marginBottom: 10 }}>
@@ -874,7 +822,7 @@ async function handleCSVUpload(file) {
                   >
                     {csvFile ? (
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#22c55e', marginBottom: 4 }}>✓ {csvFile.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#22c55e', marginBottom: 4 }}>[OK] {csvFile.name}</div>
                         <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Datei wählen</div>
                       </div>
                     ) : (
@@ -895,7 +843,6 @@ async function handleCSVUpload(file) {
               : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
             }
           </div>
-
           {/* commercetools */}
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`, borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
@@ -914,7 +861,6 @@ async function handleCSVUpload(file) {
             </div>
             <ConnectButton status={ctStatus} onClick={testCT} label="commercetools" />
           </div>
-
           {/* Contentful */}
           <div className="fade-up card" style={{ background: '#0f1623', border: `1px solid ${contentfulStatus === 'connected' ? '#166534' : contentfulStatus === 'error' ? '#7f1d1d' : '#FAE50133'}`, borderRadius: 14, padding: 24, animationDelay: '0.3s', transition: 'border-color 0.3s' }}>
             <div className="card-body">
@@ -938,7 +884,6 @@ async function handleCSVUpload(file) {
             <ConnectButton status={contentfulStatus} onClick={testContentful} label="Contentful" />
           </div>
         </div>
-
         {/* Model Mode Toggle */}
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
@@ -953,12 +898,11 @@ async function handleCSVUpload(file) {
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
               {modelMode === 'create'
-                ? 'Produkte &#x2192; commercetools. Pages und Blogs &#x2192; Contentful. Du prüfst die Namen vor dem Anlegen.'
+                ? 'Produkte >> commercetools. Pages und Blogs >> Contentful. Du prüfst die Namen vor dem Anlegen.'
                 : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
             </div>
           </div>
         )}
-
         {/* Analyse Button */}
         {allConnected && !inventory && !analyzing && (
           <div className="fade-up">
@@ -967,7 +911,6 @@ async function handleCSVUpload(file) {
             </button>
           </div>
         )}
-
         {/* Analyse Loading */}
         {analyzing && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
@@ -980,7 +923,6 @@ async function handleCSVUpload(file) {
             </div>
           </div>
         )}
-
         {/* Inventar */}
         {inventory && !mapping && (
           <div className="fade-up">
@@ -990,10 +932,9 @@ async function handleCSVUpload(file) {
                   <div style={{ fontSize: 12, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>// Analyse abgeschlossen</div>
                   <h2 style={{ fontSize: 20, fontWeight: 700 }}>{inventory.shopName}</h2>
                 </div>
-                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↺ Reset</button>
+                <button onClick={reset} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>(Reset) Reset</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-
                 {/* Produkte */}
                 <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -1007,7 +948,6 @@ async function handleCSVUpload(file) {
                     </div>
                   )}
                 </div>
-
                 {/* Pages */}
                 <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -1021,7 +961,6 @@ async function handleCSVUpload(file) {
                     </div>
                   )}
                 </div>
-
                 {/* Blogs */}
                 <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -1035,7 +974,6 @@ async function handleCSVUpload(file) {
                     </div>
                   )}
                 </div>
-
                 {/* Metafields */}
                 <div style={{ background: '#080b12', border: '1px solid #166534', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -1043,7 +981,6 @@ async function handleCSVUpload(file) {
                   </div>
                   <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Metafields</div>
                 </div>
-
               </div>
               {inventory.pages.length > 0 && (
                 <div style={{ marginBottom: 10, fontSize: 13 }}>
@@ -1075,11 +1012,10 @@ async function handleCSVUpload(file) {
               )}
             </div>
             <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#475569' : '#fff' }}>
-              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten &#x2192;'}
+              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten >>'}
             </button>
           </div>
         )}
-
             {/* ═══════════════════════════════════════════════════
                 SEKTION 1 — MIGRATION CONTROL PANEL
             ═══════════════════════════════════════════════════ */}
@@ -1095,10 +1031,8 @@ async function handleCSVUpload(file) {
                 </div>
                 <span style={{ color: '#64748b', fontSize: 12 }}>{controlPanelOpen ? '▲' : '▼'}</span>
               </button>
-
               {controlPanelOpen && (
                 <div style={{ padding: '0 24px 24px', borderTop: '1px solid #1e293b' }}>
-
                   {/* Produkt-Filter */}
                   <div style={{ marginTop: 20, marginBottom: 20 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Produkt-Filter</div>
@@ -1119,7 +1053,7 @@ async function handleCSVUpload(file) {
                                   color: isOn ? '#22c55e' : '#6366f1',
                                   cursor: 'pointer',
                                 }}
-                              >{isOn ? '✓ ' : ''}{s}</span>
+                              >{isOn ? '[OK] ' : ''}{s}</span>
                             )
                           })}
                         </div>
@@ -1131,9 +1065,7 @@ async function handleCSVUpload(file) {
                       </div>
                     </div>
                   </div>
-
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
-
                   {/* Produkt-Varianten */}
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Produkt-Varianten</div>
@@ -1150,9 +1082,7 @@ async function handleCSVUpload(file) {
                       ))}
                     </div>
                   </div>
-
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
-
                   {/* Produkt-Bilder */}
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Produkt-Bilder</div>
@@ -1168,9 +1098,7 @@ async function handleCSVUpload(file) {
                       </div>
                     </div>
                   </div>
-
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
-
                   {/* SKU */}
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>SKU-Behandlung</div>
@@ -1189,9 +1117,7 @@ async function handleCSVUpload(file) {
                       </div>
                     </div>
                   </div>
-
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
-
                   {/* Text-Qualität Slider */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>Text-Qualität</div>
@@ -1205,7 +1131,7 @@ async function handleCSVUpload(file) {
                           {textLevel === 0
                             ? 'Kein KI-Eingriff'
                             : textLevel >= 4
-                              ? `⚠ Hoher KI-Verbrauch · ~$${estimatedCost}`
+                              ? `(!) Hoher KI-Verbrauch · ~$${estimatedCost}`
                               : `KI aktiv · ~$${estimatedCost} · ${estimatedTime}`}
                         </span>
                       </div>
@@ -1220,7 +1146,6 @@ async function handleCSVUpload(file) {
                         ))}
                       </div>
                       <div style={{ marginTop: 10, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{TEXT_LEVELS[textLevel].detail}</div>
-
                       {textLevel >= 3 && (
                         <div style={{ marginTop: 12 }}>
                           <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Persona / Zielgruppe</div>
@@ -1233,7 +1158,6 @@ async function handleCSVUpload(file) {
                           <input style={inputStyle} value={seoKeyword} onChange={e => setSeoKeyword(e.target.value)} placeholder="z. B. TENS Gerät kaufen, Reizstromgerät" />
                         </div>
                       )}
-
                       {/* Trend-Check & Fokus-Segment ab L1 */}
                       {textLevel >= 1 && (
                         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
@@ -1261,7 +1185,7 @@ async function handleCSVUpload(file) {
                             {trendCheckRunning ? (
                               <><span style={{ width: 12, height: 12, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> KI analysiert Keyword-Relevanz...</>
                             ) : trendCheckResult ? (
-                              `↺ Trend-Check wiederholen · ${trendCheckResult.highRelevance} von ${trendCheckResult.total} Einträgen relevant`
+                              `(Reset) Trend-Check wiederholen · ${trendCheckResult.highRelevance} von ${trendCheckResult.total} Einträgen relevant`
                             ) : (
                               '✦ Trend-Check starten — KI bewertet Suchrelevanz aller Inhalte'
                             )}
@@ -1274,12 +1198,10 @@ async function handleCSVUpload(file) {
                           )}
                         </div>
                       )}
-
                       {/* ── OPTIMIERUNGSFILTER ab L1 ── */}
                       {textLevel >= 1 && (
                         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Optimierungsfilter — Welcher Content wird optimiert?</div>
-
                           {/* Dropdown: Filterkriterium wählen */}
                           <div style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Filtern nach</div>
@@ -1290,7 +1212,6 @@ async function handleCSVUpload(file) {
                               <option value="age">Content-Alter</option>
                             </select>
                           </div>
-
                           {/* Status-Filter */}
                           {optimizeFilterType === 'status' && (
                             <div style={{ marginBottom: 12 }}>
@@ -1311,13 +1232,12 @@ async function handleCSVUpload(file) {
                                         color: isOn ? '#22c55e' : '#6366f1',
                                         cursor: 'pointer',
                                       }}
-                                    >{isOn ? '✓ ' : ''}{s}</span>
+                                    >{isOn ? '[OK] ' : ''}{s}</span>
                                   )
                                 })}
                               </div>
                             </div>
                           )}
-
                           {/* Tag-Filter */}
                           {optimizeFilterType === 'tag' && (
                             <div style={{ marginBottom: 12 }}>
@@ -1331,7 +1251,6 @@ async function handleCSVUpload(file) {
                               />
                             </div>
                           )}
-
                           {/* Alters-Filter */}
                           {optimizeFilterType === 'age' && (
                             <div style={{ marginBottom: 12 }}>
@@ -1346,7 +1265,6 @@ async function handleCSVUpload(file) {
                               </select>
                             </div>
                           )}
-
                           {/* Systemseiten — immer sichtbar wenn textLevel > 0 */}
                           <div style={{ marginTop: 8, padding: 12, background: '#080b12', borderRadius: 8, border: '1px solid #1e293b', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <input
@@ -1370,7 +1288,6 @@ async function handleCSVUpload(file) {
                               </div>
                             </div>
                           </div>
-
                           {/* Live-Zähler */}
                           <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
                             Zu optimieren:{' '}
@@ -1384,9 +1301,7 @@ async function handleCSVUpload(file) {
                           </div>
                         </div>
                       )}
-
                       {/* ── KOSTEN/ZEIT-SCHÄTZUNG ab L1 ── */}
-
                       {/* Kosten/Zeit Estimate ab L1 */}
                       {textLevel >= 1 && (
                         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
@@ -1411,11 +1326,10 @@ async function handleCSVUpload(file) {
                           <div style={{ marginTop: 8, fontSize: 11, color: '#334155' }}>Schätzung basiert auf Ø {inputTokensPerItem} Input / {outputTokensPerItem} Output-Token pro Eintrag.</div>
                         </div>
                       )}
-
                       {/* Starke Warnung ab L4 */}
                       {textLevel >= 4 && (
                         <div style={{ marginTop: 16, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: 14 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>⚠ Hoher KI-Verbrauch bei {TEXT_LEVELS[textLevel].label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>(!) Hoher KI-Verbrauch bei {TEXT_LEVELS[textLevel].label}</div>
                           <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
                             {textLevel === 4
                               ? 'L4 integriert Keywords und optimiert die gesamte SEO-Struktur jedes Eintrags. Bei großen Datenmengen empfehlen wir den Relevanz-Filter zu nutzen und nur wichtigen Content zu optimieren.'
@@ -1428,7 +1342,6 @@ async function handleCSVUpload(file) {
                 </div>
               )}
             </div>
-
             {/* ═══════════════════════════════════════════════════
                 SEKTION 2 — SONDERFÄLLE & EDGE CASES
             ═══════════════════════════════════════════════════ */}
@@ -1439,7 +1352,7 @@ async function handleCSVUpload(file) {
                 style={{ width: '100%', padding: '16px 24px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'Inter, sans-serif' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>⚠ Sonderfälle & Edge Cases</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>(!) Sonderfälle & Edge Cases</span>
                   {criticalEdgeCases > 0 && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 20, padding: '2px 10px' }}>
                       {criticalEdgeCases} kritisch
@@ -1454,17 +1367,14 @@ async function handleCSVUpload(file) {
                 </div>
                 <span style={{ color: '#64748b', fontSize: 12 }}>{edgeCasesOpen ? '▲' : '▼'}</span>
               </button>
-
               {edgeCasesOpen && (
                 <div style={{ padding: '0 24px 24px', borderTop: '1px solid #1e293b' }}>
-
                   {/* — Automatisch erkannt aus Analyse — */}
                   <div style={{ marginTop: 20, marginBottom: 24 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
                       Automatisch erkannt
                     </div>
-
                     {/* Blogs */}
                     {inventory.blogs.length > 0 && (
                       <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 12 }}>
@@ -1499,14 +1409,13 @@ async function handleCSVUpload(file) {
                                   color: isSelected ? '#22c55e' : '#6366f180',
                                 }}
                               >
-                                {isSelected ? '✓' : '○'} {b.title}
+                                {isSelected ? '[OK]' : '○'} {b.title}
                               </span>
                             )
                           })}
                         </div>
                       </div>
                     )}
-
                     {/* Metafield Namespaces */}
                     {metafieldNamespaces.length > 0 && (
                       <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 12 }}>
@@ -1542,7 +1451,7 @@ async function handleCSVUpload(file) {
                                   fontFamily: 'JetBrains Mono, monospace',
                                 }}
                               >
-                                {isSelected ? '✓' : '○'} {ns}
+                                {isSelected ? '[OK]' : '○'} {ns}
                               </span>
                             )
                           })}
@@ -1550,7 +1459,6 @@ async function handleCSVUpload(file) {
                       </div>
                     )}
                   </div>
-
                   {/* — Deep Checks — */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1560,14 +1468,12 @@ async function handleCSVUpload(file) {
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
                       Diese Punkte können erst geprüft werden, wenn der tatsächliche Content analysiert wird. Klicke "Check" um den Scan zu starten.
                     </div>
-
                     <div style={{ display: 'grid', gap: 10 }}>
                       {DEEP_CHECKS.map(check => {
                         const result = deepCheckResults[check.id]
                         const running = runningChecks[check.id]
                         const color = severityColor[check.severity]
                         const hasIssue = result?.status === 'found' && result?.count > 0
-
                         return (
                           <div key={check.id} style={{ background: '#080b12', borderRadius: 10, padding: 14, border: `1px solid ${hasIssue ? color + '33' : '#1e293b'}`, transition: 'border-color 0.3s' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -1581,11 +1487,11 @@ async function handleCSVUpload(file) {
                                 <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{check.desc}</div>
                                 {result?.status === 'found' && (
                                   <div style={{ marginTop: 8, fontSize: 12, color: hasIssue ? color : '#22c55e', fontWeight: 600 }}>
-                                    {hasIssue ? '⚠ ' : '✓ '}{check.resultLabel(result)}
+                                    {hasIssue ? '(!) ' : '[OK] '}{check.resultLabel(result)}
                                   </div>
                                 )}
                                 {result?.status === 'error' && (
-                                  <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>✗ Check fehlgeschlagen</div>
+                                  <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>[X] Check fehlgeschlagen</div>
                                 )}
                               </div>
                               <button
@@ -1598,10 +1504,9 @@ async function handleCSVUpload(file) {
                                     <span style={{ width: 10, height: 10, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
                                     Prüfe...
                                   </span>
-                                ) : result ? '↺ Nochmal' : 'Check'}
+                                ) : result ? '(Reset) Nochmal' : 'Check'}
                               </button>
                             </div>
-
                             {/* Folge-Aktion wenn Problem gefunden */}
                             {hasIssue && (
                               <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1625,8 +1530,6 @@ async function handleCSVUpload(file) {
                 </div>
               )}
             </div>
-
-
 {/* CSV Ziel-Auswahl */}
         {inventory.source === 'csv' && (
           <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 16 }}>
@@ -1652,18 +1555,15 @@ async function handleCSVUpload(file) {
             </div>
           </div>
         )}
-
         {/* KI Mapping Button */}
         <button onClick={startMapping} disabled={mappingLoading} style={{ width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none', cursor: mappingLoading ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: mappingLoading ? '#64748b' : '#fff' }}>
-          {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten &#x2192;'}
+          {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten >>'}
         </button>
       </div>
     )}
-
     {/* MACH Mapping + Review */}
     {mapping && (
       <div className="fade-up" style={{ marginTop: 16 }}>
-
         {/* Read-only Settings Summary + Zurück-Button */}
         <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, marginBottom: 16, overflow: 'hidden', opacity: 0.8 }}>
           <button
@@ -1701,7 +1601,7 @@ async function handleCSVUpload(file) {
                 <div style={{ background: '#080b12', borderRadius: 8, padding: 12, border: '1px solid #1a2030' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Edge Cases</div>
                   <div style={{ fontSize: 12, color: criticalEdgeCases > 0 ? '#ef4444' : '#475569' }}>
-                    {criticalEdgeCases > 0 ? `${criticalEdgeCases} kritische Punkte` : Object.keys(deepCheckResults).length > 0 ? 'Alles geprüft \u2713' : 'Nicht geprüft'}
+                    {criticalEdgeCases > 0 ? `${criticalEdgeCases} kritische Punkte` : Object.keys(deepCheckResults).length > 0 ? 'Alles geprüft [OK]' : 'Nicht geprüft'}
                   </div>
                 </div>
               </div>
@@ -1709,19 +1609,17 @@ async function handleCSVUpload(file) {
                 onClick={goBackToInventory}
                 style={{ marginTop: 14, width: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                \u2190 Zurück zur Inventar-Analyse
+                << Zurück zur Inventar-Analyse
               </button>
             </div>
           )}
         </div>
-
         <div style={{ background: '#0f1623', border: '1px solid #312e81', borderRadius: 14, padding: 28, marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>// KI MACH-Mapping</div>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#a5b4fc' }}>MACH Content Model Vorschlag</h2>
           <div style={{ background: '#080b12', borderRadius: 10, padding: 16, marginBottom: 24, borderLeft: '3px solid #6366f1' }}>
             <p style={{ fontSize: 14, lineHeight: 1.7, color: '#94a3b8' }}>{mapping.summary}</p>
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
             <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -1740,38 +1638,34 @@ async function handleCSVUpload(file) {
               <div style={{ marginTop: 8, fontSize: 11, color: '#FAE501' }}>{mapping.contentful?.contentTypes?.length || 0} Types</div>
             </div>
           </div>
-
           {!reviewConfirmed && reviewedCT && reviewedContentful && (
             <div style={{ marginBottom: 24 }}>
               <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
-                \u26a0 Bitte prüfe die Namen vor dem Anlegen. Du kannst Name und ID direkt bearbeiten. Erst nach Deiner Bestätigung wird das Model angelegt.
+                (!) Bitte prüfe die Namen vor dem Anlegen. Du kannst Name und ID direkt bearbeiten. Erst nach Deiner Bestätigung wird das Model angelegt.
               </div>
               <ReviewSection title="commercetools — Produkte & Commerce" color="#00B2E3" items={reviewedCT} onUpdate={updateReviewedCT} logo={CTLogo} />
               <ReviewSection title="Contentful — Content & Redaktion" color="#FAE501" items={reviewedContentful} onUpdate={updateReviewedContentful} logo={ContentfulLogo} />
               <button onClick={() => setReviewConfirmed(true)} style={{ width: '100%', marginTop: 8, padding: '14px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)', color: '#000', boxShadow: '0 0 20px rgba(245,158,11,0.3)' }}>
-                \u2713 Namen bestätigen und weiter
+                [OK] Namen bestätigen und weiter
               </button>
             </div>
           )}
-
           {reviewConfirmed && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>\u2713 Namen bestätigt</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>[OK] Namen bestätigt</div>
               <button onClick={() => setReviewConfirmed(false)} style={{ fontSize: 11, color: '#64748b', background: 'transparent', border: '1px solid #1e293b', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>bearbeiten</button>
             </div>
           )}
-
           {reviewConfirmed && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
               <button onClick={deployCTModel} disabled={deployingCT} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff' }}>
-                {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '\u2713 commercetools Model angelegt' : 'commercetools Model anlegen &#x2192;'}
+                {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '[OK] commercetools Model angelegt' : 'commercetools Model anlegen >>'}
               </button>
               <button onClick={deployContentfulModel} disabled={deployingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: 'none', cursor: deployingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: deployingContentful ? '#1e293b' : deployResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: deployingContentful ? '#64748b' : deployResultsContentful ? '#22c55e' : '#000' }}>
-                {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '\u2713 Contentful Model angelegt' : 'Contentful Model anlegen &#x2192;'}
+                {deployingContentful ? 'Wird angelegt...' : deployResultsContentful ? '[OK] Contentful Model angelegt' : 'Contentful Model anlegen >>'}
               </button>
             </div>
           )}
-
           {(deployResultsCT || deployResultsContentful) && (
             <div style={{ marginBottom: 24 }}>
               {deployResultsCT && (
@@ -1780,7 +1674,7 @@ async function handleCSVUpload(file) {
                   {deployResultsCT.map(r => (
                     <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
                       <span>{r.name}</span>
-                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '\u2713 angelegt' : `\u2717 ${r.error}`}</span>
+                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '[OK] angelegt' : `[X] ${r.error}`}</span>
                     </div>
                   ))}
                 </div>
@@ -1791,14 +1685,13 @@ async function handleCSVUpload(file) {
                   {deployResultsContentful.map(r => (
                     <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 13 }}>
                       <span>{r.name}</span>
-                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '\u2713 angelegt' : `\u2717 ${r.error}`}</span>
+                      <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>{r.status === 'success' ? '[OK] angelegt' : `[X] ${r.error}`}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           )}
-
           {bothDeployed && (
             <div style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
               <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
@@ -1806,7 +1699,7 @@ async function handleCSVUpload(file) {
                 <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <CTLogo />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte &#x2192; commercetools</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte >> commercetools</span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                     <span style={{ fontSize: 12, color: '#64748b' }}>Anzahl Produkte:</span>
@@ -1814,14 +1707,14 @@ async function handleCSVUpload(file) {
                     <span style={{ fontSize: 11, color: '#64748b' }}>von {inventory?.productCount || 0} gesamt</span>
                   </div>
                   <button onClick={migrateProductsToCT} disabled={migratingCT} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingCT ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingCT ? '#1e293b' : migrateResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)', color: migratingCT ? '#64748b' : migrateResultsCT ? '#22c55e' : '#fff' }}>
-                    {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `\u2713 ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren &#x2192;`}
+                    {migratingCT ? 'Migriere Produkte...' : migrateResultsCT ? `[OK] ${migrateResultsCT.filter(r => r.status === 'success').length} Produkte migriert` : `${productLimit} Produkte nach commercetools migrieren >>`}
                   </button>
                   {migrateResultsCT && (
                     <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                       {migrateResultsCT.map((r, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
                           <span style={{ color: '#94a3b8' }}>{r.title || r.name}</span>
-                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '\u2713' : `\u2717 ${r.error}`}</span>
+                          <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '[OK]' : `[X] ${r.error}`}</span>
                         </div>
                       ))}
                     </div>
@@ -1831,20 +1724,20 @@ async function handleCSVUpload(file) {
               <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <ContentfulLogo />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages &#x2192; Contentful</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages >> Contentful</span>
                 </div>
                 <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
                   {inventory?.totalContentRows || inventory?.pages.length || 0} Pages werden migriert
                 </div>
                 <button onClick={inventory.source === 'csv' ? migrateCSVContent : migrateContentToContentful} disabled={migratingContentful} style={{ width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none', cursor: migratingContentful ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', background: migratingContentful ? '#1e293b' : migrateResultsContentful ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #92790a 0%, #FAE501 100%)', color: migratingContentful ? '#64748b' : migrateResultsContentful ? '#22c55e' : '#000' }}>
-                  {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `\u2713 ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren &#x2192;'}
+                  {migratingContentful ? 'Migriere Pages...' : migrateResultsContentful ? `[OK] ${migrateResultsContentful.filter(r => r.status === 'success').length}/${migrateResultsContentful.length} Pages migriert` : 'Pages nach Contentful migrieren >>'}
                 </button>
                 {migrateResultsContentful && (
                   <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                     {migrateResultsContentful.map((r, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
                         <span style={{ color: '#94a3b8' }}>{r.title}</span>
-                        <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '\u2713' : `\u2717 ${r.error}`}</span>
+                        <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{r.status === 'success' ? '[OK]' : `[X] ${r.error}`}</span>
                       </div>
                     ))}
                   </div>
@@ -1855,10 +1748,10 @@ async function handleCSVUpload(file) {
           {!bothMigrated && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
               <button onClick={resetCT} disabled={resettingCT} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}>
-                {resettingCT ? 'Wird geleert...' : '\u21ba commercetools zurücksetzen'}
+                {resettingCT ? 'Wird geleert...' : '(Reset) commercetools zurücksetzen'}
               </button>
               <button onClick={resetContentful} disabled={resettingContentful} style={{ padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}>
-                {resettingContentful ? 'Wird geleert...' : '\u21ba Contentful zurücksetzen'}
+                {resettingContentful ? 'Wird geleert...' : '(Reset) Contentful zurücksetzen'}
               </button>
             </div>
           )}
