@@ -808,6 +808,16 @@ export default function Home() {
     setAnalyzeStep(0)
     setDeepCheckResults({})
     setRunningChecks({})
+    // FIX: CSV-State ebenfalls zuruecksetzen, sonst bleibt allConnected true
+    setCsvFile(null)
+    setCsvRawRows([])
+    setCsvParseError(null)
+    // Control Panel zuruecksetzen
+    setControlPanelOpen(false)
+    setEdgeCasesOpen(false)
+    setTrendCheckResult(null)
+    setSelectedBlogs([])
+    setSelectedMetafieldNamespaces([])
   }
 
   async function runDeepCheck(check) {
