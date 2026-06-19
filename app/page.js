@@ -1609,7 +1609,7 @@ async function handleCSVUpload(file) {
                 onClick={goBackToInventory}
                 style={{ marginTop: 14, width: 'auto', padding: '10px 16px', borderRadius: 8, border: '1px solid #1e293b', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
               >
-                << Zurück zur Inventar-Analyse
+                Zurück zur Inventar-Analyse
               </button>
             </div>
           )}
