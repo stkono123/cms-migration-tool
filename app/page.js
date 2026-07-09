@@ -2219,36 +2219,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-
-              {/* Reset Buttons */}
-              {!bothMigrated && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-                  <button
-                    onClick={resetCT}
-                    disabled={resettingCT}
-                    style={{
-                      padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(0,178,227,0.3)',
-                      background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer',
-                      fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                      color: resettingCT ? '#64748b' : '#00B2E3',
-                    }}
-                  >
-                    {resettingCT ? 'Wird geleert...' : 'commercetools zuruecksetzen'}
-                  </button>
-                  <button
-                    onClick={resetContentful}
-                    disabled={resettingContentful}
-                    style={{
-                      padding: '14px 24px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)',
-                      background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer',
-                      fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                      color: resettingContentful ? '#64748b' : '#ef4444',
-                    }}
-                  >
-                    {resettingContentful ? 'Wird geleert...' : 'Contentful zuruecksetzen'}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
