@@ -1168,7 +1168,7 @@ export default function Home() {
         {/* ── MODEL MODE TOGGLE (nur wenn verbunden) ── */}
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Content Model</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>MACH-Struktur</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="mode-btn"
@@ -1199,6 +1199,24 @@ export default function Home() {
               {modelMode === 'create'
                 ? 'Produkte nach commercetools. Pages und Blogs nach Contentful. Du pruefst die Namen vor dem Anlegen.'
                 : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
+            </div>
+            <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                onClick={resetCT}
+                disabled={resettingCT}
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}
+              >
+                {resettingCT ? 'Wird geleert...' : 'commercetools leeren'}
+              </button>
+              <button
+                onClick={resetContentful}
+                disabled={resettingContentful}
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}
+              >
+                {resettingContentful ? 'Wird geleert...' : 'Contentful leeren'}
+              </button>
             </div>
           </div>
         )}
