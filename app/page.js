@@ -382,6 +382,7 @@ export default function Home() {
   const [resettingContentful, setResettingContentful] = useState(false)
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
+  const [ctFallback, setCtFallback] = useState(null)
   const [mounted, setMounted] = useState(false)
 
   // Control Panel state
@@ -800,6 +801,7 @@ export default function Home() {
     setMapping(null)
     setReviewedCT(null)
     setReviewedContentful(null)
+    setCtFallback(null)
     setReviewConfirmed(false)
     setDeployResultsCT(null)
     setDeployResultsContentful(null)
@@ -2054,8 +2056,37 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* CT-Fallback Abfrage */}
+              {ctSkipped && mapping.commercetools?.contentTypes?.length > 0 && ctFallback === null && (
+                <div style={{ background: '#080b12', borderRadius: 10, padding: 20, marginBottom: 24, borderLeft: '3px solid #f59e0b' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>commercetools ist nicht verbunden</div>
+                  <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>
+                    Ich habe Produktdaten in der Quelle identifiziert. Wie soll ich damit umgehen?
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {[
+                      { id: 'contentful', label: 'Produktdaten nach Contentful schreiben', desc: 'Produkte werden als eigener Content Type in Contentful angelegt.' },
+                      { id: 'ignore', label: 'Produktdaten ignorieren', desc: 'Nur Pages und Blogs werden migriert.' },
+                      { id: 'csv', label: 'Produktdaten als CSV exportieren', desc: 'Fuer spaetere Migration wenn CT verbunden ist.' },
+                      { id: 'connect', label: 'commercetools jetzt verbinden', desc: 'Zurueck zum Verbinden-Schritt.' },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => { if (opt.id === 'connect') { setMapping(null); setCtStatus('idle') } else setCtFallback(opt.id) }}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 10, border: '1px solid #1e293b', background: '#0f1623', cursor: 'pointer', fontFamily: 'Inter, sans-serif', textAlign: 'left', transition: 'all 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = '#f59e0b55'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = '#1e293b'}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 2 }}>{opt.label}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Review-Sektion */}
-              {!reviewConfirmed && reviewedCT && reviewedContentful && (
+              {!reviewConfirmed && reviewedCT && reviewedContentful && (ctFallback !== null || !ctSkipped) && (
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ background: '#080b12', borderRadius: 10, padding: 14, marginBottom: 16, borderLeft: '3px solid #f59e0b', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
                     Bitte pruefe die Namen vor dem Anlegen. Du kannst Name und ID direkt bearbeiten. Erst nach Deiner Bestaetigung wird das Model angelegt.
