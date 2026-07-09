@@ -419,9 +419,12 @@ export default function Home() {
   // ── Derived state ──────────────────────────────────────────────
 
   // FIX: allConnected beruecksichtigt CSV korrekt
+  const ctActive = ctStatus === 'connected'
+  const ctSkipped = ctStatus === 'skipped'
+  const ctReady = ctActive || ctSkipped
   const allConnected =
     (sourceSystem === 'csv' ? !!csvFile : shopifyStatus === 'connected') &&
-    ctStatus === 'connected' &&
+    ctReady &&
     contentfulStatus === 'connected'
 
   const bothDeployed = !!(deployResultsCT && deployResultsContentful)
@@ -1088,7 +1091,8 @@ export default function Home() {
           {/* commercetools Card */}
           <div className="fade-up card" style={{
             background: '#0f1623',
-            border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : '#00B2E333'}`,
+            border: `1px solid ${ctStatus === 'connected' ? '#166534' : ctStatus === 'error' ? '#7f1d1d' : ctStatus === 'skipped' ? '#334155' : '#00B2E333'}`,
+            opacity: ctStatus === 'skipped' ? 0.6 : 1,
             borderRadius: 14, padding: 24, animationDelay: '0.2s', transition: 'border-color 0.3s',
           }}>
             <div className="card-body">
@@ -1105,7 +1109,24 @@ export default function Home() {
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#334155' }}>CT_PROJECT_KEY | CT_CLIENT_ID | CT_CLIENT_SECRET</span>
               </div>
             </div>
-            <ConnectButton status={ctStatus} onClick={testCT} label="commercetools" />
+            {ctStatus !== 'skipped' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <ConnectButton status={ctStatus} onClick={testCT} label="commercetools" />
+                <button
+                  onClick={() => setCtStatus('skipped')}
+                  style={{ width: '100%', padding: '8px 16px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}
+                >
+                  Ohne commercetools fortfahren
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setCtStatus('idle')}
+                style={{ width: '100%', padding: '10px 16px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: '#475569', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}
+              >
+                commercetools doch verbinden
+              </button>
+            )}
           </div>
 
           {/* Contentful Card */}
