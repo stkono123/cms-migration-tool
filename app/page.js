@@ -432,7 +432,8 @@ export default function Home() {
 
   const bothDeployed = modelMode === 'existing'
     ? reviewConfirmed
-    : !!(deployResultsCT && deployResultsContentful)  const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
+    : !!(deployResultsCT && deployResultsContentful)  
+  const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
 
   // Kosten-Schaetzung
   const inputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.input || 200
