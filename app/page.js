@@ -382,6 +382,8 @@ export default function Home() {
   const [resettingContentful, setResettingContentful] = useState(false)
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
+  const [existingModels, setExistingModels] = useState(null)
+  const [loadingExistingModels, setLoadingExistingModels] = useState(false)
   const [ctFallback, setCtFallback] = useState(null)
   const [mounted, setMounted] = useState(false)
 
