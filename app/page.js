@@ -1354,28 +1354,7 @@ export default function Home() {
               ))}
             </div>
           </div>
-                  
-            <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button
-                onClick={resetCT}
-                disabled={resettingCT}
-                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}
-              >
-                {resettingCT ? 'Wird geleert...' : 'commercetools leeren'}
-              </button>
-              <button
-                onClick={resetContentful}
-                disabled={resettingContentful}
-                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}
-              >
-                {resettingContentful ? 'Wird geleert...' : 'Contentful leeren'}
-              </button>
-            </div>
-          </div>
         )}
-
         {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
         {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
           <div className="fade-up">
