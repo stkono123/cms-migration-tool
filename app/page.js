@@ -2187,7 +2187,7 @@ export default function Home() {
               )}
 
               {/* Deploy Buttons */}
-              {reviewConfirmed && (
+              {reviewConfirmed && modelMode !== 'existing' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
                   <button
                     onClick={deployCTModel}
