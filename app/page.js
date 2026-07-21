@@ -1190,36 +1190,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── MODEL MODE TOGGLE (nur wenn verbunden) ── */}
-        {allConnected && (
-          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>MACH-Struktur</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="mode-btn"
-                onClick={() => setModelMode('create')}
-                style={{
-                  flex: 1,
-                  background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b',
-                  color: modelMode === 'create' ? '#fff' : '#64748b',
-                  boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none',
-                }}
-              >
-                Content Model anlegen
-              </button>
-              <button
-                className="mode-btn"
-                onClick={() => setModelMode('existing')}
-                style={{
-                  flex: 1,
-                  background: modelMode === 'existing' ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : '#1e293b',
-                  color: modelMode === 'existing' ? '#fff' : '#64748b',
-                  boxShadow: modelMode === 'existing' ? '0 0 16px rgba(6,182,212,0.35)' : 'none',
-                }}
-              >
-                Bestehendes Model verwenden
-              </button>
-            </div>
                {/* ── MODEL MODE TOGGLE (nur wenn verbunden) ── */}
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
