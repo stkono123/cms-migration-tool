@@ -94,8 +94,8 @@ export async function POST(request) {
           if (res.ok) {
             results.push({ status: 'success', title: page.title })
           } else {
-            results.push({ status: 'error', title: page.title, error: data.message || 'Fehler' })
-          }
+            console.error('CF Entry Error:', JSON.stringify(data))
+            results.push({ status: 'error', title: page.title, error: data.message || JSON.stringify(data.details) || 'Fehler' })          }
         } catch (e) {
           results.push({ status: 'error', title: page.title || 'Unbekannt', error: e.message })
         }
