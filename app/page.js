@@ -1260,40 +1260,31 @@ export default function Home() {
                   Keine Content Types in Contentful gefunden. Bitte zuerst ein Content Model in Contentful anlegen oder den Modus wechseln.
                 </div>
               ) : (
-              <>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
-                Gefundene Content Types ({existingModels.length})
-              </div>
-              {existingModels.map(ct => (
-                  <div key={ct.sys.id} style={{
-                    background: '#080b12', border: '1px solid #1e293b', borderRadius: 8,
-                    padding: '10px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ct.name}</span>
-                    <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: '#64748b' }}>{ct.sys.id}</span>
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                    Gefundene Content Types ({existingModels.length})
                   </div>
-                ))}
-                <button
-                  onClick={() => setReviewConfirmed(true)}
-                  style={{
-                    marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
-                    border: 'none', background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
-                    cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
-                  }}
-                >
-                  Weiter zur Migration
-                </button>
-              </div>
-            </>
-            )}
-            )}
-            {modelMode === 'existing' && loadingExistingModels && (
-              <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
-                Lade Content Types...
-              </div>
-            )}
-          </div>
-        )}
+                  {existingModels.map(ct => (
+                    <div key={ct.sys.id} style={{
+                      background: '#080b12', border: '1px solid #1e293b', borderRadius: 8,
+                      padding: '10px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ct.name}</span>
+                      <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: '#64748b' }}>{ct.sys.id}</span>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setReviewConfirmed(true)}
+                    style={{
+                      marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
+                      border: 'none', background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
+                      cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
+                    }}
+                  >
+                    Weiter zur Migration
+                  </button>
+                </>
+              )}
 
         {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
         {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
