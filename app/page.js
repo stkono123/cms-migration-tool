@@ -1255,19 +1255,19 @@ export default function Home() {
                 ? 'Produkte nach commercetools. Pages und Blogs nach Contentful. Du pruefst die Namen vor dem Anlegen.'
                 : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
             </div>
-            {modelMode === 'existing' && (
-            <button
-              onClick={loadExistingModels}
-              style={{
-                marginTop: 12, width: '100%', padding: '12px 16px', borderRadius: 10,
-                border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.1)',
-                cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                color: '#06b6d4',
-              }}
-            >
-              Bestehendes Model laden
-            </button>
-          )}  
+           {modelMode === 'existing' && (
+              <button
+                onClick={loadExistingModels}
+                style={{
+                  marginTop: 12, width: '100%', padding: '12px 16px', borderRadius: 10,
+                  border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.1)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                  color: '#06b6d4',
+                }}
+              >
+                Bestehendes Model laden
+              </button>
+            )}
             <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
