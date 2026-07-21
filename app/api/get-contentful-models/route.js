@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 export async function POST() {
   try {
     const spaceId = process.env.CONTENTFUL_SPACE_ID
-    const token = process.env.CONTENTFUL_MANAGEMENT_TOKEN
+    const token = process.env.CONTENTFUL_CMA_TOKEN
 
     const res = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/master/content_types?limit=200`,
