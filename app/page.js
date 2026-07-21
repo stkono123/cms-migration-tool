@@ -432,7 +432,9 @@ export default function Home() {
 
   const bothDeployed = modelMode === 'existing'
     ? reviewConfirmed
-    : !!(deployResultsCT && deployResultsContentful)  
+    : ctSkipped
+      ? !!deployResultsContentful
+      : !!(deployResultsCT && deployResultsContentful)
   const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
 
   // Kosten-Schaetzung
@@ -1239,9 +1241,9 @@ export default function Home() {
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button
-                onClick={resetCT}
-                disabled={resettingCT}
-                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}
+  onClick={resetCT}
+  disabled={resettingCT || ctSkipped}
+  style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT || ctSkipped ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT || ctSkipped ? '#64748b' : '#00B2E3' }}
               >
                 {resettingCT ? 'Wird geleert...' : 'commercetools leeren'}
               </button>
