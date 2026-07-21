@@ -2261,8 +2261,8 @@ export default function Home() {
                   <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginBottom: 16 }}>// Migration starten</div>
 
                   {/* CT Migration -- zeigen wenn kein CSV oder wenn CSV-Ziel CT oder beides */}
-                  {(inventory?.source !== 'csv' || csvTarget === 'commercetools' || csvTarget === 'both') && (
-                    <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
+                  {!ctSkipped && (inventory?.source !== 'csv' || csvTarget === 'commercetools' || csvTarget === 'both') && (
+                      <div style={{ marginBottom: 12, padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #00B2E333' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                         <CTLogo />
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>Produkte nach commercetools</span>
