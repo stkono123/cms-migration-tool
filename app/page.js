@@ -797,24 +797,21 @@ export default function Home() {
     setResettingCT(false)
   }
 
-  async function loadExistingModels() {
-      setLoadingExistingModels(true);
-      try {
-        const res = await fetch(
-          `https://api.contentful.com/spaces/${contentfulSpace}/environments/master/content_types?limit=200`,
-          { headers: { Authorization: `Bearer ${contentfulTokenReal}` } }
-        );
-        const data = await res.json();
-        const items = data.items || [];
-        setExistingModels(items);
-        setReviewedCT([]);
-        setReviewedContentful(items.map(ct => ({ name: ct.name, id: ct.sys.id })));
-      } catch (e) {
-        console.error('Fehler beim Laden der Content Types:', e);
-      } finally {
-        setLoadingExistingModels(false);
-      }
-    }
+ async function loadExistingModels() {
+  setLoadingExistingModels(true)
+  try {
+    const res = await fetch('/api/get-contentful-models', { method: 'POST' })
+    const data = await res.json()
+    const items = data.items || []
+    setExistingModels(items)
+    setReviewedCT([])
+    setReviewedContentful(items.map(ct => ({ name: ct.name, id: ct.sys.id })))
+  } catch (e) {
+    console.error('Fehler beim Laden der Content Types:', e)
+  } finally {
+    setLoadingExistingModels(false)
+  }
+}
   
   function reset() {
     setInventory(null)
