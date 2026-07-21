@@ -1254,11 +1254,17 @@ export default function Home() {
               </button>
             </div>
             {modelMode === 'existing' && existingModels && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
-                  Gefundene Content Types ({existingModels.length})
+            <div style={{ marginTop: 16 }}>
+              {existingModels.length === 0 ? (
+                <div style={{ background: '#1a0a0a', border: '1px solid #7f1d1d', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#ef4444' }}>
+                  Keine Content Types in Contentful gefunden. Bitte zuerst ein Content Model in Contentful anlegen oder den Modus wechseln.
                 </div>
-                {existingModels.map(ct => (
+              ) : (
+              <>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                Gefundene Content Types ({existingModels.length})
+              </div>
+              {existingModels.map(ct => (
                   <div key={ct.sys.id} style={{
                     background: '#080b12', border: '1px solid #1e293b', borderRadius: 8,
                     padding: '10px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1278,6 +1284,8 @@ export default function Home() {
                   Weiter zur Migration
                 </button>
               </div>
+            </>
+            )}
             )}
             {modelMode === 'existing' && loadingExistingModels && (
               <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
