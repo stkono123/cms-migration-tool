@@ -384,10 +384,6 @@ export default function Home() {
   const [modelMode, setModelMode] = useState('create')
   const [ctFallback, setCtFallback] = useState(null)
   const [mounted, setMounted] = useState(false)
-  const [modelMode, setModelMode] = useState('create')
-  const [existingModels, setExistingModels] = useState(null)
-  const [loadingExistingModels, setLoadingExistingModels] = useState(false)
-  const [ctFallback, setCtFallback] = useState(null)
 
   // Control Panel state
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
