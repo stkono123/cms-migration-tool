@@ -430,8 +430,9 @@ export default function Home() {
     ctReady &&
     contentfulStatus === 'connected'
 
-  const bothDeployed = !!(deployResultsCT && deployResultsContentful)
-  const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
+  const bothDeployed = modelMode === 'existing'
+    ? reviewConfirmed
+    : !!(deployResultsCT && deployResultsContentful)  const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
 
   // Kosten-Schaetzung
   const inputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.input || 200
