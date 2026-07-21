@@ -384,6 +384,10 @@ export default function Home() {
   const [modelMode, setModelMode] = useState('create')
   const [ctFallback, setCtFallback] = useState(null)
   const [mounted, setMounted] = useState(false)
+  const [modelMode, setModelMode] = useState('create')
+  const [existingModels, setExistingModels] = useState(null)
+  const [loadingExistingModels, setLoadingExistingModels] = useState(false)
+  const [ctFallback, setCtFallback] = useState(null)
 
   // Control Panel state
   const [controlPanelOpen, setControlPanelOpen] = useState(false)
@@ -795,6 +799,25 @@ export default function Home() {
     setResettingCT(false)
   }
 
+  async function loadExistingModels() {
+      setLoadingExistingModels(true);
+      try {
+        const res = await fetch(
+          `https://api.contentful.com/spaces/${contentfulSpace}/environments/master/content_types?limit=200`,
+          { headers: { Authorization: `Bearer ${contentfulTokenReal}` } }
+        );
+        const data = await res.json();
+        const items = data.items || [];
+        setExistingModels(items);
+        setReviewedCT([]);
+        setReviewedContentful(items.map(ct => ({ name: ct.name, id: ct.sys.id })));
+      } catch (e) {
+        console.error('Fehler beim Laden der Content Types:', e);
+      } finally {
+        setLoadingExistingModels(false);
+      }
+    }
+  
   function reset() {
     setInventory(null)
     setAnimateNumbers(false)
@@ -1197,11 +1220,141 @@ export default function Home() {
                 Bestehendes Model verwenden
               </button>
             </div>
+               {/* ── MODEL MODE TOGGLE (nur wenn verbunden) ── */}
+        {allConnected && (
+          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>MACH-Struktur</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="mode-btn"
+                onClick={() => setModelMode('create')}
+                style={{
+                  flex: 1,
+                  background: modelMode === 'create' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : '#1e293b',
+                  color: modelMode === 'create' ? '#fff' : '#64748b',
+                  boxShadow: modelMode === 'create' ? '0 0 16px rgba(99,102,241,0.35)' : 'none',
+                }}
+              >
+                Content Model anlegen
+              </button>
+              <button
+                className="mode-btn"
+                onClick={() => setModelMode('existing')}
+                style={{
+                  flex: 1,
+                  background: modelMode === 'existing' ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : '#1e293b',
+                  color: modelMode === 'existing' ? '#fff' : '#64748b',
+                  boxShadow: modelMode === 'existing' ? '0 0 16px rgba(6,182,212,0.35)' : 'none',
+                }}
+              >
+                Bestehendes Model verwenden
+              </button>
+            </div>
             <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>
               {modelMode === 'create'
                 ? 'Produkte nach commercetools. Pages und Blogs nach Contentful. Du pruefst die Namen vor dem Anlegen.'
                 : 'Bestehende Modelle aus commercetools und Contentful werden gelesen und gemappt.'}
             </div>
+            {modelMode === 'existing' && (
+            <button
+              onClick={loadExistingModels}
+              style={{
+                marginTop: 12, width: '100%', padding: '12px 16px', borderRadius: 10,
+                border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.1)',
+                cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                color: '#06b6d4',
+              }}
+            >
+              Bestehendes Model laden
+            </button>
+          )}  
+            <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                onClick={resetCT}
+                disabled={resettingCT}
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT ? '#64748b' : '#00B2E3' }}
+              >
+                {resettingCT ? 'Wird geleert...' : 'commercetools leeren'}
+              </button>
+              <button
+                onClick={resetContentful}
+                disabled={resettingContentful}
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}
+              >
+                {resettingContentful ? 'Wird geleert...' : 'Contentful leeren'}
+              </button>
+            </div>
+            {modelMode === 'existing' && existingModels && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                  Gefundene Content Types ({existingModels.length})
+                </div>
+                {existingModels.map(ct => (
+                  <div key={ct.sys.id} style={{
+                    background: '#080b12', border: '1px solid #1e293b', borderRadius: 8,
+                    padding: '10px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ct.name}</span>
+                    <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: '#64748b' }}>{ct.sys.id}</span>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setReviewConfirmed(true)}
+                  style={{
+                    marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
+                    border: 'none', background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
+                    cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
+                  }}
+                >
+                  Weiter zur Migration
+                </button>
+              </div>
+            )}
+            {modelMode === 'existing' && loadingExistingModels && (
+              <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
+                Lade Content Types...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
+        {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
+          <div className="fade-up">
+            <button
+              onClick={analyze}
+              style={{
+                width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
+                cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite',
+              }}
+            >
+              Inventar analysieren
+            </button>
+          </div>
+        )}
+
+        {/* ── ANALYSE LOADING ── */}
+        {analyzing && (
+          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>
+              {analyzeSteps[analyzeStep]}
+            </div>
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              {analyzeSteps.map((_, i) => (
+                <div key={i} style={{
+                  width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2,
+                  background: i <= analyzeStep ? '#6366f1' : '#1e293b',
+                  transition: 'all 0.3s ease',
+                }} />
+              ))}
+            </div>
+          </div>
+                  
             <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
