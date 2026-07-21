@@ -2186,22 +2186,24 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Deploy Buttons */}
+             {/* Deploy Buttons */}
               {reviewConfirmed && modelMode !== 'existing' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                  <button
-                    onClick={deployCTModel}
-                    disabled={deployingCT}
-                    style={{
-                      padding: '14px 24px', borderRadius: 12, border: 'none',
-                      cursor: deployingCT ? 'not-allowed' : 'pointer',
-                      fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                      background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)',
-                      color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff',
-                    }}
-                  >
-                    {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '[OK] commercetools Model angelegt' : 'commercetools Model anlegen'}
-                  </button>
+                <div style={{ display: 'grid', gridTemplateColumns: ctSkipped ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                  {!ctSkipped && (
+                    <button
+                      onClick={deployCTModel}
+                      disabled={deployingCT}
+                      style={{
+                        padding: '14px 24px', borderRadius: 12, border: 'none',
+                        cursor: deployingCT ? 'not-allowed' : 'pointer',
+                        fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                        background: deployingCT ? '#1e293b' : deployResultsCT ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #0072b1 0%, #00B2E3 100%)',
+                        color: deployingCT ? '#64748b' : deployResultsCT ? '#22c55e' : '#fff',
+                      }}
+                    >
+                      {deployingCT ? 'Wird angelegt...' : deployResultsCT ? '[OK] commercetools Model angelegt' : 'commercetools Model anlegen'}
+                    </button>
+                  )}
                   <button
                     onClick={deployContentfulModel}
                     disabled={deployingContentful}
@@ -2217,6 +2219,7 @@ export default function Home() {
                   </button>
                 </div>
               )}
+
 
               {/* Deploy-Ergebnisse */}
               {(deployResultsCT || deployResultsContentful) && (
