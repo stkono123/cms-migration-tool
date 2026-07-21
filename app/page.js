@@ -1283,8 +1283,17 @@ export default function Home() {
                   >
                     Weiter zur Migration
                   </button>
-                </>
+                 </>
               )}
+            </div>
+            )}
+            {modelMode === 'existing' && loadingExistingModels && (
+              <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
+                Lade Content Types...
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
         {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
