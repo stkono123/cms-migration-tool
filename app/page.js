@@ -1355,23 +1355,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
-        {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
-          <div className="fade-up">
-            <button
-              onClick={analyze}
-              style={{
-                width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
-                cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: '#fff', marginBottom: 12, animation: 'glow 2s ease infinite',
-              }}
-            >
-              Inventar analysieren
-            </button>
-          </div>
-        )}
-
+       
         {/* ════════════════════════════════════════════════════
             INVENTAR-BEREICH — nur wenn Inventar geladen und noch kein Mapping
             FIX: Control Panel, Edge Cases und Mapping-Button sind HIER
