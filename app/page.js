@@ -1372,25 +1372,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── ANALYSE LOADING ── */}
-        {analyzing && (
-          <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 32, marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ width: 40, height: 40, border: '3px solid #1e293b', borderTopColor: '#6366f1', borderRadius: '50%', margin: '0 auto 24px', animation: 'spin 0.8s linear infinite' }} />
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, color: '#6366f1', marginBottom: 24 }}>
-              {analyzeSteps[analyzeStep]}
-            </div>
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-              {analyzeSteps.map((_, i) => (
-                <div key={i} style={{
-                  width: i <= analyzeStep ? 24 : 8, height: 4, borderRadius: 2,
-                  background: i <= analyzeStep ? '#6366f1' : '#1e293b',
-                  transition: 'all 0.3s ease',
-                }} />
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ════════════════════════════════════════════════════
             INVENTAR-BEREICH — nur wenn Inventar geladen und noch kein Mapping
             FIX: Control Panel, Edge Cases und Mapping-Button sind HIER
