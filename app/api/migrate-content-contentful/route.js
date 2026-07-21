@@ -45,9 +45,9 @@ export async function POST(request) {
       const contentTypeId = pageContentType.sys.id
       const fields = pageContentType.fields || []
 
-      const titleField = fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
+      const titleField = fields.find(f => ['title', 'titel', 'name', 'seitentitel'].some(k => f.id.toLowerCase().includes(k)))
       const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
-      const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
+      const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description', 'seiteninhalt'].some(k => f.id.toLowerCase().includes(k)))
 
       const results = []
 
@@ -56,8 +56,28 @@ export async function POST(request) {
           const entryFields = {}
           if (titleField) entryFields[titleField.id] = { 'de-DE': page.title, 'en-US': page.title }
           if (slugField)  entryFields[slugField.id]  = { 'de-DE': page.handle, 'en-US': page.handle }
-          if (bodyField)  entryFields[bodyField.id]  = { 'de-DE': page.body_html || '', 'en-US': page.body_html || '' }
-
+          if (bodyField) {
+            const isRichText = bodyField.type === 'RichText'
+            if (isRichText) {
+              const richTextValue = {
+                nodeType: 'document',
+                data: {},
+                content: [{
+                  nodeType: 'paragraph',
+                  data: {},
+                  content: [{
+                    nodeType: 'text',
+                    value: page.body_html ? page.body_html.replace(/<[^>]*>/g, '') : '',
+                    marks: [],
+                    data: {}
+                  }]
+                }]
+              }
+              entryFields[bodyField.id] = { 'de-DE': richTextValue, 'en-US': richTextValue }
+            } else {
+              entryFields[bodyField.id] = { 'de-DE': page.body_html || '', 'en-US': page.body_html || '' }
+            }
+          }
           const res = await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
             {
