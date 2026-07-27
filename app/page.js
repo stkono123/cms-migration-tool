@@ -1314,7 +1314,7 @@ export default function Home() {
               </div>
             )}
 
-            {modelMode === 'upload' && (
+            {modelMode === 'upload' && !mapping && (
               <div style={{ marginTop: 12 }}>
                 <label
                   htmlFor="model-upload"
