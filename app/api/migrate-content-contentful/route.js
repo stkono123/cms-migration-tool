@@ -19,7 +19,7 @@ export async function POST(request) {
       if (!pages || pages.length === 0) {
         return Response.json({ error: 'Keine Pages übergeben' }, { status: 400 })
       }
-
+ 
       // Content Type aus Contentful holen
       const ctRes = await fetch(
         `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
