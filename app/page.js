@@ -649,7 +649,7 @@ export default function Home() {
       const res = await fetch('/api/ai-mapping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inventory, csvTarget }),
+        body: JSON.stringify({ inventory, csvTarget, uploadedModel: uploadedModel || null }),
       })
       const parsed = await res.json()
       setMapping(parsed)
