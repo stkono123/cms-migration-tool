@@ -1313,6 +1313,91 @@ export default function Home() {
                 Lade Content Types...
               </div>
             )}
+
+            {modelMode === 'upload' && (
+              <div style={{ marginTop: 12 }}>
+                <label
+                  htmlFor="model-upload"
+                  style={{
+                    display: 'block', width: '100%', padding: '12px 16px', borderRadius: 10,
+                    border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.08)',
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                    color: '#10b981', textAlign: 'center', boxSizing: 'border-box',
+                  }}
+                >
+                  {uploadedModel ? 'Andere Datei laden' : 'JSON oder PDF hochladen'}
+                </label>
+                <input
+                  id="model-upload"
+                  type="file"
+                  accept=".json,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setParsingModel(true)
+                    setModelParseError(null)
+                    setUploadedModel(null)
+                    try {
+                      if (file.name.endsWith('.json')) {
+                        const text = await file.text()
+                        const json = JSON.parse(text)
+                        const items = json.contentTypes || json.items || (Array.isArray(json) ? json : null)
+                        if (!items) throw new Error('Kein gueltiges Format. Erwartet: { contentTypes: [...] } oder { items: [...] }')
+                        setUploadedModel(items)
+                      } else if (file.name.endsWith('.pdf')) {
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        const res = await fetch('/api/parse-content-model-pdf', { method: 'POST', body: formData })
+                        const data = await res.json()
+                        if (!res.ok) throw new Error(data.error || 'PDF konnte nicht geparst werden')
+                        setUploadedModel(data.contentTypes)
+                      }
+                    } catch (err) {
+                      setModelParseError(err.message)
+                    } finally {
+                      setParsingModel(false)
+                    }
+                  }}
+                />
+                {parsingModel && (
+                  <div style={{ marginTop: 10, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
+                    Wird analysiert...
+                  </div>
+                )}
+                {modelParseError && (
+                  <div style={{ marginTop: 10, background: '#1a0a0a', border: '1px solid #7f1d1d', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#ef4444' }}>
+                    {modelParseError}
+                  </div>
+                )}
+                {uploadedModel && uploadedModel.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                      Erkannte Content Types ({uploadedModel.length})
+                    </div>
+                    {uploadedModel.map((ct, i) => (
+                      <div key={ct.sys?.id || ct.id || i} style={{
+                        background: '#080b12', border: '1px solid #1e293b', borderRadius: 8,
+                        padding: '10px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{ct.name || ct.displayName || ct.sys?.id || ct.id}</span>
+                        <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: '#64748b' }}>{ct.sys?.id || ct.id || ''}</span>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setReviewConfirmed(true)}
+                      style={{
+                        marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
+                        border: 'none', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                        cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
+                      }}
+                    >
+                      Modell bestaetigen und weiter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
