@@ -1384,7 +1384,7 @@ export default function Home() {
                       </div>
                     ))}
                     <button
-                      onClick={() => setReviewConfirmed(true)}
+                      onClick={() => { setReviewConfirmed(true); analyze(); }}
                       style={{
                         marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
                         border: 'none', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
