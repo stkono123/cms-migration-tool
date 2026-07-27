@@ -2152,7 +2152,7 @@ export default function Home() {
         {/* ════════════════════════════════════════════════════
             MACH MAPPING + REVIEW
         ════════════════════════════════════════════════════ */}
-        {mapping && (
+        {mapping && reviewConfirmed && (
           <div className="fade-up" style={{ marginTop: 16 }}>
 
             {/* Read-only Settings Summary */}
