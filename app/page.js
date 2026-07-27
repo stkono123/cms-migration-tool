@@ -1015,7 +1015,7 @@ export default function Home() {
                     {selectedSource?.logo && <selectedSource.logo />}
                     {selectedSource?.label}
                   </div>
-                  <span style={{ color: '#64748b', fontSize: 10 }}>&#9660;</span>
+                  <span style={{ color: '#64748b', fontSize: 10 }}> </span>
                 </button>
                 {sourceDropdownOpen && (
                   <div style={{
@@ -1401,7 +1401,7 @@ export default function Home() {
         )}
 
         {/* ── ANALYSE BUTTON (verbunden, kein Inventar, nicht am Analysieren) ── */}
-        {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && (
+        {allConnected && !inventory && !analyzing && sourceSystem !== 'csv' && !(modelMode === 'upload' && uploadedModel) && (
           <div className="fade-up">
             <button
               onClick={analyze}
@@ -1574,7 +1574,7 @@ export default function Home() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>Migration Control Panel</span>
                   <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Standard-Einstellungen aktiv</span>
                 </div>
-                <span style={{ color: '#64748b', fontSize: 12 }}>{controlPanelOpen ? '&#9650;' : '&#9660;'}</span>
+                <span style={{ color: '#64748b', fontSize: 12 }}>{controlPanelOpen ? '-' : '+'}</span>
               </button>
 
               {controlPanelOpen && (
