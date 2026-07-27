@@ -1196,7 +1196,6 @@ export default function Home() {
         {allConnected && (
           <div className="fade-up" style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 14, padding: 20, marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>MACH-Struktur</div>
-            // NACHHER:
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               className="mode-btn"
