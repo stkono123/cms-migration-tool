@@ -382,7 +382,9 @@ export default function Home() {
   const [resettingContentful, setResettingContentful] = useState(false)
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
-  const [existingModels, setExistingModels] = useState(null)
+  const [uploadedModel, setUploadedModel] = useState(null)
+  const [parsingModel, setParsingModel] = useState(false)
+  const [modelParseError, setModelParseError] = useState(null)  const [existingModels, setExistingModels] = useState(null)
   const [loadingExistingModels, setLoadingExistingModels] = useState(false)
   const [ctFallback, setCtFallback] = useState(null)
   const [mounted, setMounted] = useState(false)
@@ -430,7 +432,7 @@ export default function Home() {
     ctReady &&
     contentfulStatus === 'connected'
 
-  const bothDeployed = modelMode === 'existing'
+   const bothDeployed = (modelMode === 'existing' || modelMode === 'upload')
     ? reviewConfirmed
     : ctSkipped
       ? !!deployResultsContentful
