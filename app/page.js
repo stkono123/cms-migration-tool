@@ -645,6 +645,7 @@ export default function Home() {
 
   async function startMapping() {
     setMappingLoading(true)
+    console.log('uploadedModel beim Mapping:', uploadedModel)
     try {
       const res = await fetch('/api/ai-mapping', {
         method: 'POST',
