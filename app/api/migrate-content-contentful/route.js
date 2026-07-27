@@ -51,37 +51,33 @@ export async function POST(request) {
 
       const results = []
 
-       for (const page of pages) {
-    try {
-      const entryFields = {}
-      if (titleField) entryFields[titleField.id] = { 'en-US': page.title }
-      if (slugField)  entryFields[slugField.id]  = { 'en-US': page.handle }
-      if (bodyField) {
-        const isRichText = bodyField.type === 'RichText'
-        if (isRichText) {
-          const richTextValue = {
-            nodeType: 'document',
-            data: {},
-            content: [{
-              nodeType: 'paragraph',
-              data: {},
-              content: [{
-                nodeType: 'text',
-                value: page.body_html ? page.body_html.replace(/<[^>]*>/g, '') : '',
-                marks: [],
-                data: {}
-              }]
-            }]
-          }
-        entryFields[bodyField.id] = { 'en-US': richTextValue }
-      } else {
-        entryFields[bodyField.id] = { 'en-US': page.body_html || '' }
-      }
-    }
-              entryFields[bodyField.id] = { 'de-DE': richTextValue, 'en-US': richTextValue }
-            } else {
-              entryFields[bodyField.id] = { 'de-DE': page.body_html || '', 'en-US': page.body_html || '' }
-            }
+        for (const page of pages) {
+          try {
+            const entryFields = {}
+            if (titleField) entryFields[titleField.id] = { 'de-DE': page.title, 'en-US': page.title }
+            if (slugField)  entryFields[slugField.id]  = { 'de-DE': page.handle, 'en-US': page.handle }
+            if (bodyField) {
+              const isRichText = bodyField.type === 'RichText'
+              if (isRichText) {
+                const richTextValue = {
+                  nodeType: 'document',
+                  data: {},
+                  content: [{
+                    nodeType: 'paragraph',
+                    data: {},
+                    content: [{
+                      nodeType: 'text',
+                      value: page.body_html ? page.body_html.replace(/<[^>]*>/g, '') : '',
+                      marks: [],
+                      data: {}
+                    }]
+                  }]
+                }
+                entryFields[bodyField.id] = { 'de-DE': richTextValue, 'en-US': richTextValue }
+              } else {
+                entryFields[bodyField.id] = { 'de-DE': page.body_html || '', 'en-US': page.body_html || '' }
+              }
+             }
           }
           const res = await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
