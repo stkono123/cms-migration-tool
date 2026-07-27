@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
 export const runtime = 'nodejs'
 
 export async function POST(request) {
@@ -10,21 +9,27 @@ export async function POST(request) {
     const arrayBuffer = await file.arrayBuffer()
     const base64 = Buffer.from(arrayBuffer).toString('base64')
 
-    const client = new Anthropic()
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 4000,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-          },
-          {
-            type: 'text',
-            text: `Analysiere dieses Dokument. Es beschreibt ein Contentful Content Model.
-Extrahiere alle Content Types und gib sie als JSON zurück.
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+            },
+            {
+              type: 'text',
+              text: `Analysiere dieses Dokument. Es beschreibt ein Contentful Content Model.
+Extrahiere alle Content Types und gib sie als JSON zurueck.
 Antworte NUR mit einem JSON-Objekt, kein Text davor oder danach, keine Markdown-Backticks.
 Format:
 {
@@ -36,12 +41,14 @@ Format:
     }
   ]
 }`
-          }
-        ]
-      }]
+            }
+          ]
+        }]
+      })
     })
 
-    const raw = response.content.find(b => b.type === 'text')?.text || ''
+    const data = await response.json()
+    const raw = data.content?.find(b => b.type === 'text')?.text || ''
     const start = raw.indexOf('{')
     const end = raw.lastIndexOf('}')
     if (start === -1 || end === -1) throw new Error('Kein JSON in der Antwort gefunden')
