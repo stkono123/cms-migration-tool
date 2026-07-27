@@ -9,8 +9,8 @@ import { buildMappingPrompt as buildCSVPrompt } from '../../../lib/adapters/csv/
 
 export async function POST(request) {
   try {
-    const { inventory, targets = ['commercetools', 'Contentful'], csvTarget } = await request.json()
-    if (!inventory) {
+    const { inventory, targets = ['commercetools', 'Contentful'], csvTarget, uploadedModel } = await request.json()
+      if (!inventory) {
       return Response.json({ error: 'Kein Inventar übergeben. Bitte zuerst die Analyse ausführen.' }, { status: 400 })
     }
 
