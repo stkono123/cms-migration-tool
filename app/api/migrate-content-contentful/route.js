@@ -12,6 +12,14 @@ export async function POST(request) {
     const token = process.env.CONTENTFUL_CMA_TOKEN
     const environment = 'master'
 
+    // Locales einmal abfragen
+    const localeRes = await fetch(
+      `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
+    const localeData = await localeRes.json()
+    const defaultLocale = (localeData.items || []).find(l => l.default)?.code || 'en-US'
+
     // ── Shopify-Pages-Pfad ──────────────────────────────────────────
     if (body.pages) {
       const { pages } = body
@@ -19,8 +27,7 @@ export async function POST(request) {
       if (!pages || pages.length === 0) {
         return Response.json({ error: 'Keine Pages übergeben' }, { status: 400 })
       }
- 
-      // Content Type aus Contentful holen
+
       const ctRes = await fetch(
         `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
         { headers: { 'Authorization': `Bearer ${token}` } }
@@ -49,13 +56,13 @@ export async function POST(request) {
       const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
       const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description', 'seiteninhalt'].some(k => f.id.toLowerCase().includes(k)))
 
-     const results = []
+      const results = []
 
       for (const page of pages) {
         try {
           const entryFields = {}
-          if (titleField) entryFields[titleField.id] = { 'de-DE': page.title, 'en-US': page.title }
-          if (slugField)  entryFields[slugField.id]  = { 'de-DE': page.handle, 'en-US': page.handle }
+          if (titleField) entryFields[titleField.id] = { [defaultLocale]: page.title }
+          if (slugField)  entryFields[slugField.id]  = { [defaultLocale]: page.handle }
           if (bodyField) {
             const isRichText = bodyField.type === 'RichText'
             if (isRichText) {
@@ -73,9 +80,9 @@ export async function POST(request) {
                   }]
                 }]
               }
-              entryFields[bodyField.id] = { 'de-DE': richTextValue, 'en-US': richTextValue }
+              entryFields[bodyField.id] = { [defaultLocale]: richTextValue }
             } else {
-              entryFields[bodyField.id] = { 'de-DE': page.body_html || '', 'en-US': page.body_html || '' }
+              entryFields[bodyField.id] = { [defaultLocale]: page.body_html || '' }
             }
           }
           const res = await fetch(
@@ -166,15 +173,15 @@ export async function POST(request) {
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         const bodyValue = bodyCol ? (optimized[bodyCol] || '') : ''
 
-        if (titleField) entryFields[titleField.id] = { 'en-US': titleValue }
-        if (slugField)  entryFields[slugField.id]  = { 'en-US': slugValue }
-        if (bodyField)  entryFields[bodyField.id]  = { 'en-US': bodyValue }
+        if (titleField) entryFields[titleField.id] = { [defaultLocale]: titleValue }
+        if (slugField)  entryFields[slugField.id]  = { [defaultLocale]: slugValue }
+        if (bodyField)  entryFields[bodyField.id]  = { [defaultLocale]: bodyValue }
 
         for (const field of fields) {
           if (entryFields[field.id]) continue
           const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
           if (matchingCol && optimized[matchingCol]) {
-            entryFields[field.id] = { 'en-US': optimized[matchingCol].toString() }
+            entryFields[field.id] = { [defaultLocale]: optimized[matchingCol].toString() }
           }
         }
 
@@ -194,6 +201,7 @@ export async function POST(request) {
         if (res.ok) {
           results.push({ index: i, status: 'success', title: titleValue })
         } else {
+          console.error('CF Entry Error:', JSON.stringify(data))
           results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler' })
         }
       } catch (e) {
