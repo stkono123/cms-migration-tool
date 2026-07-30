@@ -2132,7 +2132,7 @@ export default function Home() {
 
             {/* KI MACH-Mapping Button -- EIN EINZIGER, am Ende des Inventar-Blocks */}
             <button
-              onClick={startMapping}
+              onClick={() => { setReviewConfirmed(true); startMapping(); }}
               disabled={mappingLoading}
               style={{
                 width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
