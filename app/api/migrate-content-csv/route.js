@@ -77,8 +77,16 @@ export async function POST(request) {
         for (const field of fields) {
           if (entryFields[field.id]) continue
           const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
-          if (matchingCol && optimized[matchingCol]) {
-            entryFields[field.id] = { [defaultLocale]: optimized[matchingCol].toString() }
+          if (matchingCol && optimized[matchingCol] !== undefined && optimized[matchingCol] !== '') {
+            let value = optimized[matchingCol].toString()
+            if (field.type === 'Boolean') {
+              value = value.toLowerCase() === 'true'
+            } else if (field.type === 'Integer') {
+              value = parseInt(value) || 0
+            } else if (field.type === 'Number') {
+              value = parseFloat(value) || 0
+            }
+            entryFields[field.id] = { [defaultLocale]: value }
           }
         }
 
