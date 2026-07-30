@@ -656,7 +656,6 @@ export default function Home() {
       setMapping(parsed)
       setReviewedCT(parsed.commercetools?.contentTypes?.map(ct => ({ ...ct })) || [])
       setReviewedContentful(parsed.contentful?.contentTypes?.map(ct => ({ ...ct })) || [])
-      setReviewConfirmed(false)
     } catch (e) {
       console.error(e)
     }
