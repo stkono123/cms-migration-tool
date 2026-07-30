@@ -15,6 +15,14 @@ export async function POST(request) {
     const token = process.env.CONTENTFUL_CMA_TOKEN
     const environment = 'master'
 
+    // Locales abfragen
+    const localeRes = await fetch(
+      `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
+    const localeData = await localeRes.json()
+    const defaultLocale = (localeData.items || []).find(l => l.default)?.code || 'en-US'
+
     const ctRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
       { headers: { 'Authorization': `Bearer ${token}` } }
@@ -62,15 +70,15 @@ export async function POST(request) {
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         const bodyValue = bodyCol ? (optimized[bodyCol] || '') : ''
 
-        if (titleField) entryFields[titleField.id] = { 'en-US': titleValue }
-        if (slugField) entryFields[slugField.id] = { 'en-US': slugValue }
-        if (bodyField) entryFields[bodyField.id] = { 'en-US': bodyValue }
+        if (titleField) entryFields[titleField.id] = { [defaultLocale]: titleValue }
+        if (slugField) entryFields[slugField.id] = { [defaultLocale]: slugValue }
+        if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: bodyValue }
 
         for (const field of fields) {
           if (entryFields[field.id]) continue
           const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
           if (matchingCol && optimized[matchingCol]) {
-            entryFields[field.id] = { 'en-US': optimized[matchingCol].toString() }
+            entryFields[field.id] = { [defaultLocale]: optimized[matchingCol].toString() }
           }
         }
 
@@ -92,6 +100,7 @@ export async function POST(request) {
         if (res.ok) {
           results.push({ index: i, status: 'success', title: titleValue })
         } else {
+          console.error('CF Entry Error:', JSON.stringify(data))
           results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler' })
         }
       } catch (e) {
