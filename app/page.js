@@ -963,9 +963,16 @@ export default function Home() {
           fontFamily: 'monospace',
           cursor: 'pointer',
           letterSpacing: '0.05em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}
       >
-        {gitHash}
+        <span style={{ color: '#6366f1', fontWeight: 700 }}>
+          v{changelog.length > 0 ? changelog[0].version : '—'}
+        </span>
+        <span style={{ color: '#334155' }}>·</span>
+        <span>{gitHash}</span>
       </button>
     </div>
       {/* Pipeline Progress */}
