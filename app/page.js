@@ -387,6 +387,10 @@ export default function Home() {
   const [urlInput, setUrlInput] = useState('')
   const [urlStatus, setUrlStatus] = useState('idle')
   const [urlError, setUrlError] = useState(null)
+  const [urlBulkFile, setUrlBulkFile] = useState(null)
+  const [urlBulkList, setUrlBulkList] = useState([])
+  const [urlBulkProgress, setUrlBulkProgress] = useState(0)
+  const [urlBulkResults, setUrlBulkResults] = useState([])
 
   // Pipeline state
   const [inventory, setInventory] = useState(null)
@@ -627,7 +631,7 @@ export default function Home() {
     setAnalyzing(false)
   }
 
-  async function handleCSVUpload(file) {
+async function handleCSVUpload(file) {
     if (!file) return
     setCsvFile(file)
     setCsvParseError(null)
@@ -669,6 +673,64 @@ export default function Home() {
         setAnalyzing(false)
       },
     })
+  }
+
+  const handleUrlBulkUpload = (file) => {
+    setUrlBulkFile(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target.result
+      const urls = text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.startsWith('http'))
+      setUrlBulkList(urls)
+      setUrlStatus('idle')
+      setUrlError(null)
+    }
+    reader.readAsText(file)
+  }
+
+  const analyzeUrlBulk = async () => {
+    if (urlBulkList.length === 0) return
+    setUrlStatus('loading')
+    setUrlBulkProgress(0)
+    setUrlBulkResults([])
+    const allPages = []
+    for (let i = 0; i < urlBulkList.length; i++) {
+      const url = urlBulkList[i]
+      try {
+        const res = await fetch('/api/analyze-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        })
+        const data = await res.json()
+        if (!data.error) {
+          allPages.push(...(data.pages || []).map(p => ({ ...p, sourceUrl: url })))
+        }
+      } catch {}
+      setUrlBulkProgress(i + 1)
+    }
+    const combinedInventory = {
+      shopName: urlBulkFile?.name || 'URL Bulk Import',
+      source: 'url',
+      totalContentRows: allPages.length,
+      pages: allPages.slice(0, 5),
+      hasContent: true,
+      hasCommerce: false,
+      columns: ['type', 'title', 'body', 'hasCTA', 'sourceUrl'],
+      detectedContentCols: ['title', 'body'],
+      detectedCommerceCols: [],
+      productCount: 0,
+      blogs: [],
+      metafields: [],
+      metafieldSources: { shop: 0, product: 0 },
+      totalRows: allPages.length,
+    }
+    setInventory(combinedInventory)
+    setUrlBulkResults(allPages)
+    setUrlStatus('connected')
   }
 
   async function startMapping() {
@@ -1157,16 +1219,47 @@ export default function Home() {
                 </div>
               )}
 
-              {/* URL Input */}
+           {/* URL Input */}
               {sourceSystem === 'url' && (
                 <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Seiten-URL</div>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCsvDragOver(true) }}
+                    onDragLeave={() => setCsvDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setCsvDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleUrlBulkUpload(file) }}
+                    onClick={() => document.getElementById('url-file-input').click()}
+                    style={{
+                      border: `2px dashed ${csvDragOver ? '#6366f1' : urlBulkFile ? '#6366f144' : '#1e293b'}`,
+                      borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer',
+                      background: csvDragOver ? 'rgba(99,102,241,0.05)' : '#080b12', transition: 'all 0.2s',
+                    }}
+                  >
+                    {urlBulkFile ? (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#6366f1', marginBottom: 4 }}>[OK] {urlBulkFile.name}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{urlBulkList.length} URLs gefunden</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>&#127758;</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>URL-Liste hier ablegen</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>TXT oder CSV — eine URL pro Zeile</div>
+                      </div>
+                    )}
+                  </div>
                   <input
-                    style={inputStyle}
-                    value={urlInput}
-                    onChange={e => { setUrlInput(e.target.value); setUrlStatus('idle'); setUrlError(null) }}
-                    placeholder="https://example.com/ueber-uns"
+                    id="url-file-input"
+                    type="file"
+                    accept=".txt,.csv"
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files[0]) handleUrlBulkUpload(e.target.files[0]) }}
                   />
+                  {urlBulkList.length > 0 && urlStatus !== 'connected' && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+                      {urlBulkProgress > 0
+                        ? `Analysiere URL ${urlBulkProgress} von ${urlBulkList.length}...`
+                        : `${urlBulkList.length} URLs bereit zur Analyse`}
+                    </div>
+                  )}
                   {urlError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{urlError}</div>}
                 </div>
               )}
@@ -1174,21 +1267,7 @@ export default function Home() {
             {sourceSystem === 'csv'
               ? <ConnectButton status={csvFile ? 'connected' : 'idle'} onClick={() => {}} label="CSV bereit" />
               : sourceSystem === 'url'
-              ? <ConnectButton status={urlStatus} onClick={async () => {
-                  if (!urlInput.startsWith('http')) { setUrlError('Bitte eine gültige URL eingeben'); return }
-                  setUrlStatus('loading')
-                  setUrlError(null)
-                  try {
-                    const res = await fetch('/api/analyze-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: urlInput }) })
-                    const data = await res.json()
-                    if (data.error) { setUrlError(data.error); setUrlStatus('error'); return }
-                    setInventory(data)
-                    setUrlStatus('connected')
-                  } catch (e) {
-                    setUrlError(e.message)
-                    setUrlStatus('error')
-                  }
-                }} label="URL analysieren" />
+              ? <ConnectButton status={urlStatus} onClick={analyzeUrlBulk} label={urlStatus === 'loading' ? `${urlBulkProgress}/${urlBulkList.length}` : 'URLs analysieren'} />
               : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
             }
           </div>
