@@ -430,6 +430,7 @@ export default function Home() {
   const [seoKeyword, setSeoKeyword] = useState('')
   const [toneOfVoice, setToneOfVoice] = useState('neutral')
   const [toneOfVoiceEnabled, setToneOfVoiceEnabled] = useState(false)
+  const [toneOfVoicePdf, setToneOfVoicePdf] = useState(null)
   const [selectedStatuses, setSelectedStatuses] = useState(['Active', 'Draft', 'Archived'])
   const [trendMinScore, setTrendMinScore] = useState('none')
   const [trendCheckRunning, setTrendCheckRunning] = useState(false)
@@ -1867,45 +1868,70 @@ async function handleCSVUpload(file) {
 
                  {/* Tone of Voice */}
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tone of Voice</div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <span style={{ fontSize: 11, color: toneOfVoiceEnabled ? '#a5b4fc' : '#334155' }}>
-                          {toneOfVoiceEnabled ? 'aktiv' : 'aus'}
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={toneOfVoiceEnabled}
-                          onChange={e => setToneOfVoiceEnabled(e.target.checked)}
-                          style={{ accentColor: '#6366f1', width: 14, height: 14 }}
-                        />
-                      </label>
-                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Tone of Voice</div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={toneOfVoiceEnabled}
+                        onChange={e => setToneOfVoiceEnabled(e.target.checked)}
+                        style={{ accentColor: '#6366f1', width: 14, height: 14 }}
+                      />
+                      <span style={{ fontSize: 11, color: toneOfVoiceEnabled ? '#a5b4fc' : '#334155' }}>
+                        {toneOfVoiceEnabled ? 'aktiv' : 'aktivieren'}
+                      </span>
+                    </label>
                     {toneOfVoiceEnabled && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                        {[
-                          { value: 'neutral', label: 'Neutral', desc: 'Sachlich, klar' },
-                          { value: 'professional', label: 'Professionell', desc: 'Kompetent, serioes' },
-                          { value: 'friendly', label: 'Freundlich', desc: 'Nahbar, persoenlich' },
-                          { value: 'inspiring', label: 'Inspirierend', desc: 'Motivierend, emotional' },
-                          { value: 'technical', label: 'Technisch', desc: 'Praezise, fachlich' },
-                          { value: 'luxury', label: 'Exklusiv', desc: 'Hochwertig, elegant' },
-                        ].map(t => (
-                          <div
-                            key={t.value}
-                            onClick={() => setToneOfVoice(t.value)}
-                            style={{
-                              padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                              border: `1px solid ${toneOfVoice === t.value ? '#6366f1' : '#1e293b'}`,
-                              background: toneOfVoice === t.value ? 'rgba(99,102,241,0.1)' : '#080b12',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            <div style={{ fontSize: 12, fontWeight: 700, color: toneOfVoice === t.value ? '#a5b4fc' : '#94a3b8', marginBottom: 2 }}>{t.label}</div>
-                            <div style={{ fontSize: 10, color: '#475569' }}>{t.desc}</div>
-                          </div>
-                        ))}
-                      </div>
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                          {[
+                            { value: 'neutral', label: 'Neutral', desc: 'Sachlich, klar' },
+                            { value: 'professional', label: 'Professionell', desc: 'Kompetent, serioes' },
+                            { value: 'friendly', label: 'Freundlich', desc: 'Nahbar, persoenlich' },
+                            { value: 'inspiring', label: 'Inspirierend', desc: 'Motivierend, emotional' },
+                            { value: 'technical', label: 'Technisch', desc: 'Praezise, fachlich' },
+                            { value: 'luxury', label: 'Exklusiv', desc: 'Hochwertig, elegant' },
+                          ].map(t => (
+                            <div
+                              key={t.value}
+                              onClick={() => { setToneOfVoice(t.value); setToneOfVoicePdf(null) }}
+                              style={{
+                                padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                                border: `1px solid ${toneOfVoice === t.value && !toneOfVoicePdf ? '#6366f1' : '#1e293b'}`,
+                                background: toneOfVoice === t.value && !toneOfVoicePdf ? 'rgba(99,102,241,0.1)' : '#080b12',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              <div style={{ fontSize: 12, fontWeight: 700, color: toneOfVoice === t.value && !toneOfVoicePdf ? '#a5b4fc' : '#94a3b8', marginBottom: 2 }}>{t.label}</div>
+                              <div style={{ fontSize: 10, color: '#475569' }}>{t.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div
+                          onClick={() => document.getElementById('tov-pdf-input').click()}
+                          style={{
+                            border: `2px dashed ${toneOfVoicePdf ? '#6366f1' : '#1e293b'}`,
+                            borderRadius: 8, padding: '12px 16px', cursor: 'pointer',
+                            background: toneOfVoicePdf ? 'rgba(99,102,241,0.05)' : '#080b12',
+                            transition: 'all 0.2s', textAlign: 'center',
+                          }}
+                        >
+                          {toneOfVoicePdf ? (
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#a5b4fc' }}>[OK] {toneOfVoicePdf.name}</div>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 2 }}>Tone-of-Voice als PDF hochladen</div>
+                              <div style={{ fontSize: 10, color: '#334155' }}>Wird als System-Prompt fuer die Textoptimierung verwendet</div>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          id="tov-pdf-input"
+                          type="file"
+                          accept=".pdf"
+                          style={{ display: 'none' }}
+                          onChange={e => { if (e.target.files[0]) setToneOfVoicePdf(e.target.files[0]) }}
+                        />
+                      </>
                     )}
                   </div>
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
