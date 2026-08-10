@@ -1099,8 +1099,7 @@ export default function Home() {
               </div>
 
               {/* Shopify Fields */}
-              {sourceSystem !== 'csv' && (
-                <>
+              {sourceSystem !== 'csv' && sourceSystem !== 'url' && (                <>
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
                     <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
