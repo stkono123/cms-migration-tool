@@ -852,6 +852,38 @@ async function handleCSVUpload(file) {
     setMigratingContentful(false)
   }
 
+  async function migrateUrlContent() {
+    setMigratingContentful(true)
+    try {
+      const res = await fetch('/api/migrate-content-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows: urlBulkResults.map(p => ({
+            title: p.title,
+            body: p.body,
+            sectionType: p.sectionType,
+            sourceUrl: p.sourceUrl,
+          })),
+          contentCols: ['title', 'body'],
+          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          target: 'contentful',
+        }),
+      })
+      const data = await res.json()
+      setMigrateResultsContentful(
+        (data.results || []).map((r, idx) => ({
+          title: urlBulkResults[idx]?.title || `Sektion ${idx + 1}`,
+          status: r.status,
+          error: r.error,
+        }))
+      )
+    } catch (e) {
+      console.error(e)
+    }
+    setMigratingContentful(false)
+  }
+
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
@@ -2564,17 +2596,19 @@ async function handleCSVUpload(file) {
                     </div>
                   )}
 
-                  {/* Contentful Migration */}
+                 {/* Contentful Migration */}
                   <div style={{ padding: 16, background: '#0a0e1a', borderRadius: 10, border: '1px solid #FAE50133' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <ContentfulLogo />
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#FAE501' }}>Pages nach Contentful</span>
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-                      {inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert
+                      {inventory?.source === 'url'
+                        ? `${urlBulkResults.length} Pages werden migriert`
+                        : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
                     <button
-                      onClick={inventory?.source === 'csv' ? migrateCSVContent : migrateContentToContentful}
+                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : migrateContentToContentful}
                       disabled={migratingContentful}
                       style={{
                         width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
@@ -2589,7 +2623,7 @@ async function handleCSVUpload(file) {
                         : migrateResultsContentful
                           ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
                           : 'Pages nach Contentful migrieren'}
-                   </button>
+                    </button>
                     {migrateResultsContentful && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                         {migrateResultsContentful.map((r, i) => (
@@ -2603,12 +2637,6 @@ async function handleCSVUpload(file) {
                       </div>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* ── FOOTER ── */}
       <div style={{ maxWidth: 1100, margin: '48px auto 0', padding: '24px 24px', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
