@@ -342,6 +342,13 @@ export default function Home() {
   const [changelog, setChangelog] = useState([])
   const gitHash = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev'
 
+  useEffect(() => {
+  fetch('/api/changelog')
+    .then(r => r.json())
+    .then(data => setChangelog(data))
+    .catch(() => {})
+}, [])
+
   const loadChangelog = async () => {
     if (changelog.length > 0) { setShowChangelog(true); return }
     try {
