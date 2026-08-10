@@ -1242,7 +1242,7 @@ async function handleCSVUpload(file) {
                       <div>
                         <div style={{ fontSize: 24, marginBottom: 8 }}>&#127758;</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>URL-Liste hier ablegen</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>TXT oder CSV — eine URL pro Zeile</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>CSV oder TXT — eine URL pro Zeile, erste Spalte wird gelesen</div>
                       </div>
                     )}
                   </div>
