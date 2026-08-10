@@ -39,6 +39,7 @@ const CSVLogo = () => (
 const SOURCE_SYSTEMS = [
   { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
   { id: 'csv', label: 'CSV / Manuell', logo: CSVLogo, available: true },
+  { id: 'url', label: 'URL / Web-Fetch', logo: null, available: true },
   { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
   { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
@@ -381,6 +382,11 @@ export default function Home() {
   const [csvParseError, setCsvParseError] = useState(null)
   const [csvRawRows, setCsvRawRows] = useState([])
   const [csvTarget, setCsvTarget] = useState('contentful')
+
+  // URL state
+  const [urlInput, setUrlInput] = useState('')
+  const [urlStatus, setUrlStatus] = useState('idle')
+  const [urlError, setUrlError] = useState(null)
 
   // Pipeline state
   const [inventory, setInventory] = useState(null)
@@ -1114,7 +1120,7 @@ export default function Home() {
                 </>
               )}
 
-              {/* CSV Upload */}
+            {/* CSV Upload */}
               {sourceSystem === 'csv' && (
                 <div style={{ marginBottom: 14 }}>
                   <div
@@ -1151,11 +1157,39 @@ export default function Home() {
                   {csvParseError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{csvParseError}</div>}
                 </div>
               )}
-            </div>
 
-            {/* FIX: CSV ConnectButton zeigt korrekten Status, Shopify-Button nur bei Shopify */}
+              {/* URL Input */}
+              {sourceSystem === 'url' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Seiten-URL</div>
+                  <input
+                    style={inputStyle}
+                    value={urlInput}
+                    onChange={e => { setUrlInput(e.target.value); setUrlStatus('idle'); setUrlError(null) }}
+                    placeholder="https://example.com/ueber-uns"
+                  />
+                  {urlError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{urlError}</div>}
+                </div>
+              )}
+            </div>
             {sourceSystem === 'csv'
               ? <ConnectButton status={csvFile ? 'connected' : 'idle'} onClick={() => {}} label="CSV bereit" />
+              : sourceSystem === 'url'
+              ? <ConnectButton status={urlStatus} onClick={async () => {
+                  if (!urlInput.startsWith('http')) { setUrlError('Bitte eine gültige URL eingeben'); return }
+                  setUrlStatus('loading')
+                  setUrlError(null)
+                  try {
+                    const res = await fetch('/api/analyze-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: urlInput }) })
+                    const data = await res.json()
+                    if (data.error) { setUrlError(data.error); setUrlStatus('error'); return }
+                    setInventory(data)
+                    setUrlStatus('connected')
+                  } catch (e) {
+                    setUrlError(e.message)
+                    setUrlStatus('error')
+                  }
+                }} label="URL analysieren" />
               : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
             }
           </div>
