@@ -1,13 +1,24 @@
 [
   {
-    "version": "0.1.0",
+    "version": "1.1.0",
     "date": "2026-08-10",
     "changes": [
-      "Initiales Release: CSV-Import-Kanal",
+      "Versionsbadge im Header mit Git-Commit-Hash",
+      "Changelog-Modal mit Versionshistorie",
+      "Footer mit Changelog-Link",
+      "API-Route /api/changelog aus statischer JSON-Datei"
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-07-30",
+    "changes": [
+      "CSV-Import-Kanal mit papaparse",
       "Shopify-Quellsystem mit Admin API",
       "Contentful Content Type Deployment",
       "KI-gestütztes MACH-Mapping via Claude Haiku",
-      "PDF-Upload für bestehendes Content Model"
+      "PDF-Upload für bestehendes Content Model",
+      "Encoding-Fix und Text-Optimierung"
     ]
   }
 ]
