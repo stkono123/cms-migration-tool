@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-08-10",
+    "changes": [
+      "URL / Web-Fetch Kanal: URL-Listen-Upload (CSV/TXT) mit Bulk-Analyse",
+      "Tone of Voice: Voreinstellungen und PDF-Upload als System-Prompt",
+      "Versionsbadge mit Git-Commit-Hash im Header",
+      "Changelog-Modal mit Versionshistorie",
+      "Footer mit Changelog-Link",
+      "Plus/Minus statt Pfeil-Icons bei aufklappbaren Panels"
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-08-10",
     "changes": [
