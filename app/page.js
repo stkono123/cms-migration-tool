@@ -2635,8 +2635,14 @@ async function handleCSVUpload(file) {
                           </div>
                         ))}
                       </div>
-                    )}
+                     )}
+                    </div>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
       {/* ── FOOTER ── */}
       <div style={{ maxWidth: 1100, margin: '48px auto 0', padding: '24px 24px', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
