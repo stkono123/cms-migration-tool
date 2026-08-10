@@ -2464,7 +2464,7 @@ export default function Home() {
                         : migrateResultsContentful
                           ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
                           : 'Pages nach Contentful migrieren'}
-                    </button>
+                   </button>
                     {migrateResultsContentful && (
                       <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
                         {migrateResultsContentful.map((r, i) => (
@@ -2483,8 +2483,58 @@ export default function Home() {
             </div>
           </div>
         )}
-
       </div>
+
+      {/* ── FOOTER ── */}
+      <div style={{ maxWidth: 1100, margin: '48px auto 0', padding: '24px 24px', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, color: '#334155' }}>MigrateIQ by Accenture</span>
+        <button
+          onClick={loadChangelog}
+          style={{ background: 'none', border: 'none', color: '#334155', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
+        >
+          Changelog
+        </button>
+      </div>
+
+      {/* ── CHANGELOG MODAL ── */}
+      {showChangelog && (
+        <div
+          onClick={() => setShowChangelog(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 16, padding: 32, maxWidth: 520, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: '#f1f5f9' }}>Changelog</span>
+              <button
+                onClick={() => setShowChangelog(false)}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
+              >
+                x
+              </button>
+            </div>
+            {changelog.length === 0 ? (
+              <p style={{ color: '#64748b', fontSize: 13 }}>Keine Einträge gefunden.</p>
+            ) : (
+              changelog.map((entry, i) => (
+                <div key={i} style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#6366f1' }}>v{entry.version}</span>
+                    <span style={{ fontSize: 11, color: '#475569' }}>{entry.date}</span>
+                  </div>
+                  <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
+                    {entry.changes.map((change, j) => (
+                      <li key={j} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, lineHeight: 1.5 }}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
