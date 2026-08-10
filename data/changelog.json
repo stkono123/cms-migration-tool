@@ -1,0 +1,13 @@
+[
+  {
+    "version": "0.1.0",
+    "date": "2026-08-10",
+    "changes": [
+      "Initiales Release: CSV-Import-Kanal",
+      "Shopify-Quellsystem mit Admin API",
+      "Contentful Content Type Deployment",
+      "KI-gestütztes MACH-Mapping via Claude Haiku",
+      "PDF-Upload für bestehendes Content Model"
+    ]
+  }
+]
