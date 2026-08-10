@@ -1668,7 +1668,10 @@ async function handleCSVUpload(file) {
                 {/* Pages */}
                 <div style={{ background: '#080b12', border: '1px solid #166834', borderRadius: 10, padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: '#22c55e', fontFamily: 'JetBrains Mono, monospace' }}>
-                    <AnimatedNumber value={inventory.pages?.length || 0} animate={animateNumbers} />
+                    <AnimatedNumber
+                      value={inventory.source === 'url' ? urlBulkResults.length : inventory.totalContentRows || inventory.pages?.length || 0}
+                      animate={animateNumbers}
+                    />
                   </div>
                   <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pages</div>
                   {(inventory.pagesHidden || 0) > 0 && (
@@ -2171,8 +2174,8 @@ async function handleCSVUpload(file) {
                     <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Alles in Ordnung</span>
                   )}
                 </div>
-                <span style={{ color: '#64748b', fontSize: 12 }}>{edgeCasesOpen ? '&#9650;' : '&#9660;'}</span>
-              </button>
+                <span style={{ color: '#64748b', fontSize: 12 }}>{edgeCasesOpen ? '-' : '+'}</span>
+                    </button>
 
               {edgeCasesOpen && (
                 <div style={{ padding: '0 24px 24px', borderTop: '1px solid #1e293b' }}>
@@ -2405,8 +2408,8 @@ async function handleCSVUpload(file) {
                   </span>
                   <span style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>nur lesend</span>
                 </div>
-                <span style={{ color: '#334155', fontSize: 12 }}>{readonlyPanelOpen ? '&#9650;' : '&#9660;'}</span>
-              </button>
+                <span style={{ color: '#334155', fontSize: 12 }}>{readonlyPanelOpen ? '-' : '+'}</span>
+                    </button>
               {readonlyPanelOpen && (
                 <div style={{ padding: '0 20px 20px', borderTop: '1px solid #1a2030' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 16 }}>
