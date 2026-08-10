@@ -1,6 +1,22 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 
+const [showChangelog, setShowChangelog] = useState(false)
+const [changelog, setChangelog] = useState([])
+const gitHash = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev'
+
+const loadChangelog = async () => {
+  if (changelog.length > 0) { setShowChangelog(true); return }
+  try {
+    const res = await fetch('/api/changelog')
+    const data = await res.json()
+    setChangelog(data)
+    setShowChangelog(true)
+  } catch {
+    setShowChangelog(true)
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // LOGOS
 // ─────────────────────────────────────────────────────────────────
@@ -931,55 +947,71 @@ export default function Home() {
         select:focus { border-color: #6366f1; }
       `}</style>
 
-      {/* ── STICKY HEADER ── */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
-          </div>
-          {/* Pipeline Progress */}
-          <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 12, padding: '14px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {PIPELINE_STEPS.map((step, i) => {
-                const status = getStepStatus(step.id)
-                return (
-                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                      <div style={{
-                        width: 26, height: 26, borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 700,
-                        background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b',
-                        color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#64748b',
-                        border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent',
-                        boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none',
-                        transition: 'all 0.3s',
-                        ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {}),
-                      }}>
-                        {status === 'done' ? '[OK]' : i + 1}
-                      </div>
-                      <div style={{
-                        fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
-                        color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155',
-                        whiteSpace: 'nowrap', transition: 'color 0.3s',
-                      }}>
-                        {step.label}
-                      </div>
-                    </div>
-                    {i < PIPELINE_STEPS.length - 1 && (
-                      <div style={{
-                        flex: 1, height: 2, margin: '0 6px', marginBottom: 16,
-                        background: getStepStatus(PIPELINE_STEPS[i + 1].id) === 'pending' ? '#1e293b' : '#166534',
-                        transition: 'background 0.5s',
-                      }} />
-                    )}
-                  </div>
-                )
-              })}
+{/* ── STICKY HEADER ── */}
+<div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#080b12', borderBottom: '1px solid #1e293b', paddingBottom: 16 }}>
+  <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
+      <img src="/logo.svg" alt="MigrateIQ" style={{ height: 64 }} />
+      <button
+        onClick={loadChangelog}
+        style={{
+          background: 'none',
+          border: '1px solid #1e293b',
+          borderRadius: 8,
+          padding: '4px 10px',
+          color: '#64748b',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          cursor: 'pointer',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {gitHash}
+      </button>
+    </div>
+      {/* Pipeline Progress */}
+    <div style={{ background: '#0f1623', border: '1px solid #1e293b', borderRadius: 12, padding: '14px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {PIPELINE_STEPS.map((step, i) => {
+          const status = getStepStatus(step.id)
+          return (
+            <div key={step.id} style={{ display: 'flex', alignItems: 'center', flex: i < PIPELINE_STEPS.length - 1 ? 1 : 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700,
+                  background: status === 'done' ? '#166534' : status === 'active' ? '#6366f1' : '#1e293b',
+                  color: status === 'done' ? '#22c55e' : status === 'active' ? '#fff' : '#64748b',
+                  border: status === 'active' ? '2px solid #6366f1' : '2px solid transparent',
+                  boxShadow: status === 'active' ? '0 0 12px rgba(99,102,241,0.5)' : 'none',
+                  transition: 'all 0.3s',
+                  ...(status === 'active' ? { animation: 'pulse 2s ease infinite' } : {}),
+                }}>
+                  {status === 'done' ? '[OK]' : i + 1}
+                </div>
+                <div style={{
+                  fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
+                  color: status === 'done' ? '#22c55e' : status === 'active' ? '#a5b4fc' : '#334155',
+                  whiteSpace: 'nowrap', transition: 'color 0.3s',
+                }}>
+                  {step.label}
+                </div>
+              </div>
+              {i < PIPELINE_STEPS.length - 1 && (
+                <div style={{
+                  flex: 1, height: 2, margin: '0 6px', marginBottom: 16,
+                  background: getStepStatus(PIPELINE_STEPS[i + 1].id) === 'pending' ? '#1e293b' : '#166534',
+                  transition: 'background 0.5s',
+                }} />
+              )}
             </div>
-          </div>
-        </div>
+          )
+        })}
       </div>
+    </div>
+  </div>
+</div>
 
       {/* ── MAIN CONTENT ── */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 48px' }}>
