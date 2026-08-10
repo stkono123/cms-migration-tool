@@ -1,22 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 
-const [showChangelog, setShowChangelog] = useState(false)
-const [changelog, setChangelog] = useState([])
-const gitHash = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev'
-
-const loadChangelog = async () => {
-  if (changelog.length > 0) { setShowChangelog(true); return }
-  try {
-    const res = await fetch('/api/changelog')
-    const data = await res.json()
-    setChangelog(data)
-    setShowChangelog(true)
-  } catch {
-    setShowChangelog(true)
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────
 // LOGOS
 // ─────────────────────────────────────────────────────────────────
