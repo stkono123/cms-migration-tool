@@ -33,6 +33,13 @@ const CSVLogo = () => (
   </svg>
 )
 
+const ZipLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="4" fill="#f59e0b" opacity="0.15"/>
+    <text x="12" y="16" textAnchor="middle" fill="#f59e0b" fontSize="8" fontWeight="bold" fontFamily="monospace">ZIP</text>
+  </svg>
+)
+
 // ─────────────────────────────────────────────────────────────────
 // KONSTANTEN
 // ─────────────────────────────────────────────────────────────────
@@ -40,6 +47,7 @@ const SOURCE_SYSTEMS = [
   { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
   { id: 'csv', label: 'CSV / Manuell', logo: CSVLogo, available: true },
   { id: 'url', label: 'URL / Web-Fetch', logo: null, available: true },
+  { id: 'zip', label: 'ZIP / HTML', logo: ZipLogo, available: true },
   { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
   { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
@@ -386,6 +394,11 @@ export default function Home() {
   const [csvContentTypes, setCsvContentTypes] = useState([])
   const [csvContentTypesLoading, setCsvContentTypesLoading] = useState(false)
 
+  // ZIP state
+  const [zipFile, setZipFile] = useState(null)
+  const [zipDragOver, setZipDragOver] = useState(false)
+  const [zipError, setZipError] = useState(null)
+
   // URL state
   const [urlInput, setUrlInput] = useState('')
   const [urlStatus, setUrlStatus] = useState('idle')
@@ -468,7 +481,7 @@ export default function Home() {
   const ctSkipped = ctStatus === 'skipped'
   const ctReady = ctActive || ctSkipped
   const allConnected =
-    (sourceSystem === 'csv' ? !!csvFile : shopifyStatus === 'connected') &&
+    (sourceSystem === 'csv' ? !!csvFile : sourceSystem === 'zip' ? !!zipFile : shopifyStatus === 'connected') &&
     ctReady &&
     contentfulStatus === 'connected'
 
@@ -569,6 +582,19 @@ export default function Home() {
           : inventory.hasCommerce ? 'commercetools'
           : 'contentful'
         )
+        setCsvContentTypesLoading(true)
+        fetch('/api/get-contentful-models', { method: 'POST' })
+          .then(r => r.json())
+          .then(data => {
+            const types = (data.items || []).map(ct => ({ id: ct.sys.id, name: ct.name }))
+            setCsvContentTypes(types)
+            if (types.length > 0) setCsvContentType(types[0].id)
+          })
+          .catch(() => {})
+          .finally(() => setCsvContentTypesLoading(false))
+      }
+      if (inventory.source === 'zip') {
+        setCsvTarget('contentful')
         setCsvContentTypesLoading(true)
         fetch('/api/get-contentful-models', { method: 'POST' })
           .then(r => r.json())
@@ -690,6 +716,46 @@ async function handleCSVUpload(file) {
         setAnalyzing(false)
       },
     })
+  }
+
+  async function handleZipUpload(file) {
+    if (!file) return
+    setZipFile(file)
+    setZipError(null)
+    setAnalyzing(true)
+    setAnimateNumbers(false)
+    setAnalyzeStep(0)
+    const stepInterval = setInterval(() => {
+      setAnalyzeStep(s => s >= analyzeSteps.length - 1 ? s : s + 1)
+    }, 600)
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = e => resolve(e.target.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/analyze-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64, fileName: file.name }),
+      })
+      const data = await res.json()
+      clearInterval(stepInterval)
+      setAnalyzeStep(analyzeSteps.length - 1)
+      await new Promise(r => setTimeout(r, 800))
+      if (data.error) {
+        setZipError(data.error)
+      } else {
+        setInventory(data)
+        setTimeout(() => setAnimateNumbers(true), 100)
+      }
+    } catch (e) {
+      clearInterval(stepInterval)
+      setZipError('Fehler beim Verarbeiten der ZIP-Datei.')
+      console.error(e)
+    }
+    setAnalyzing(false)
   }
 
   const handleUrlBulkUpload = (file) => {
@@ -930,6 +996,41 @@ async function migrateProductsToCT() {
     setMigratingContentful(false)
   }
 
+  async function migrateZipContent() {
+    setMigratingContentful(true)
+    try {
+      const pages = inventory?.allPages || inventory?.pages || []
+      const res = await fetch('/api/migrate-content-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows: pages.map(p => ({
+            title: p.pageTitle || p.title,
+            body: p.body,
+            sectionType: p.sectionType,
+            fileName: p.fileName,
+          })),
+          contentCols: ['title', 'body'],
+          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          target: 'contentful',
+          contentType: csvContentType,
+        }),
+      })
+      const data = await res.json()
+      setMigrateResultsContentful(
+        (data.results || []).map((r, idx) => ({
+          title: pages[idx]?.pageTitle || pages[idx]?.title || `Seite ${idx + 1}`,
+          status: r.status,
+          error: r.error,
+        }))
+      )
+      setWordCountLog(data.wordCountLog || [])
+    } catch (e) {
+      console.error(e)
+    }
+    setMigratingContentful(false)
+  }
+
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
@@ -1010,6 +1111,8 @@ async function migrateProductsToCT() {
     setCsvFile(null)
     setCsvRawRows([])
     setCsvParseError(null)
+    setZipFile(null)
+    setZipError(null)
     // Control Panel zuruecksetzen
     setControlPanelOpen(false)
     setEdgeCasesOpen(false)
@@ -1187,7 +1290,7 @@ async function migrateProductsToCT() {
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
-                <StatusDot status={sourceSystem === 'csv' ? (csvFile ? 'connected' : 'idle') : shopifyStatus} />
+                <StatusDot status={sourceSystem === 'csv' ? (csvFile ? 'connected' : 'idle') : sourceSystem === 'zip' ? (zipFile ? 'connected' : 'idle') : shopifyStatus} />
               </div>
 
               {/* Source System Dropdown */}
@@ -1297,6 +1400,44 @@ async function migrateProductsToCT() {
                 </div>
               )}
 
+            {/* ZIP Upload */}
+              {sourceSystem === 'zip' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setZipDragOver(true) }}
+                    onDragLeave={() => setZipDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setZipDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleZipUpload(file) }}
+                    onClick={() => document.getElementById('zip-file-input').click()}
+                    style={{
+                      border: `2px dashed ${zipDragOver ? '#f59e0b' : zipFile ? '#f59e0b44' : '#1e293b'}`,
+                      borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer',
+                      background: zipDragOver ? 'rgba(245,158,11,0.05)' : '#080b12', transition: 'all 0.2s',
+                    }}
+                  >
+                    {zipFile ? (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>[OK] {zipFile.name}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Datei waehlen</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>🗜️</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ZIP hier ablegen</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>ZIP-Archiv mit HTML-Dateien — jede HTML wird als eigene Seite analysiert</div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    id="zip-file-input"
+                    type="file"
+                    accept=".zip"
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files[0]) handleZipUpload(e.target.files[0]) }}
+                  />
+                  {zipError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{zipError}</div>}
+                </div>
+              )}
+
            {/* URL Input */}
               {sourceSystem === 'url' && (
                 <div style={{ marginBottom: 14 }}>
@@ -1344,6 +1485,8 @@ async function migrateProductsToCT() {
             </div>
             {sourceSystem === 'csv'
               ? <ConnectButton status={csvFile ? 'connected' : 'idle'} onClick={() => {}} label="CSV bereit" />
+              : sourceSystem === 'zip'
+              ? <ConnectButton status={zipFile ? 'connected' : 'idle'} onClick={() => {}} label="ZIP bereit" />
               : sourceSystem === 'url'
               ? <ConnectButton status={urlStatus} onClick={analyzeUrlBulk} label={urlStatus === 'loading' ? `${urlBulkProgress}/${urlBulkList.length}` : 'URLs analysieren'} />
               : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
@@ -2763,7 +2906,7 @@ async function migrateProductsToCT() {
                         : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
                     <button
-                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : migrateContentToContentful}
+                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : migrateContentToContentful}
                       disabled={migratingContentful}
                       style={{
                         width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
