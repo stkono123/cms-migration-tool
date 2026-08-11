@@ -2480,13 +2480,23 @@ async function handleCSVUpload(file) {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                <div style={{ background: '#080b12', border: '1px solid #00B2E333', borderRadius: 10, padding: 14 }}>
+                <div style={{
+                  background: '#080b12',
+                  border: '1px solid #00B2E333',
+                  borderRadius: 10, padding: 14,
+                  opacity: ctSkipped ? 0.4 : 1,
+                  position: 'relative',
+                  transition: 'opacity 0.3s',
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <CTLogo />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#00B2E3' }}>commercetools</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: ctSkipped ? '#334155' : '#00B2E3' }}>commercetools</span>
                   </div>
                   <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{mapping.commercetools?.description}</p>
-                  <div style={{ marginTop: 8, fontSize: 11, color: '#00B2E3' }}>{mapping.commercetools?.contentTypes?.length || 0} Types</div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: ctSkipped ? '#334155' : '#00B2E3' }}>
+                    {mapping.commercetools?.contentTypes?.length || 0} Types
+                    {ctSkipped && <span style={{ marginLeft: 8, fontSize: 10, color: '#475569' }}>— nicht verbunden</span>}
+                  </div>
                 </div>
                 <div style={{ background: '#080b12', border: '1px solid #FAE50133', borderRadius: 10, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
