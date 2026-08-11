@@ -62,12 +62,21 @@ export async function POST(request) {
     const ctData = await ctRes.json()
     const contentTypes = ctData.items || []
 
-   const pageContentType = contentTypes.find(ct =>
-      ct.sys.id.toLowerCase().includes('page') ||
-      ct.sys.id.toLowerCase().includes('seite') ||
-      ct.name?.toLowerCase().includes('page') ||
-      ct.name?.toLowerCase().includes('seite')
-    ) || contentTypes[0]
+    const pageContentType =
+      // 1. caller explicitly named a content type
+      (target && contentTypes.find(ct =>
+        ct.sys.id.toLowerCase() === target.toLowerCase() ||
+        ct.name?.toLowerCase() === target.toLowerCase()
+      )) ||
+      // 2. heuristic: id or name contains "page" / "seite"
+      contentTypes.find(ct =>
+        ct.sys.id.toLowerCase().includes('page') ||
+        ct.sys.id.toLowerCase().includes('seite') ||
+        ct.name?.toLowerCase().includes('page') ||
+        ct.name?.toLowerCase().includes('seite')
+      ) ||
+      // 3. last resort: first available type
+      contentTypes[0]
 
     if (!pageContentType) {
       return Response.json({
