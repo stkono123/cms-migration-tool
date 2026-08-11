@@ -382,6 +382,9 @@ export default function Home() {
   const [csvParseError, setCsvParseError] = useState(null)
   const [csvRawRows, setCsvRawRows] = useState([])
   const [csvTarget, setCsvTarget] = useState('contentful')
+  const [csvContentType, setCsvContentType] = useState('')
+  const [csvContentTypes, setCsvContentTypes] = useState([])
+  const [csvContentTypesLoading, setCsvContentTypesLoading] = useState(false)
 
   // URL state
   const [urlInput, setUrlInput] = useState('')
@@ -566,6 +569,16 @@ export default function Home() {
           : inventory.hasCommerce ? 'commercetools'
           : 'contentful'
         )
+        setCsvContentTypesLoading(true)
+        fetch('/api/get-contentful-models', { method: 'POST' })
+          .then(r => r.json())
+          .then(data => {
+            const types = (data.items || []).map(ct => ({ id: ct.sys.id, name: ct.name }))
+            setCsvContentTypes(types)
+            if (types.length > 0) setCsvContentType(types[0].id)
+          })
+          .catch(() => {})
+          .finally(() => setCsvContentTypesLoading(false))
       }
       setSelectedBlogs((inventory.blogs || []).map(b => b.id))
       const namespaces = [...new Set((inventory.metafields || []).map(m => m.namespace))]
@@ -863,6 +876,7 @@ async function migrateProductsToCT() {
             toneOfVoicePdfText: toneOfVoiceEnabled ? toneOfVoicePdfText : '',
           },
           target: csvTarget,
+          contentType: csvContentType,
         }),
       })
       const data = await res.json()
@@ -2421,6 +2435,32 @@ async function migrateProductsToCT() {
                     </button>
                   ))}
                 </div>
+
+                {/* Contentful Content Type Selector */}
+                {(csvTarget === 'contentful' || csvTarget === 'both') && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                      Contentful Content Type
+                    </div>
+                    {csvContentTypesLoading ? (
+                      <div style={{ fontSize: 11, color: '#475569' }}>Lädt Content Types…</div>
+                    ) : csvContentTypes.length > 0 ? (
+                      <select
+                        value={csvContentType}
+                        onChange={e => setCsvContentType(e.target.value)}
+                        style={{ ...inputStyle, width: '100%', appearance: 'none', cursor: 'pointer' }}
+                      >
+                        {csvContentTypes.map(ct => (
+                          <option key={ct.id} value={ct.id}>{ct.name} ({ct.id})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={{ fontSize: 11, color: '#ef4444' }}>
+                        Keine Content Types gefunden – ist Contentful verbunden?
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

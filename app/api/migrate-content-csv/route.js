@@ -37,7 +37,7 @@ function wordCountDiff(beforeText, afterText) {
 
 export async function POST(request) {
   try {
-    const { rows, contentCols, settings, target } = await request.json()
+    const { rows, contentCols, settings, target, contentType } = await request.json()
 
     if (!rows || rows.length === 0) {
       return Response.json({ error: 'Keine Rows übergeben' }, { status: 400 })
@@ -63,10 +63,10 @@ export async function POST(request) {
     const contentTypes = ctData.items || []
 
     const pageContentType =
-      // 1. caller explicitly named a content type
-      (target && contentTypes.find(ct =>
-        ct.sys.id.toLowerCase() === target.toLowerCase() ||
-        ct.name?.toLowerCase() === target.toLowerCase()
+      // 1. caller explicitly selected a content type by id or name
+      (contentType && contentTypes.find(ct =>
+        ct.sys.id.toLowerCase() === contentType.toLowerCase() ||
+        ct.name?.toLowerCase() === contentType.toLowerCase()
       )) ||
       // 2. heuristic: id or name contains "page" / "seite"
       contentTypes.find(ct =>
