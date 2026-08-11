@@ -120,7 +120,7 @@ export async function POST(request) {
     const bodyField = fields.find(f => f.id.toLowerCase().includes('body') || f.id.toLowerCase().includes('content') || f.id.toLowerCase().includes('label') || f.id.toLowerCase().includes('description'))
 
     const columns = Object.keys(rows[0])
-    const titleCol = columns.find(c => ['title', 'name', 'label', 'headline', 'uid'].some(k => c.toLowerCase().includes(k))) || columns[1]
+    const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
     const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
     const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label'].some(k => c.toLowerCase().includes(k)))
 
@@ -132,7 +132,12 @@ export async function POST(request) {
       const row = rows[i]
       try {
         const bodyBefore = bodyCol ? (row[bodyCol] || '') : ''
-        const { optimized, log } = await optimizeCSVRow(row, contentCols, settings)
+        // Always include titleCol in the optimized set so its language is
+        // preserved/enhanced consistently with the body, even if analyze-csv
+        // did not detect it as a content column (e.g. when titleCol resolved
+        // to a column not named 'title'/'name'/'label').
+        const effectiveContentCols = [...new Set([...contentCols, titleCol].filter(Boolean))]
+        const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
 
         const bodyAfter = bodyCol ? (optimized[bodyCol] || '') : ''
