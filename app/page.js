@@ -372,7 +372,7 @@ export default function Home() {
   // Connection state
   const [sourceSystem, setSourceSystem] = useState('shopify')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
-  const [shopifyDomain, setShopifyDomain] = useState('sanitaetshaus24-shop.myshopify.com')
+  const [shopifyDomain, setShopifyDomain] = useState('')
   const [shopifyToken, setShopifyToken] = useState('................................')
   const [shopifyTokenEditing, setShopifyTokenEditing] = useState(false)
   const [shopifyTokenReal, setShopifyTokenReal] = useState('')
