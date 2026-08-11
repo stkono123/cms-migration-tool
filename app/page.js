@@ -2721,6 +2721,21 @@ async function migrateCSVContent() {
                             {' '}von {wordCountLog.length} gesamt
                           </div>
                         )}
+                       {migratingContentful
+                        ? 'Migriere Pages...'
+                        : migrateResultsContentful
+                          ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
+                          : 'Pages nach Contentful migrieren'}
+                    </button>
+                    {migrateResultsContentful && (
+                      <div style={{ marginTop: 12, maxHeight: 260, overflowY: 'auto' }}>
+                        {wordCountLog.length > 0 && (
+                          <div style={{ marginBottom: 10, padding: '8px 12px', background: '#080b12', borderRadius: 8, fontSize: 11, color: '#64748b' }}>
+                            Word-Count-Diff:{' '}
+                            <span style={{ color: '#a5b4fc' }}>{wordCountLog.filter(w => w.stronglyChanged).length} Eintraege stark veraendert ({'>'}30%)</span>
+                            {' '}von {wordCountLog.length} gesamt
+                          </div>
+                        )}
                         {migrateResultsContentful.map((r, i) => {
                           const wc = wordCountLog[i]
                           return (
@@ -2744,16 +2759,13 @@ async function migrateCSVContent() {
                         })}
                       </div>
                     )}
-                        ))}
-                      </div>
-                     )}
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
       {/* ── FOOTER ── */}
       <div style={{ maxWidth: 1100, margin: '48px auto 0', padding: '24px 24px', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
