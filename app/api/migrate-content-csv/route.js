@@ -164,6 +164,8 @@ export async function POST(request) {
 
     // Separate meta-description field — matches common English and German
     // naming conventions; always distinct from bodyField.
+    // coerceFieldValue handles RichText automatically by checking field.type,
+    // so a Contentful RichText SEO-description field is wrapped correctly.
     const metaField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
@@ -174,17 +176,24 @@ export async function POST(request) {
           id === 'seodescription' ||
           id === 'seo_description' ||
           id === 'seodesc' ||
+          id === 'seo_desc' ||
           id.includes('seodescription') ||
           id.includes('seo_description') ||
           id.includes('seo-description') ||
+          id.includes('seodescription') ||
           id.includes('seodesc') ||
-          // 'seo' + 'description' anywhere in the id
-          (id.includes('seo') && id.includes('description'))
+          id.includes('seo_desc') ||
+          id.includes('seo-desc') ||
+          // 'seo' + 'description' anywhere in the id (handles camelCase, underscores, etc.)
+          (id.includes('seo') && id.includes('description')) ||
+          (id.includes('seo') && id.includes('desc'))
         )
       )
     })
 
     // SEO title field — separate from the page title.
+    // Matches explicit names and any id containing both 'seo' and 'title'
+    // regardless of separator (camelCase, hyphen, underscore, etc.).
     const seoTitleField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
@@ -194,6 +203,9 @@ export async function POST(request) {
         f.id !== metaField?.id &&
         (
           id === 'seotitle' ||
+          id.includes('seo-title') ||
+          id.includes('seo_title') ||
+          // 'seo' and 'title' present anywhere in the id (covers camelCase seoTitle, etc.)
           (id.includes('seo') && id.includes('title'))
         )
       )
@@ -217,7 +229,14 @@ export async function POST(request) {
       )
     })
 
-    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}, meta: ${metaField?.id ?? 'NOT FOUND'}, seoTitle: ${seoTitleField?.id ?? 'NOT FOUND'}, pageType: ${pageTypeField?.id ?? 'NOT FOUND'}`)
+    const fmt = f => f ? `${f.id} (${f.type})` : 'NOT FOUND'
+    console.log(`[migrate-csv] Field mapping:`)
+    console.log(`  title    → ${fmt(titleField)}`)
+    console.log(`  slug     → ${fmt(slugField)}`)
+    console.log(`  body     → ${fmt(bodyField)}`)
+    console.log(`  meta     → ${fmt(metaField)}`)
+    console.log(`  seoTitle → ${fmt(seoTitleField)}`)
+    console.log(`  pageType → ${fmt(pageTypeField)}`)
     console.log(`[migrate-csv] CSV columns: ${Object.keys(rows[0]).join(', ')}`)
 
     const columns = Object.keys(rows[0])
