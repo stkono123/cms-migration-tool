@@ -809,7 +809,7 @@ async function handleCSVUpload(file) {
     setDeployingContentful(false)
   }
 
-  async function migrateProductsToCT() {
+async function migrateProductsToCT() {
     setMigratingCT(true)
     try {
       const res = await fetch('/api/migrate-products-commercetools', {
@@ -825,7 +825,7 @@ async function handleCSVUpload(file) {
     setMigratingCT(false)
   }
 
-async function migrateCSVContent() {
+  async function migrateCSVContent() {
     setMigratingContentful(true)
     try {
       let toneOfVoicePdfText = ''
@@ -849,7 +849,6 @@ async function migrateCSVContent() {
           reader.readAsDataURL(toneOfVoicePdf)
         })
       }
-
       const res = await fetch('/api/migrate-content-csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -885,40 +884,6 @@ async function migrateCSVContent() {
     setMigratingContentful(false)
   }
 
-     const res = await fetch('/api/migrate-content-csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rows: csvRawRows,
-          contentCols: inventory?.detectedContentCols || [],
-          settings: {
-            textLevel,
-            textPersona: seoPersona,
-            textKeyword: seoKeyword,
-            toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
-            toneOfVoicePdfText: toneOfVoiceEnabled ? toneOfVoicePdfText : '',
-          },
-          target: csvTarget,
-        }),
-      })
-      const data = await res.json()
-      const columns = inventory?.columns || []
-      const titleCol = columns.find(c =>
-        ['title', 'name', 'label', 'headline', 'uid'].some(k => c.toLowerCase().includes(k))
-      )
-      setMigrateResultsContentful(
-        (data.results || []).slice(0, 50).map((r, idx) => ({
-          title: (titleCol ? r.data?.[titleCol] : null) || r.data?.[columns[1]] || `Eintrag ${idx + 1}`,
-          status: r.status,
-          error: r.error,
-        }))
-      )
-      setWordCountLog(data.wordCountLog || [])
-    } catch (e) {
-      console.error(e)
-    }
-    setMigratingContentful(false)
-  }
   async function migrateUrlContent() {
     setMigratingContentful(true)
     try {
@@ -950,6 +915,7 @@ async function migrateCSVContent() {
     }
     setMigratingContentful(false)
   }
+
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
