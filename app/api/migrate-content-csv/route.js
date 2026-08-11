@@ -199,7 +199,18 @@ export async function POST(request) {
         wordCountLog.push({ index: i, title: optimized[titleCol] || `Eintrag ${i + 1}`, ...diff })
 
         const entryFields = {}
-        const titleValue = optimized[titleCol] || `Eintrag ${i + 1}`
+        const rawTitle = optimized[titleCol] || `Eintrag ${i + 1}`
+        // Take the first non-empty line or first sentence, strip leading
+        // markdown heading characters (#), and cap at 200 characters.
+        const titleValue = rawTitle
+          .split(/\n/)
+          .map(l => l.trim())
+          .find(l => l.length > 0)
+          ?.replace(/^#+\s*/, '')        // strip leading # / ## / ###
+          .split(/(?<=[.!?])\s+/)[0]    // first sentence
+          .slice(0, 200)
+          .trim()
+          || `Eintrag ${i + 1}`
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         const bodyValue = bodyAfter
 
