@@ -2,6 +2,39 @@ import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
+function countWords(text) {
+  if (!text || typeof text !== 'string') return 0
+  return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function lcsWordDiff(before, after) {
+  const a = (before || '').trim().split(/\s+/).filter(Boolean)
+  const b = (after || '').trim().split(/\s+/).filter(Boolean)
+  const m = a.length, n = b.length
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1])
+    }
+  }
+  const lcs = dp[m][n]
+  const words_changed = m - lcs
+  const words_added = n - lcs
+  return { words_changed, words_added }
+}
+
+function wordCountDiff(beforeText, afterText) {
+  const words_before = countWords(beforeText)
+  const words_after = countWords(afterText)
+  const words_delta_absolute = words_after - words_before
+  const words_delta_percent = words_before > 0
+    ? Math.round((words_delta_absolute / words_before) * 100)
+    : 0
+  const { words_changed, words_added } = lcsWordDiff(beforeText, afterText)
+  const stronglyChanged = Math.abs(words_delta_percent) > 30
+  return { words_before, words_after, words_delta_absolute, words_delta_percent, words_changed, words_added, stronglyChanged }
+}
+
 export async function POST(request) {
   try {
     const { rows, contentCols, settings, target } = await request.json()
@@ -15,7 +48,6 @@ export async function POST(request) {
     const token = process.env.CONTENTFUL_CMA_TOKEN
     const environment = 'master'
 
-    // Locales abfragen
     const localeRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,
       { headers: { 'Authorization': `Bearer ${token}` } }
@@ -58,17 +90,23 @@ export async function POST(request) {
 
     const results = []
     const migrationLog = []
+    const wordCountLog = []
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       try {
+        const bodyBefore = bodyCol ? (row[bodyCol] || '') : ''
         const { optimized, log } = await optimizeCSVRow(row, contentCols, settings)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
+
+        const bodyAfter = bodyCol ? (optimized[bodyCol] || '') : ''
+        const diff = wordCountDiff(bodyBefore, bodyAfter)
+        wordCountLog.push({ index: i, title: optimized[titleCol] || `Eintrag ${i + 1}`, ...diff })
 
         const entryFields = {}
         const titleValue = optimized[titleCol] || `Eintrag ${i + 1}`
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        const bodyValue = bodyCol ? (optimized[bodyCol] || '') : ''
+        const bodyValue = bodyAfter
 
         if (titleField) entryFields[titleField.id] = { [defaultLocale]: titleValue }
         if (slugField) entryFields[slugField.id] = { [defaultLocale]: slugValue }
@@ -120,6 +158,7 @@ export async function POST(request) {
     const successCount = results.filter(r => r.status === 'success').length
     const encodingFixed = migrationLog.flatMap(l => l.entries).filter(e => e.action === 'encoding_fixed').length
     const enhanced = migrationLog.flatMap(l => l.entries).filter(e => e.action?.startsWith('l')).length
+    const stronglyChanged = wordCountLog.filter(w => w.stronglyChanged).length
 
     return Response.json({
       results,
@@ -129,8 +168,10 @@ export async function POST(request) {
         errors: rows.length - successCount,
         encodingFixed,
         enhanced,
+        stronglyChanged,
       },
       migrationLog,
+      wordCountLog,
       contentTypeUsed: contentTypeId,
     })
   } catch (e) {
