@@ -828,13 +828,55 @@ async function handleCSVUpload(file) {
 async function migrateCSVContent() {
     setMigratingContentful(true)
     try {
+      let toneOfVoicePdfText = ''
+      if (toneOfVoiceEnabled && toneOfVoicePdf) {
+        const reader = new FileReader()
+        toneOfVoicePdfText = await new Promise((resolve) => {
+          reader.onload = async (e) => {
+            const base64 = e.target.result.split(',')[1]
+            try {
+              const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '',
+                  'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                  model: 'claude-haiku-4-5-20251001',
+                  max_tokens: 1000,
+                  messages: [{
+                    role: 'user',
+                    content: [
+                      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+                      { type: 'text', text: 'Extrahiere alle Tone-of-Voice-Regeln und Schreibrichtlinien aus diesem Dokument als kompakte Liste. Nur die Regeln, keine Erklärungen.' }
+                    ]
+                  }]
+                })
+              })
+              const data = await res.json()
+              resolve(data.content?.[0]?.text || '')
+            } catch {
+              resolve('')
+            }
+          }
+          reader.readAsDataURL(toneOfVoicePdf)
+        })
+      }
+
       const res = await fetch('/api/migrate-content-csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rows: csvRawRows,
           contentCols: inventory?.detectedContentCols || [],
-          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          settings: {
+            textLevel,
+            textPersona: seoPersona,
+            textKeyword: seoKeyword,
+            toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
+            toneOfVoicePdfText: toneOfVoiceEnabled ? toneOfVoicePdfText : '',
+          },
           target: csvTarget,
         }),
       })
@@ -856,7 +898,6 @@ async function migrateCSVContent() {
     }
     setMigratingContentful(false)
   }
-
   async function migrateUrlContent() {
     setMigratingContentful(true)
     try {
