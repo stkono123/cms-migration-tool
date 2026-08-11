@@ -885,7 +885,7 @@ async function migrateCSVContent() {
     setMigratingContentful(false)
   }
 
-      const res = await fetch('/api/migrate-content-csv', {
+     const res = await fetch('/api/migrate-content-csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -950,7 +950,6 @@ async function migrateCSVContent() {
     }
     setMigratingContentful(false)
   }
-
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
