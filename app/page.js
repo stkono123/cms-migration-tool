@@ -411,6 +411,7 @@ export default function Home() {
   const [productLimit, setProductLimit] = useState(10)
   const [migratingContentful, setMigratingContentful] = useState(false)
   const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
+  const [wordCountLog, setWordCountLog] = useState([])
   const [resettingContentful, setResettingContentful] = useState(false)
   const [resettingCT, setResettingCT] = useState(false)
   const [modelMode, setModelMode] = useState('create')
@@ -764,6 +765,7 @@ async function handleCSVUpload(file) {
     setDeployResultsContentful(null)
     setMigrateResultsCT(null)
     setMigrateResultsContentful(null)
+    setWordCountLog([])
     setReadonlyPanelOpen(false)
   }
 
@@ -823,7 +825,7 @@ async function handleCSVUpload(file) {
     setMigratingCT(false)
   }
 
-  async function migrateCSVContent() {
+async function migrateCSVContent() {
     setMigratingContentful(true)
     try {
       const res = await fetch('/api/migrate-content-csv', {
@@ -837,7 +839,6 @@ async function handleCSVUpload(file) {
         }),
       })
       const data = await res.json()
-      // FIX: safe fallback fuer inventory.columns
       const columns = inventory?.columns || []
       const titleCol = columns.find(c =>
         ['title', 'name', 'label', 'headline', 'uid'].some(k => c.toLowerCase().includes(k))
@@ -849,6 +850,7 @@ async function handleCSVUpload(file) {
           error: r.error,
         }))
       )
+      setWordCountLog(data.wordCountLog || [])
     } catch (e) {
       console.error(e)
     }
@@ -2711,14 +2713,37 @@ async function handleCSVUpload(file) {
                           : 'Pages nach Contentful migrieren'}
                     </button>
                     {migrateResultsContentful && (
-                      <div style={{ marginTop: 12, maxHeight: 160, overflowY: 'auto' }}>
-                        {migrateResultsContentful.map((r, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
-                            <span style={{ color: '#94a3b8' }}>{r.title}</span>
-                            <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                              {r.status === 'success' ? '[OK]' : `[X] ${r.error}`}
-                            </span>
+                      <div style={{ marginTop: 12, maxHeight: 260, overflowY: 'auto' }}>
+                        {wordCountLog.length > 0 && (
+                          <div style={{ marginBottom: 10, padding: '8px 12px', background: '#080b12', borderRadius: 8, fontSize: 11, color: '#64748b' }}>
+                            Word-Count-Diff:{' '}
+                            <span style={{ color: '#a5b4fc' }}>{wordCountLog.filter(w => w.stronglyChanged).length} Eintraege stark veraendert ({'>'}30%)</span>
+                            {' '}von {wordCountLog.length} gesamt
                           </div>
+                        )}
+                        {migrateResultsContentful.map((r, i) => {
+                          const wc = wordCountLog[i]
+                          return (
+                            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#94a3b8' }}>{r.title}</span>
+                                <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                                  {r.status === 'success' ? '[OK]' : `[X] ${r.error}`}
+                                </span>
+                              </div>
+                              {wc && (
+                                <div style={{ display: 'flex', gap: 12, marginTop: 3, fontSize: 10, color: wc.stronglyChanged ? '#f59e0b' : '#334155' }}>
+                                  <span>{wc.words_before}w vor</span>
+                                  <span>{wc.words_after}w nach</span>
+                                  <span>{wc.words_delta_absolute > 0 ? '+' : ''}{wc.words_delta_absolute} ({wc.words_delta_percent}%)</span>
+                                  {wc.stronglyChanged && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Achtung: stark veraendert</span>}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                         ))}
                       </div>
                      )}
