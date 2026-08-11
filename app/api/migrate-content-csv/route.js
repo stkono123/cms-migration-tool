@@ -62,19 +62,19 @@ export async function POST(request) {
     const ctData = await ctRes.json()
     const contentTypes = ctData.items || []
 
-    const pageContentType = contentTypes.find(ct =>
+   const pageContentType = contentTypes.find(ct =>
       ct.sys.id.toLowerCase().includes('page') ||
       ct.sys.id.toLowerCase().includes('seite') ||
       ct.name?.toLowerCase().includes('page') ||
       ct.name?.toLowerCase().includes('seite')
-    )
+    ) || contentTypes[0]
 
     if (!pageContentType) {
       return Response.json({
-        error: 'Kein passender Content Type gefunden',
+        error: 'Kein Content Type gefunden',
         availableTypes: contentTypes.map(ct => ct.sys.id)
       }, { status: 400 })
-    }
+    }    
 
     const contentTypeId = pageContentType.sys.id
     const fields = pageContentType.fields || []
