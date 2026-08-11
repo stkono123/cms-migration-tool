@@ -171,9 +171,30 @@ export async function POST(request) {
         (
           id.includes('meta') ||
           id.includes('beschreibung') ||
+          id === 'seodescription' ||
+          id === 'seo_description' ||
+          id === 'seodesc' ||
           id.includes('seodescription') ||
           id.includes('seo_description') ||
-          id.includes('seo-description')
+          id.includes('seo-description') ||
+          id.includes('seodesc') ||
+          // 'seo' + 'description' anywhere in the id
+          (id.includes('seo') && id.includes('description'))
+        )
+      )
+    })
+
+    // SEO title field — separate from the page title.
+    const seoTitleField = fields.find(f => {
+      const id = f.id.toLowerCase()
+      return (
+        f.id !== titleField?.id &&
+        f.id !== slugField?.id &&
+        f.id !== bodyField?.id &&
+        f.id !== metaField?.id &&
+        (
+          id === 'seotitle' ||
+          (id.includes('seo') && id.includes('title'))
         )
       )
     })
@@ -196,14 +217,15 @@ export async function POST(request) {
       )
     })
 
-    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}, meta: ${metaField?.id ?? 'NOT FOUND'}, pageType: ${pageTypeField?.id ?? 'NOT FOUND'}`)
+    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}, meta: ${metaField?.id ?? 'NOT FOUND'}, seoTitle: ${seoTitleField?.id ?? 'NOT FOUND'}, pageType: ${pageTypeField?.id ?? 'NOT FOUND'}`)
     console.log(`[migrate-csv] CSV columns: ${Object.keys(rows[0]).join(', ')}`)
 
     const columns = Object.keys(rows[0])
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
     const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
     const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
-    const metaCol = columns.find(c => ['meta', 'seo', 'beschreibung', 'metadescription', 'metabeschreibung', 'meta_description', 'seo_description', 'seodescription'].some(k => c.toLowerCase().includes(k)))
+    const metaCol = columns.find(c => ['meta', 'seo', 'beschreibung', 'metadescription', 'metabeschreibung', 'meta_description', 'seo_description', 'seodescription', 'seodesc'].some(k => c.toLowerCase().includes(k)))
+    const seoTitleCol = columns.find(c => { const l = c.toLowerCase(); return l === 'seotitle' || l === 'seo_title' || l === 'seo-title' || (l.includes('seo') && l.includes('title')) })
     const pageTypeCol = columns.find(c => ['seitentyp', 'pagetype', 'page_type', 'page-type', 'type'].some(k => c.toLowerCase() === k || c.toLowerCase().includes(k)))
 
     const results = []
@@ -250,6 +272,9 @@ export async function POST(request) {
         }
         if (pageTypeField && pageTypeCol && optimized[pageTypeCol]) {
           entryFields[pageTypeField.id] = { [defaultLocale]: coerceFieldValue(pageTypeField, optimized[pageTypeCol]) }
+        }
+        if (seoTitleField && seoTitleCol && optimized[seoTitleCol]) {
+          entryFields[seoTitleField.id] = { [defaultLocale]: coerceFieldValue(seoTitleField, optimized[seoTitleCol]) }
         }
 
         for (const field of fields) {
