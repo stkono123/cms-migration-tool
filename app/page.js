@@ -835,27 +835,13 @@ async function migrateCSVContent() {
           reader.onload = async (e) => {
             const base64 = e.target.result.split(',')[1]
             try {
-              const res = await fetch('https://api.anthropic.com/v1/messages', {
+              const res = await fetch('/api/extract-pdf-text', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '',
-                  'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                  model: 'claude-haiku-4-5-20251001',
-                  max_tokens: 1000,
-                  messages: [{
-                    role: 'user',
-                    content: [
-                      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-                      { type: 'text', text: 'Extrahiere alle Tone-of-Voice-Regeln und Schreibrichtlinien aus diesem Dokument als kompakte Liste. Nur die Regeln, keine Erklärungen.' }
-                    ]
-                  }]
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64, mediaType: 'application/pdf' })
               })
               const data = await res.json()
-              resolve(data.content?.[0]?.text || '')
+              resolve(data.text || '')
             } catch {
               resolve('')
             }
@@ -863,6 +849,41 @@ async function migrateCSVContent() {
           reader.readAsDataURL(toneOfVoicePdf)
         })
       }
+
+      const res = await fetch('/api/migrate-content-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows: csvRawRows,
+          contentCols: inventory?.detectedContentCols || [],
+          settings: {
+            textLevel,
+            textPersona: seoPersona,
+            textKeyword: seoKeyword,
+            toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
+            toneOfVoicePdfText: toneOfVoiceEnabled ? toneOfVoicePdfText : '',
+          },
+          target: csvTarget,
+        }),
+      })
+      const data = await res.json()
+      const columns = inventory?.columns || []
+      const titleCol = columns.find(c =>
+        ['title', 'name', 'label', 'headline', 'uid'].some(k => c.toLowerCase().includes(k))
+      )
+      setMigrateResultsContentful(
+        (data.results || []).slice(0, 50).map((r, idx) => ({
+          title: (titleCol ? r.data?.[titleCol] : null) || r.data?.[columns[1]] || `Eintrag ${idx + 1}`,
+          status: r.status,
+          error: r.error,
+        }))
+      )
+      setWordCountLog(data.wordCountLog || [])
+    } catch (e) {
+      console.error(e)
+    }
+    setMigratingContentful(false)
+  }
 
       const res = await fetch('/api/migrate-content-csv', {
         method: 'POST',
