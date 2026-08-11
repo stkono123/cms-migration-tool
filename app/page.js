@@ -490,7 +490,16 @@ export default function Home() {
     : ctSkipped
       ? !!deployResultsContentful
       : !!(deployResultsCT && deployResultsContentful)
-  const bothMigrated = !!(migrateResultsCT && migrateResultsContentful)
+  // True when at least one migration has run and returned results (either target).
+  const bothMigrated = !!(
+    (migrateResultsContentful && migrateResultsContentful.length > 0) ||
+    (migrateResultsCT && migrateResultsCT.length > 0)
+  )
+  // True when migrations ran AND every result across both targets succeeded.
+  const allMigrationsSuccessful = bothMigrated && [
+    ...(migrateResultsContentful || []),
+    ...(migrateResultsCT || []),
+  ].every(r => r.status === 'success')
 
   // Kosten-Schaetzung
   const inputTokensPerItem = TOKEN_ESTIMATES[textLevel]?.input || 200
@@ -555,7 +564,10 @@ export default function Home() {
     const current = currentStep()
     const currentIdx = order.indexOf(current)
     const stepIdx = order.indexOf(stepId)
-    if (stepId === 'done' && bothMigrated) return 'done'
+    // Step 6 — Migrieren: done as soon as any migration has results.
+    if (stepId === 'migrate' && bothMigrated) return 'done'
+    // Step 7 — Fertig: done only when step 6 is done AND everything succeeded.
+    if (stepId === 'done') return allMigrationsSuccessful ? 'done' : bothMigrated ? 'active' : 'pending'
     if (stepIdx < currentIdx) return 'done'
     if (stepIdx === currentIdx) return 'active'
     return 'pending'
