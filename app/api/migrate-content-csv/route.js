@@ -2,6 +2,33 @@ import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
+// Wrap a plain string in the minimal Contentful RichText document structure.
+// Contentful rejects a bare string for RichText fields with a ValidationError.
+function toRichText(text) {
+  return {
+    nodeType: 'document',
+    data: {},
+    content: [{
+      nodeType: 'paragraph',
+      data: {},
+      content: [{ nodeType: 'text', value: String(text ?? ''), marks: [], data: {} }]
+    }]
+  }
+}
+
+// Convert a raw CSV string to the correct JS type for a given Contentful field.
+function coerceFieldValue(field, rawValue) {
+  const str = String(rawValue ?? '')
+  switch (field.type) {
+    case 'RichText':  return toRichText(str)
+    case 'Boolean':   return str.toLowerCase() === 'true'
+    case 'Integer':   return parseInt(str) || 0
+    case 'Number':    return parseFloat(str) || 0
+    case 'Symbol':    return str.slice(0, 256)   // Contentful hard limit
+    default:          return str
+  }
+}
+
 function countWords(text) {
   if (!text || typeof text !== 'string') return 0
   return text.trim().split(/\s+/).filter(Boolean).length
@@ -117,23 +144,15 @@ export async function POST(request) {
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         const bodyValue = bodyAfter
 
-        if (titleField) entryFields[titleField.id] = { [defaultLocale]: titleValue }
-        if (slugField) entryFields[slugField.id] = { [defaultLocale]: slugValue }
-        if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: bodyValue }
+        if (titleField) entryFields[titleField.id] = { [defaultLocale]: coerceFieldValue(titleField, titleValue) }
+        if (slugField) entryFields[slugField.id] = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
+        if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: coerceFieldValue(bodyField, bodyValue) }
 
         for (const field of fields) {
           if (entryFields[field.id]) continue
           const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
           if (matchingCol && optimized[matchingCol] !== undefined && optimized[matchingCol] !== '') {
-            let value = optimized[matchingCol].toString()
-            if (field.type === 'Boolean') {
-              value = value.toLowerCase() === 'true'
-            } else if (field.type === 'Integer') {
-              value = parseInt(value) || 0
-            } else if (field.type === 'Number') {
-              value = parseFloat(value) || 0
-            }
-            entryFields[field.id] = { [defaultLocale]: value }
+            entryFields[field.id] = { [defaultLocale]: coerceFieldValue(field, optimized[matchingCol]) }
           }
         }
 
@@ -156,7 +175,7 @@ export async function POST(request) {
           results.push({ index: i, status: 'success', title: titleValue })
         } else {
           console.error('CF Entry Error:', JSON.stringify(data))
-          results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler' })
+          results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler', details: data.details })
         }
       } catch (e) {
         results.push({ index: i, status: 'error', title: `Eintrag ${i + 1}`, error: e.message })
