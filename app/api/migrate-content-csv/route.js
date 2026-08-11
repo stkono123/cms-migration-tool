@@ -133,8 +133,10 @@ export async function POST(request) {
     )
 
     // Broader heuristic for the body/long-text field.
-    // Covers common CMS conventions: body, content, description, text,
-    // copy, summary, excerpt, abstract, teaser, intro, richtext, long.
+    // English CMS conventions: body, content, description, text, copy,
+    // summary, excerpt, abstract, teaser, intro, richtext, long.
+    // German CMS conventions: inhalt, seiteninhalt, seiteninhal,
+    // meta-beschreibung, metabeschreibung, meta_description, metadescription.
     const bodyField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
@@ -149,17 +151,32 @@ export async function POST(request) {
         id.includes('teaser') ||
         id.includes('intro') ||
         id.includes('richtext') ||
-        id.includes('long')
+        id.includes('long') ||
+        id.includes('inhalt') ||
+        id.includes('seiteninhalt') ||
+        id.includes('seiteninhal') ||
+        id.includes('meta-beschreibung') ||
+        id.includes('metabeschreibung') ||
+        id.includes('meta_description') ||
+        id.includes('metadescription')
       )
     })
 
-    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}`)
+    // Separate meta-description field, resolved independently so it is always
+    // distinct from bodyField and populated with dedicated meta content.
+    const metaField = fields.find(f =>
+      f.id !== bodyField?.id &&
+      f.id.toLowerCase().includes('meta')
+    )
+
+    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}, meta: ${metaField?.id ?? 'NOT FOUND'}`)
     console.log(`[migrate-csv] CSV columns: ${Object.keys(rows[0]).join(', ')}`)
 
     const columns = Object.keys(rows[0])
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
     const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
-    const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label'].some(k => c.toLowerCase().includes(k)))
+    const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
+    const metaCol = columns.find(c => ['meta', 'seo', 'metadescription', 'metabeschreibung', 'meta_description'].some(k => c.toLowerCase().includes(k)))
 
     const results = []
     const migrationLog = []
@@ -189,6 +206,9 @@ export async function POST(request) {
         if (titleField) entryFields[titleField.id] = { [defaultLocale]: coerceFieldValue(titleField, titleValue) }
         if (slugField) entryFields[slugField.id] = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
         if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: coerceFieldValue(bodyField, bodyValue) }
+        if (metaField && metaCol && optimized[metaCol]) {
+          entryFields[metaField.id] = { [defaultLocale]: coerceFieldValue(metaField, optimized[metaCol]) }
+        }
 
         for (const field of fields) {
           if (entryFields[field.id]) continue
