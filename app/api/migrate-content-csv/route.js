@@ -115,9 +115,46 @@ export async function POST(request) {
     const contentTypeId = pageContentType.sys.id
     const fields = pageContentType.fields || []
 
-    const titleField = fields.find(f => f.id.toLowerCase().includes('title') || f.id.toLowerCase().includes('titel') || f.id.toLowerCase().includes('name'))
-    const slugField = fields.find(f => f.id.toLowerCase().includes('slug') || f.id.toLowerCase().includes('uid') || f.id.toLowerCase().includes('url'))
-    const bodyField = fields.find(f => f.id.toLowerCase().includes('body') || f.id.toLowerCase().includes('content') || f.id.toLowerCase().includes('label') || f.id.toLowerCase().includes('description'))
+    // Log every field so mismatches between the heuristic and the actual
+    // Contentful schema are visible in the server console.
+    console.log(`[migrate-csv] Content type: "${contentTypeId}" — fields (${fields.length}):`)
+    fields.forEach(f => console.log(`  ${f.id}  (${f.type})${f.required ? '  [required]' : ''}`))
+
+    const titleField = fields.find(f =>
+      f.id.toLowerCase().includes('title') ||
+      f.id.toLowerCase().includes('titel') ||
+      f.id.toLowerCase().includes('name')
+    )
+
+    const slugField = fields.find(f =>
+      f.id.toLowerCase().includes('slug') ||
+      f.id.toLowerCase().includes('uid') ||
+      f.id.toLowerCase().includes('url')
+    )
+
+    // Broader heuristic for the body/long-text field.
+    // Covers common CMS conventions: body, content, description, text,
+    // copy, summary, excerpt, abstract, teaser, intro, richtext, long.
+    const bodyField = fields.find(f => {
+      const id = f.id.toLowerCase()
+      return (
+        id.includes('body') ||
+        id.includes('content') ||
+        id.includes('description') ||
+        id.includes('text') ||
+        id.includes('copy') ||
+        id.includes('summary') ||
+        id.includes('excerpt') ||
+        id.includes('abstract') ||
+        id.includes('teaser') ||
+        id.includes('intro') ||
+        id.includes('richtext') ||
+        id.includes('long')
+      )
+    })
+
+    console.log(`[migrate-csv] Field mapping — title: ${titleField?.id ?? 'NOT FOUND'}, slug: ${slugField?.id ?? 'NOT FOUND'}, body: ${bodyField?.id ?? 'NOT FOUND'}`)
+    console.log(`[migrate-csv] CSV columns: ${Object.keys(rows[0]).join(', ')}`)
 
     const columns = Object.keys(rows[0])
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
