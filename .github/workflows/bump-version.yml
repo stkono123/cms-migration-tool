@@ -1,0 +1,53 @@
+name: Bump patch version
+
+on:
+  push:
+    branches: [main]
+
+# Skip entirely when the commit already carries [skip ci] (our own
+# auto-commits) so the workflow never triggers itself recursively.
+# [release] commits are for manual minor/major bumps — skip those too.
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: |
+      !contains(github.event.head_commit.message, '[release]') &&
+      !contains(github.event.head_commit.message, '[skip ci]')
+
+    permissions:
+      contents: write   # needed to push the version commit back to main
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump patch version in changelog.json
+        id: bump
+        run: |
+          # Read the version from the first (latest) entry.
+          CURRENT=$(node -e "const d=require('./data/changelog.json'); console.log(d[0].version)")
+          MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+          MINOR=$(echo "$CURRENT" | cut -d. -f2)
+          PATCH=$(echo "$CURRENT" | cut -d. -f3)
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          TODAY=$(date -u +%Y-%m-%d)
+
+          node -e "
+            const fs = require('fs');
+            const log = JSON.parse(fs.readFileSync('./data/changelog.json', 'utf8'));
+            log[0].version = '$NEW_VERSION';
+            log[0].date    = '$TODAY';
+            fs.writeFileSync('./data/changelog.json', JSON.stringify(log, null, 2) + '\n');
+          "
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumped $CURRENT -> $NEW_VERSION ($TODAY)"
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/changelog.json
+          # Only commit if changelog.json actually changed.
+          git diff --staged --quiet || \
+            git commit -m "chore: bump to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push
