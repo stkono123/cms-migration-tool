@@ -217,7 +217,7 @@ export async function POST(request) {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       try {
-        const bodyBefore = bodyCol ? (row[bodyCol] || '') : ''
+        const bodyBefore = bodyCol ? (typeof row[bodyCol] === 'string' ? row[bodyCol] : '') : ''
         const effectiveContentCols = [...new Set([...contentCols, titleCol].filter(Boolean))]
         const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
