@@ -398,6 +398,9 @@ export default function Home() {
   const [zipFile, setZipFile] = useState(null)
   const [zipDragOver, setZipDragOver] = useState(false)
   const [zipError, setZipError] = useState(null)
+  const [zipInputMode, setZipInputMode] = useState('file')
+  const [folderFiles, setFolderFiles] = useState(null)
+  const [folderHtmlCount, setFolderHtmlCount] = useState(0)
 
   // URL state
   const [urlInput, setUrlInput] = useState('')
@@ -730,7 +733,7 @@ async function handleCSVUpload(file) {
     })
   }
 
-  async function handleZipUpload(file) {
+ async function handleZipUpload(file) {
     if (!file) return
     setZipFile(file)
     setZipError(null)
@@ -768,6 +771,15 @@ async function handleCSVUpload(file) {
       console.error(e)
     }
     setAnalyzing(false)
+  }
+
+  const handleFolderUpload = (fileList) => {
+    const files = Array.from(fileList)
+    const htmlFiles = files.filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm'))
+    setFolderFiles(files)
+    setFolderHtmlCount(htmlFiles.length)
+    setZipError(null)
+    setZipFile({ name: `${htmlFiles.length} HTML-Dateien aus Ordner` })
   }
 
   const handleUrlBulkUpload = (file) => {
