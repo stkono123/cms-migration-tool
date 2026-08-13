@@ -788,7 +788,7 @@ async function handleZipUpload(file) {
       
       for (const sel of ['header', 'footer', 'nav', 'aside', 'script', 'style',
         '#breadcrumbs--container', '#sticky_nav', '.cookie', '.consent', '.banner',
-        '.component-hero', '.btn', '.owl-carousel', '.modal', '#preloader',
+        '.component-hero', '.btn', '.owl-nav', '.owl-dots', '.modal', '#preloader',
         '.related_products', '#outdated', '.mp-related-title', '[id*="related-title"]']) {
         doc.querySelectorAll(sel).forEach(el => el.remove())
       }
