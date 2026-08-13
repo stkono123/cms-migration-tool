@@ -47,7 +47,7 @@ const SOURCE_SYSTEMS = [
   { id: 'shopify', label: 'Shopify', logo: ShopifyLogo, available: true },
   { id: 'csv', label: 'CSV / Manuell', logo: CSVLogo, available: true },
   { id: 'url', label: 'URL / Web-Fetch', logo: null, available: true },
-  { id: 'zip', label: 'ZIP / HTML', logo: ZipLogo, available: true },
+  { id: 'zip', label: 'Lokale Dateien', logo: ZipLogo, available: true },
   { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
   { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
@@ -1412,43 +1412,103 @@ async function migrateProductsToCT() {
                 </div>
               )}
 
-            {/* ZIP Upload */}
-              {sourceSystem === 'zip' && (
-                <div style={{ marginBottom: 14 }}>
-                  <div
-                    onDragOver={e => { e.preventDefault(); setZipDragOver(true) }}
-                    onDragLeave={() => setZipDragOver(false)}
-                    onDrop={e => { e.preventDefault(); setZipDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleZipUpload(file) }}
-                    onClick={() => document.getElementById('zip-file-input').click()}
-                    style={{
-                      border: `2px dashed ${zipDragOver ? '#f59e0b' : zipFile ? '#f59e0b44' : '#1e293b'}`,
-                      borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer',
-                      background: zipDragOver ? 'rgba(245,158,11,0.05)' : '#080b12', transition: 'all 0.2s',
-                    }}
-                  >
-                    {zipFile ? (
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>[OK] {zipFile.name}</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Datei waehlen</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: 24, marginBottom: 8 }}>🗜️</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ZIP hier ablegen</div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>ZIP-Archiv mit HTML-Dateien — jede HTML wird als eigene Seite analysiert</div>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    id="zip-file-input"
-                    type="file"
-                    accept=".zip"
-                    style={{ display: 'none' }}
-                    onChange={e => { if (e.target.files[0]) handleZipUpload(e.target.files[0]) }}
-                  />
-                  {zipError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{zipError}</div>}
-                </div>
-              )}
+{/* Lokale Dateien */}
+{sourceSystem === 'zip' && (
+  <div style={{ marginBottom: 14 }}>
+    {/* Toggle */}
+    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+      {[{ id: 'file', label: '📦 ZIP-Datei' }, { id: 'folder', label: '📁 Ordner' }].map(opt => (
+        <button
+          key={opt.id}
+          onClick={() => setZipInputMode(opt.id)}
+          style={{
+            flex: 1, padding: '6px 0', fontSize: 12, fontWeight: 600, borderRadius: 6,
+            border: zipInputMode === opt.id ? '1px solid #f59e0b' : '1px solid #1e293b',
+            background: zipInputMode === opt.id ? 'rgba(245,158,11,0.1)' : '#080b12',
+            color: zipInputMode === opt.id ? '#f59e0b' : '#64748b', cursor: 'pointer',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+
+    {/* ZIP-Datei */}
+    {zipInputMode === 'file' && (
+      <div
+        onDragOver={e => { e.preventDefault(); setZipDragOver(true) }}
+        onDragLeave={() => setZipDragOver(false)}
+        onDrop={e => { e.preventDefault(); setZipDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleZipUpload(file) }}
+        onClick={() => document.getElementById('zip-file-input').click()}
+        style={{
+          border: `2px dashed ${zipDragOver ? '#f59e0b' : zipFile ? '#f59e0b44' : '#1e293b'}`,
+          borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer',
+          background: zipDragOver ? 'rgba(245,158,11,0.05)' : '#080b12', transition: 'all 0.2s',
+        }}
+      >
+        {zipFile ? (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>[OK] {zipFile.name}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Datei wählen</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>🗜️</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>ZIP hier ablegen</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>ZIP-Archiv mit HTML-Dateien — jede HTML wird als eigene Seite analysiert</div>
+          </div>
+        )}
+      </div>
+    )}
+    <input
+      id="zip-file-input"
+      type="file"
+      accept=".zip"
+      style={{ display: 'none' }}
+      onChange={e => { if (e.target.files[0]) handleZipUpload(e.target.files[0]) }}
+    />
+
+    {/* Ordner */}
+    {zipInputMode === 'folder' && (
+      <div
+        onClick={() => document.getElementById('folder-input').click()}
+        style={{
+          border: `2px dashed ${folderFiles?.length > 0 ? '#f59e0b44' : '#1e293b'}`,
+          borderRadius: 10, padding: '24px 16px', textAlign: 'center', cursor: 'pointer',
+          background: '#080b12', transition: 'all 0.2s',
+        }}
+      >
+        {folderFiles?.length > 0 ? (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>
+              [OK] {folderHtmlCount} HTML-Seite{folderHtmlCount !== 1 ? 'n' : ''} in {folderFiles.length} Dateien erkannt
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um anderen Ordner wählen</div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>📁</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>Ordner auswählen</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
+              Lokalen Ordner mit gespeicherten HTML-Seiten wählen — Unterordner werden erkannt
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    <input
+      id="folder-input"
+      type="file"
+      webkitdirectory=""
+      directory=""
+      multiple
+      style={{ display: 'none' }}
+      onChange={e => handleFolderUpload(e.target.files)}
+    />
+
+    {zipError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{zipError}</div>}
+  </div>
+)}
 
            {/* URL Input */}
               {sourceSystem === 'url' && (
