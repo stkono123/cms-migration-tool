@@ -117,6 +117,8 @@ ${pagesBlock}`,
       suggestedContentType: parsed.suggestedContentType || 'WebPage',
     }
 
+    console.log('allPages count:', inventory.allPages?.length, 'first:', JSON.stringify(inventory.allPages?.[0])?.slice(0, 200))
+    
     return Response.json(inventory)
   } catch (e) {
     console.error(e)
