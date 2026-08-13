@@ -632,15 +632,23 @@ export default function Home() {
 
   // ── API Handlers ───────────────────────────────────────────────
   async function testShopify() {
-    setShopifyStatus('loading')
-    try {
-      const res = await fetch('/api/analyze-shopify', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-      const data = await res.json()
-      setShopifyStatus(data.shopName ? 'connected' : 'error')
-    } catch {
-      setShopifyStatus('error')
-    }
+  if (!shopifyDomain || !shopifyTokenReal) {
+    setShopifyStatus('error')
+    return
   }
+  setShopifyStatus('loading')
+  try {
+    const res = await fetch('/api/analyze-shopify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: shopifyDomain, token: shopifyTokenReal })
+    })
+    const data = await res.json()
+    setShopifyStatus(data.shopName ? 'connected' : 'error')
+  } catch {
+    setShopifyStatus('error')
+  }
+}
 
   async function testCT() {
     setCtStatus('loading')
