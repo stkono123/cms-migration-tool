@@ -751,8 +751,8 @@ async function handleZipUpload(file) {
       if (zipFile.dir) return
       if (relativePath.startsWith('__MACOSX') || /\/\./.test(relativePath)) return
       if (/\.html?$/i.test(relativePath) && !relativePath.includes('_files/')) {
-      htmlEntries.push({ path: relativePath, zipFile })
-    }
+        htmlEntries.push({ path: relativePath, zipFile })
+      }
     })
 
     const limit = Math.min(htmlEntries.length, 20)
@@ -760,8 +760,26 @@ async function handleZipUpload(file) {
     for (let i = 0; i < limit; i++) {
       const { path, zipFile } = htmlEntries[i]
       const html = await zipFile.async('string')
+
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
       const title = titleMatch ? titleMatch[1].trim() : path.replace(/.*\//, '').replace(/\.html?$/i, '')
+
+      const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)
+      const metaDescription = metaDescMatch ? metaDescMatch[1].trim() : ''
+
+      const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i)
+      const ogTitle = ogTitleMatch ? ogTitleMatch[1].trim() : ''
+
+      const ogDescMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i)
+      const ogDescription = ogDescMatch ? ogDescMatch[1].trim() : ''
+
+      const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
+        || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i)
+      const canonicalUrl = canonicalMatch ? canonicalMatch[1].trim() : ''
+
       const text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
@@ -770,7 +788,8 @@ async function handleZipUpload(file) {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 3000)
-      pageTexts.push({ path, title, text })
+
+      pageTexts.push({ path, title, text, metaDescription, ogTitle, ogDescription, canonicalUrl })
     }
 
     const res = await fetch('/api/analyze-zip', {
