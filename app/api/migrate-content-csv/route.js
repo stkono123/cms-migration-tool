@@ -15,9 +15,11 @@ function toRichText(text) {
 }
 
 function coerceFieldValue(field, rawValue) {
+  if (field.type === 'RichText') {
+    return (typeof rawValue === 'object' && rawValue?.nodeType) ? rawValue : toRichText(String(rawValue ?? ''))
+  }
   const str = String(rawValue ?? '')
   switch (field.type) {
-    case 'RichText':  return (typeof rawValue === 'object' && rawValue?.nodeType) ? rawValue : toRichText(str)
     case 'Boolean':   return str.toLowerCase() === 'true'
     case 'Integer':   return parseInt(str) || 0
     case 'Number':    return parseFloat(str) || 0
