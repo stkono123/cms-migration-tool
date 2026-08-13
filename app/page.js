@@ -795,34 +795,39 @@ async function handleZipUpload(file) {
       
      const contentEl = doc.querySelector('#content, #singleslotpage, main, article, [role="main"]') || doc.body
 
-      function domToRichText(el) {
-        const nodes = []
-        for (const child of el.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE) continue
-          const tag = child.tagName?.toLowerCase()
-          const innerText = child.innerText?.trim()
-          if (!innerText) continue
-          if (tag === 'h1' || tag === 'h2') {
-            nodes.push({ nodeType: 'heading-2', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
-          } else if (tag === 'h3' || tag === 'h4') {
-            nodes.push({ nodeType: 'heading-3', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
-          } else if (tag === 'p') {
-            nodes.push({ nodeType: 'paragraph', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
-          } else if (tag === 'ul' || tag === 'ol') {
-            const listType = tag === 'ul' ? 'unordered-list' : 'ordered-list'
-            const items = []
-            for (const li of child.querySelectorAll('li')) {
-              const liText = li.innerText?.trim()
-              if (liText) items.push({ nodeType: 'list-item', data: {}, content: [{ nodeType: 'paragraph', data: {}, content: [{ nodeType: 'text', value: liText, marks: [], data: {} }] }] })
+         function domToRichText(el, seen = new Set()) {
+      const nodes = []
+      for (const child of el.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) continue
+        const tag = child.tagName?.toLowerCase()
+        const innerText = child.innerText?.trim()
+        if (!innerText) continue
+        if (seen.has(innerText)) continue
+        seen.add(innerText)
+        if (tag === 'h1' || tag === 'h2') {
+          nodes.push({ nodeType: 'heading-2', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
+        } else if (tag === 'h3' || tag === 'h4') {
+          nodes.push({ nodeType: 'heading-3', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
+        } else if (tag === 'p') {
+          nodes.push({ nodeType: 'paragraph', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
+        } else if (tag === 'ul' || tag === 'ol') {
+          const listType = tag === 'ul' ? 'unordered-list' : 'ordered-list'
+          const items = []
+          for (const li of child.querySelectorAll('li')) {
+            const liText = li.innerText?.trim()
+            if (liText && !seen.has(liText)) {
+              seen.add(liText)
+              items.push({ nodeType: 'list-item', data: {}, content: [{ nodeType: 'paragraph', data: {}, content: [{ nodeType: 'text', value: liText, marks: [], data: {} }] }] })
             }
-            if (items.length) nodes.push({ nodeType: listType, data: {}, content: items })
-          } else {
-            const sub = domToRichText(child)
-            nodes.push(...sub)
           }
+          if (items.length) nodes.push({ nodeType: listType, data: {}, content: items })
+        } else {
+          const sub = domToRichText(child, seen)
+          nodes.push(...sub)
         }
-        return nodes
       }
+      return nodes
+    }
       
       const richTextNodes = domToRichText(contentEl)
       const richText = {
