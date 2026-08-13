@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
     const domain = body.domain || null
-    const token = body.token || null
+    const token = body.token || process.env.SHOPIFY_ADMIN_TOKEN || null
     if (!domain || !token) {
       return Response.json({ error: 'Domain und Token erforderlich' }, { status: 400 })
     }
