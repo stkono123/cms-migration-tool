@@ -786,7 +786,8 @@ const bodyHtml = bodyMatch ? bodyMatch[1] : html
 
 const mainMatch = bodyHtml.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
   || bodyHtml.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
-  || bodyHtml.match(/<div[^>]+(?:id|class)=["'][^"']*(?:content|main|page-content|entry-content)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
+  || bodyHtml.match(/<div[^>]+id=["'](?:content|singleslotpage|main|page-content|entry-content)["'][^>]*>([\s\S]*?)<\/div>/i)
+  || bodyHtml.match(/<div[^>]+class=["'][^"']*(?:content|main|page-content|entry-content)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
 
 let contentHtml = mainMatch ? mainMatch[1] : bodyHtml
 
