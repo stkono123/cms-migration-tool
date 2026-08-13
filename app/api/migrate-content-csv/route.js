@@ -2,8 +2,6 @@ import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-// Wrap a plain string in the minimal Contentful RichText document structure.
-// Contentful rejects a bare string for RichText fields with a ValidationError.
 function toRichText(text) {
   return {
     nodeType: 'document',
@@ -16,7 +14,6 @@ function toRichText(text) {
   }
 }
 
-// Convert a raw CSV string to the correct JS type for a given Contentful field.
 function coerceFieldValue(field, rawValue) {
   const str = String(rawValue ?? '')
   switch (field.type) {
@@ -24,7 +21,7 @@ function coerceFieldValue(field, rawValue) {
     case 'Boolean':   return str.toLowerCase() === 'true'
     case 'Integer':   return parseInt(str) || 0
     case 'Number':    return parseFloat(str) || 0
-    case 'Symbol':    return str.slice(0, 256)   // Contentful hard limit
+    case 'Symbol':    return str.slice(0, 256)
     default:          return str
   }
 }
@@ -45,9 +42,7 @@ function lcsWordDiff(before, after) {
     }
   }
   const lcs = dp[m][n]
-  const words_changed = m - lcs
-  const words_added = n - lcs
-  return { words_changed, words_added }
+  return { words_changed: m - lcs, words_added: n - lcs }
 }
 
 function wordCountDiff(beforeText, afterText) {
@@ -90,19 +85,16 @@ export async function POST(request) {
     const contentTypes = ctData.items || []
 
     const pageContentType =
-      // 1. caller explicitly selected a content type by id or name
       (contentType && contentTypes.find(ct =>
         ct.sys.id.toLowerCase() === contentType.toLowerCase() ||
         ct.name?.toLowerCase() === contentType.toLowerCase()
       )) ||
-      // 2. heuristic: id or name contains "page" / "seite"
       contentTypes.find(ct =>
         ct.sys.id.toLowerCase().includes('page') ||
         ct.sys.id.toLowerCase().includes('seite') ||
         ct.name?.toLowerCase().includes('page') ||
         ct.name?.toLowerCase().includes('seite')
       ) ||
-      // 3. last resort: first available type
       contentTypes[0]
 
     if (!pageContentType) {
@@ -110,152 +102,64 @@ export async function POST(request) {
         error: 'Kein Content Type gefunden',
         availableTypes: contentTypes.map(ct => ct.sys.id)
       }, { status: 400 })
-    }    
+    }
 
     const contentTypeId = pageContentType.sys.id
     const fields = pageContentType.fields || []
 
-    // Log every field so mismatches between the heuristic and the actual
-    // Contentful schema are visible in the server console.
-    console.log(`[migrate-csv] Content type: "${contentTypeId}" — fields (${fields.length}):`)
-    fields.forEach(f => console.log(`  ${f.id}  (${f.type})${f.required ? '  [required]' : ''}`))
-
-    // Guard: must not start with 'seo' — otherwise seoTitle would be claimed
-    // here and seoTitleField would never find it.
     const titleField = fields.find(f => {
       const id = f.id.toLowerCase()
-      return (
-        !id.includes('seo') &&
-        (
-          id.includes('title') ||
-          id.includes('titel') ||
-          id.includes('name')
-        )
-      )
+      return !id.includes('seo') && (id.includes('title') || id.includes('titel') || id.includes('name'))
     })
-
     const slugField = fields.find(f =>
       f.id.toLowerCase().includes('slug') ||
       f.id.toLowerCase().includes('uid') ||
       f.id.toLowerCase().includes('url')
     )
-
-    // Broader heuristic for the body/long-text field.
-    // Guard: must not contain 'seo' or 'meta' — otherwise seoDescription /
-    // metaDescription would be stolen here and metaField would never find them.
-    // English conventions: body, content, description, text, copy,
-    // summary, excerpt, abstract, teaser, intro, richtext, long.
-    // German conventions: inhalt, seiteninhalt, seiteninhal.
     const bodyField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
-        !id.includes('seo') &&
-        !id.includes('meta') &&
-        !id.includes('beschreibung') &&
-        (
-          id.includes('body') ||
-          id.includes('content') ||
-          id.includes('description') ||
-          id.includes('text') ||
-          id.includes('copy') ||
-          id.includes('summary') ||
-          id.includes('excerpt') ||
-          id.includes('abstract') ||
-          id.includes('teaser') ||
-          id.includes('intro') ||
-          id.includes('richtext') ||
-          id.includes('long') ||
-          id.includes('inhalt') ||
-          id.includes('seiteninhalt') ||
-          id.includes('seiteninhal')
-        )
+        !id.includes('seo') && !id.includes('meta') && !id.includes('beschreibung') &&
+        (id.includes('body') || id.includes('content') || id.includes('description') ||
+         id.includes('text') || id.includes('copy') || id.includes('summary') ||
+         id.includes('excerpt') || id.includes('abstract') || id.includes('teaser') ||
+         id.includes('intro') || id.includes('richtext') || id.includes('long') ||
+         id.includes('inhalt') || id.includes('seiteninhalt') || id.includes('seiteninhal'))
       )
     })
-
-    // Separate meta-description field — matches common English and German
-    // naming conventions; always distinct from bodyField.
-    // coerceFieldValue handles RichText automatically by checking field.type,
-    // so a Contentful RichText SEO-description field is wrapped correctly.
     const metaField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
         f.id !== bodyField?.id &&
-        (
-          id.includes('meta') ||
-          id.includes('beschreibung') ||
-          id === 'seodescription' ||
-          id === 'seo_description' ||
-          id === 'seodesc' ||
-          id === 'seo_desc' ||
-          id.includes('seodescription') ||
-          id.includes('seo_description') ||
-          id.includes('seo-description') ||
-          id.includes('seodescription') ||
-          id.includes('seodesc') ||
-          id.includes('seo_desc') ||
-          id.includes('seo-desc') ||
-          // 'seo' + 'description' anywhere in the id (handles camelCase, underscores, etc.)
-          (id.includes('seo') && id.includes('description')) ||
-          (id.includes('seo') && id.includes('desc'))
-        )
+        (id.includes('meta') || id.includes('beschreibung') ||
+         (id.includes('seo') && id.includes('description')) ||
+         (id.includes('seo') && id.includes('desc')))
       )
     })
-
-    // SEO title field — separate from the page title.
-    // Matches explicit names and any id containing both 'seo' and 'title'
-    // regardless of separator (camelCase, hyphen, underscore, etc.).
     const seoTitleField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
-        f.id !== titleField?.id &&
-        f.id !== slugField?.id &&
-        f.id !== bodyField?.id &&
-        f.id !== metaField?.id &&
-        (
-          id === 'seotitle' ||
-          id.includes('seo-title') ||
-          id.includes('seo_title') ||
-          // 'seo' and 'title' present anywhere in the id (covers camelCase seoTitle, etc.)
-          (id.includes('seo') && id.includes('title'))
-        )
+        f.id !== titleField?.id && f.id !== slugField?.id &&
+        f.id !== bodyField?.id && f.id !== metaField?.id &&
+        (id === 'seotitle' || id.includes('seo-title') || id.includes('seo_title') ||
+         (id.includes('seo') && id.includes('title')))
       )
     })
-
-    // Page-type / template field — matches German and English conventions.
     const pageTypeField = fields.find(f => {
       const id = f.id.toLowerCase()
       return (
-        f.id !== titleField?.id &&
-        f.id !== slugField?.id &&
-        f.id !== bodyField?.id &&
-        f.id !== metaField?.id &&
-        (
-          id.includes('seitentyp') ||
-          id.includes('pagetype') ||
-          id.includes('page_type') ||
-          id.includes('page-type') ||
-          id === 'type'
-        )
+        f.id !== titleField?.id && f.id !== slugField?.id &&
+        f.id !== bodyField?.id && f.id !== metaField?.id &&
+        (id.includes('seitentyp') || id.includes('pagetype') ||
+         id.includes('page_type') || id.includes('page-type') || id === 'type')
       )
     })
 
-    const fmt = f => f ? `${f.id} (${f.type})` : 'NOT FOUND'
-    console.log(`[migrate-csv] Field mapping:`)
-    console.log(`  title    → ${fmt(titleField)}`)
-    console.log(`  slug     → ${fmt(slugField)}`)
-    console.log(`  body     → ${fmt(bodyField)}`)
-    console.log(`  meta     → ${fmt(metaField)}`)
-    console.log(`  seoTitle → ${fmt(seoTitleField)}`)
-    console.log(`  pageType → ${fmt(pageTypeField)}`)
-    console.log(`[migrate-csv] CSV columns: ${Object.keys(rows[0]).join(', ')}`)
-    console.log(`[migrate-csv] CSV column mapping — title: ${titleCol ?? 'none'}, slug: ${slugCol ?? 'none'}, body: ${bodyCol ?? 'none'}, meta: ${metaCol ?? 'none'}, seoTitle: ${seoTitleCol ?? 'none'}, pageType: ${pageTypeCol ?? 'none'}`)
-
+    // Column mapping — declared before any console.log that references them
     const columns = Object.keys(rows[0])
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
     const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
     const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
-    // seoTitleCol must be resolved first so metaCol's broad 'seo' match doesn't
-    // accidentally claim a column like "SEO Title".
     const seoTitleCol = columns.find(c => {
       const l = c.toLowerCase()
       return l === 'seotitle' || l === 'seo_title' || l === 'seo-title' ||
@@ -263,24 +167,29 @@ export async function POST(request) {
     })
     const metaCol = columns.find(c => {
       const l = c.toLowerCase()
-      // Skip any column already claimed by seoTitleCol.
       if (c === seoTitleCol) return false
-      // Skip columns that contain 'title' — those belong to seoTitleCol.
       if (l.includes('title') || l.includes('titel')) return false
       return (
-        l.includes('meta') ||
-        l.includes('beschreibung') ||
-        l.includes('seodescription') ||
-        l.includes('seodesc') ||
-        l.includes('seo_description') ||
-        l.includes('seo-description') ||
-        l.includes('seo_desc') ||
-        l.includes('seo-desc') ||
-        // broad: any column with 'seo' that isn't a title column
-        l.includes('seo')
+        l.includes('meta') || l.includes('beschreibung') ||
+        l.includes('seodescription') || l.includes('seodesc') ||
+        l.includes('seo_description') || l.includes('seo-description') ||
+        l.includes('seo_desc') || l.includes('seo-desc') || l.includes('seo')
       )
     })
     const pageTypeCol = columns.find(c => ['seitentyp', 'pagetype', 'page_type', 'page-type', 'type'].some(k => c.toLowerCase() === k || c.toLowerCase().includes(k)))
+
+    const fmt = f => f ? `${f.id} (${f.type})` : 'NOT FOUND'
+    console.log(`[migrate-csv] Content type: "${contentTypeId}" — fields (${fields.length}):`)
+    fields.forEach(f => console.log(`  ${f.id}  (${f.type})${f.required ? '  [required]' : ''}`))
+    console.log(`[migrate-csv] Field mapping:`)
+    console.log(`  title    → ${fmt(titleField)}`)
+    console.log(`  slug     → ${fmt(slugField)}`)
+    console.log(`  body     → ${fmt(bodyField)}`)
+    console.log(`  meta     → ${fmt(metaField)}`)
+    console.log(`  seoTitle → ${fmt(seoTitleField)}`)
+    console.log(`  pageType → ${fmt(pageTypeField)}`)
+    console.log(`[migrate-csv] CSV columns: ${columns.join(', ')}`)
+    console.log(`[migrate-csv] CSV column mapping — title: ${titleCol ?? 'none'}, slug: ${slugCol ?? 'none'}, body: ${bodyCol ?? 'none'}, meta: ${metaCol ?? 'none'}, seoTitle: ${seoTitleCol ?? 'none'}, pageType: ${pageTypeCol ?? 'none'}`)
 
     const results = []
     const migrationLog = []
@@ -290,10 +199,6 @@ export async function POST(request) {
       const row = rows[i]
       try {
         const bodyBefore = bodyCol ? (row[bodyCol] || '') : ''
-        // Always include titleCol in the optimized set so its language is
-        // preserved/enhanced consistently with the body, even if analyze-csv
-        // did not detect it as a content column (e.g. when titleCol resolved
-        // to a column not named 'title'/'name'/'label').
         const effectiveContentCols = [...new Set([...contentCols, titleCol].filter(Boolean))]
         const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
@@ -304,16 +209,9 @@ export async function POST(request) {
 
         const entryFields = {}
         const rawTitle = optimized[titleCol] || `Eintrag ${i + 1}`
-        // Take the first non-empty line or first sentence, strip leading
-        // markdown heading characters (#), and cap at 200 characters.
         const titleValue = rawTitle
-          .split(/\n/)
-          .map(l => l.trim())
-          .find(l => l.length > 0)
-          ?.replace(/^#+\s*/, '')        // strip leading # / ## / ###
-          .split(/(?<=[.!?])\s+/)[0]    // first sentence
-          .slice(0, 200)
-          .trim()
+          .split(/\n/).map(l => l.trim()).find(l => l.length > 0)
+          ?.replace(/^#+\s*/, '').split(/(?<=[.!?])\s+/)[0].slice(0, 200).trim()
           || `Eintrag ${i + 1}`
         const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
         const bodyValue = bodyAfter
@@ -353,7 +251,6 @@ export async function POST(request) {
         )
 
         const data = await res.json()
-
         if (res.ok) {
           results.push({ index: i, status: 'success', title: titleValue })
         } else {
