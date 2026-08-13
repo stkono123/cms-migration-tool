@@ -787,7 +787,9 @@ async function handleZipUpload(file) {
       const doc = parser.parseFromString(html, 'text/html')
       
       for (const sel of ['header', 'footer', 'nav', 'aside', 'script', 'style',
-        '#breadcrumbs--container', '#sticky_nav', '.cookie', '.consent', '.banner']) {
+        '#breadcrumbs--container', '#sticky_nav', '.cookie', '.consent', '.banner',
+        '.component-hero', '.btn', '.owl-carousel', '.modal', '#preloader',
+        '.related_products', '#outdated']) {
         doc.querySelectorAll(sel).forEach(el => el.remove())
       }
       
