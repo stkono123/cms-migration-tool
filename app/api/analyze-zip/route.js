@@ -4,7 +4,6 @@ export const maxDuration = 60
 export async function POST(request) {
   try {
     const { pageTexts, fileName } = await request.json()
-
     if (!pageTexts || pageTexts.length === 0) {
       return Response.json({ error: 'Keine HTML-Inhalte übergeben' }, { status: 400 })
     }
@@ -25,7 +24,7 @@ export async function POST(request) {
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `Analysiere diese HTML-Seiten. Erkenne fuer jede Seite Titel, kurze Inhaltsbeschreibung, Seitentyp und ob sie einen CTA enthaelt.
+          content: `Analysiere diese HTML-Seiten. Erkenne fuer jede Seite Titel, kurze Inhaltsbeschreibung, Seitentyp und ob sie einen CTA enthaelt. Falls keine Meta Description vorhanden, generiere eine (max 160 Zeichen). Falls kein SEO Title vorhanden, generiere einen (max 60 Zeichen).
 
 Gib ein JSON-Objekt zurueck — kein Text davor oder danach, nur JSON:
 {
@@ -36,7 +35,11 @@ Gib ein JSON-Objekt zurueck — kein Text davor oder danach, nur JSON:
       "pageTitle": "Seitentitel",
       "body": "Kurze Inhaltszusammenfassung (max 2 Saetze)",
       "sectionType": "Landing Page",
-      "hasCTA": true
+      "hasCTA": true,
+      "seoTitle": "SEO Titel max 60 Zeichen",
+      "metaDescription": "Meta Description max 160 Zeichen",
+      "ogTitle": "OG Titel",
+      "ogDescription": "OG Description"
     }
   ],
   "suggestedContentType": "LandingPage"
@@ -53,16 +56,24 @@ ${pagesBlock}`,
     const end = raw.lastIndexOf('}')
     const parsed = JSON.parse(raw.slice(start, end + 1))
 
-    const pages = (parsed.pages || []).map((p, i) => ({
-      id: `zip-${i}`,
-      fileName: p.fileName || pageTexts[i]?.path || `file-${i}.html`,
-      title: p.pageTitle || pageTexts[i]?.title || `Seite ${i + 1}`,
-      pageTitle: p.pageTitle || pageTexts[i]?.title || `Seite ${i + 1}`,
-      body: p.body || '',
-      sectionType: p.sectionType || 'Page',
-      hasCTA: p.hasCTA || false,
-      migrationSource: 'zip',
-    }))
+    const pages = (parsed.pages || []).map((p, i) => {
+      const src = pageTexts[i] || {}
+      return {
+        id: `zip-${i}`,
+        fileName: p.fileName || src.path || `file-${i}.html`,
+        title: p.pageTitle || src.title || `Seite ${i + 1}`,
+        pageTitle: p.pageTitle || src.title || `Seite ${i + 1}`,
+        body: p.body || '',
+        sectionType: p.sectionType || 'Page',
+        hasCTA: p.hasCTA || false,
+        seoTitle: src.seoTitle || p.seoTitle || src.title || '',
+        metaDescription: src.metaDescription || p.metaDescription || '',
+        ogTitle: src.ogTitle || p.ogTitle || '',
+        ogDescription: src.ogDescription || p.ogDescription || '',
+        canonicalUrl: src.canonicalUrl || '',
+        migrationSource: 'zip',
+      }
+    })
 
     if (pages.length === 0) {
       pageTexts.forEach((p, i) => {
@@ -74,36 +85,15 @@ ${pagesBlock}`,
           body: p.text.slice(0, 300),
           sectionType: 'Page',
           hasCTA: false,
+          seoTitle: p.title || '',
+          metaDescription: p.metaDescription || '',
+          ogTitle: p.ogTitle || '',
+          ogDescription: p.ogDescription || '',
+          canonicalUrl: p.canonicalUrl || '',
           migrationSource: 'zip',
         })
       })
     }
 
     const inventory = {
-      shopName: parsed.siteName || fileName?.replace(/\.zip$/i, '') || 'ZIP Import',
-      source: 'zip',
-      fileName: fileName || 'archive.zip',
-      fileCount: pageTexts.length,
-      columns: ['fileName', 'pageTitle', 'body', 'sectionType', 'hasCTA'],
-      detectedContentCols: ['pageTitle', 'body'],
-      detectedCommerceCols: [],
-      hasCommerce: false,
-      hasContent: true,
-      productCount: 0,
-      pages: pages.slice(0, 5),
-      allPages: pages,
-      totalContentRows: pages.length,
-      blogs: [],
-      metafields: [],
-      metafieldSources: { shop: 0, product: 0 },
-      totalRows: pages.length,
-      assetUrls: [],
-      suggestedContentType: parsed.suggestedContentType || 'WebPage',
-    }
-
-    return Response.json(inventory)
-  } catch (e) {
-    console.error(e)
-    return Response.json({ error: e.message }, { status: 500 })
-  }
-}
+      shopName: parsed.siteName || fileName?.replace(/\.zip$/i
