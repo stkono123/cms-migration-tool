@@ -222,7 +222,7 @@ export async function POST(request) {
         const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
 
-        const bodyAfter = bodyCol ? (optimized[bodyCol] || '') : ''
+        const bodyAfter = bodyCol ? (typeof optimized[bodyCol] === 'string' ? optimized[bodyCol] : '') : ''
         const diff = wordCountDiff(bodyBefore, bodyAfter)
         wordCountLog.push({ index: i, title: optimized[titleCol] || `Eintrag ${i + 1}`, ...diff })
 
