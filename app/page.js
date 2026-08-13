@@ -632,7 +632,7 @@ export default function Home() {
 
   // ── API Handlers ───────────────────────────────────────────────
   async function testShopify() {
-  if (!shopifyDomain || !shopifyTokenReal) {
+   if (!shopifyDomain || (!shopifyTokenReal && !shopifyToken)) {
     setShopifyStatus('error')
     return
   }
@@ -641,7 +641,7 @@ export default function Home() {
     const res = await fetch('/api/analyze-shopify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: shopifyDomain, token: shopifyTokenReal })
+      body: JSON.stringify({ domain: shopifyDomain, token: shopifyTokenReal || shopifyToken })
     })
     const data = await res.json()
     setShopifyStatus(data.shopName ? 'connected' : 'error')
