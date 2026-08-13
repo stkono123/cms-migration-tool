@@ -1,6 +1,6 @@
 [
   {
-    "version": "1.5.27",
+    "version": "1.5.28",
     "date": "2026-08-13",
     "changes": [
       "ZIP-Kanal: HTML-Dateien aus wget-Crawl als Migrationsquelle",
