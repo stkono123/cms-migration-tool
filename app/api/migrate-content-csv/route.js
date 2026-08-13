@@ -57,6 +57,17 @@ function wordCountDiff(beforeText, afterText) {
   return { words_before, words_after, words_delta_absolute, words_delta_percent, words_changed, words_added, stronglyChanged }
 }
 
+function makeSlug(text, index) {
+  return (text || `entry-${index}`)
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80)
+}
+
 export async function POST(request) {
   try {
     const { rows, contentCols, settings, target, contentType } = await request.json()
@@ -111,179 +122,5 @@ export async function POST(request) {
       const id = f.id.toLowerCase()
       return !id.includes('seo') && (id.includes('title') || id.includes('titel') || id.includes('name'))
     })
-    const slugField = fields.find(f =>
-      f.id.toLowerCase().includes('slug') ||
-      f.id.toLowerCase().includes('uid') ||
-      f.id.toLowerCase().includes('url')
-    )
-    const bodyField = fields.find(f => {
-      const id = f.id.toLowerCase()
-      return (
-        !id.includes('seo') && !id.includes('meta') && !id.includes('beschreibung') &&
-        (id.includes('body') || id.includes('content') || id.includes('description') ||
-         id.includes('text') || id.includes('copy') || id.includes('summary') ||
-         id.includes('excerpt') || id.includes('abstract') || id.includes('teaser') ||
-         id.includes('intro') || id.includes('richtext') || id.includes('long') ||
-         id.includes('inhalt') || id.includes('seiteninhalt') || id.includes('seiteninhal'))
-      )
-    })
-    const metaField = fields.find(f => {
-      const id = f.id.toLowerCase()
-      return (
-        f.id !== bodyField?.id &&
-        (id.includes('meta') || id.includes('beschreibung') ||
-         (id.includes('seo') && id.includes('description')) ||
-         (id.includes('seo') && id.includes('desc')))
-      )
-    })
-    const seoTitleField = fields.find(f => {
-      const id = f.id.toLowerCase()
-      return (
-        f.id !== titleField?.id && f.id !== slugField?.id &&
-        f.id !== bodyField?.id && f.id !== metaField?.id &&
-        (id === 'seotitle' || id.includes('seo-title') || id.includes('seo_title') ||
-         (id.includes('seo') && id.includes('title')))
-      )
-    })
-    const pageTypeField = fields.find(f => {
-      const id = f.id.toLowerCase()
-      return (
-        f.id !== titleField?.id && f.id !== slugField?.id &&
-        f.id !== bodyField?.id && f.id !== metaField?.id &&
-        (id.includes('seitentyp') || id.includes('pagetype') ||
-         id.includes('page_type') || id.includes('page-type') || id === 'type')
-      )
-    })
-
-    // Column mapping — declared before any console.log that references them
-    const columns = Object.keys(rows[0])
-    const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
-    const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
-    const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
-    const seoTitleCol = columns.find(c => {
-      const l = c.toLowerCase()
-      return l === 'seotitle' || l === 'seo_title' || l === 'seo-title' ||
-        (l.includes('seo') && l.includes('title'))
-    })
-    const metaCol = columns.find(c => {
-      const l = c.toLowerCase()
-      if (c === seoTitleCol) return false
-      if (l.includes('title') || l.includes('titel')) return false
-      return (
-        l.includes('meta') || l.includes('beschreibung') ||
-        l.includes('seodescription') || l.includes('seodesc') ||
-        l.includes('seo_description') || l.includes('seo-description') ||
-        l.includes('seo_desc') || l.includes('seo-desc') || l.includes('seo')
-      )
-    })
-    const pageTypeCol = columns.find(c => ['seitentyp', 'pagetype', 'page_type', 'page-type', 'type'].some(k => c.toLowerCase() === k || c.toLowerCase().includes(k)))
-
-    const fmt = f => f ? `${f.id} (${f.type})` : 'NOT FOUND'
-    console.log(`[migrate-csv] Content type: "${contentTypeId}" — fields (${fields.length}):`)
-    fields.forEach(f => console.log(`  ${f.id}  (${f.type})${f.required ? '  [required]' : ''}`))
-    console.log(`[migrate-csv] Field mapping:`)
-    console.log(`  title    → ${fmt(titleField)}`)
-    console.log(`  slug     → ${fmt(slugField)}`)
-    console.log(`  body     → ${fmt(bodyField)}`)
-    console.log(`  meta     → ${fmt(metaField)}`)
-    console.log(`  seoTitle → ${fmt(seoTitleField)}`)
-    console.log(`  pageType → ${fmt(pageTypeField)}`)
-    console.log(`[migrate-csv] CSV columns: ${columns.join(', ')}`)
-    console.log(`[migrate-csv] CSV column mapping — title: ${titleCol ?? 'none'}, slug: ${slugCol ?? 'none'}, body: ${bodyCol ?? 'none'}, meta: ${metaCol ?? 'none'}, seoTitle: ${seoTitleCol ?? 'none'}, pageType: ${pageTypeCol ?? 'none'}`)
-
-    const results = []
-    const migrationLog = []
-    const wordCountLog = []
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]
-      try {
-        const bodyBefore = bodyCol ? (row[bodyCol] || '') : ''
-        const effectiveContentCols = [...new Set([...contentCols, titleCol].filter(Boolean))]
-        const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
-        if (log.length > 0) migrationLog.push({ index: i, entries: log })
-
-        const bodyAfter = bodyCol ? (optimized[bodyCol] || '') : ''
-        const diff = wordCountDiff(bodyBefore, bodyAfter)
-        wordCountLog.push({ index: i, title: optimized[titleCol] || `Eintrag ${i + 1}`, ...diff })
-
-        const entryFields = {}
-        const rawTitle = optimized[titleCol] || `Eintrag ${i + 1}`
-        const titleValue = rawTitle
-          .split(/\n/).map(l => l.trim()).find(l => l.length > 0)
-          ?.replace(/^#+\s*/, '').split(/(?<=[.!?])\s+/)[0].slice(0, 200).trim()
-          || `Eintrag ${i + 1}`
-        const slugValue = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        const bodyValue = bodyAfter
-
-        if (titleField) entryFields[titleField.id] = { [defaultLocale]: coerceFieldValue(titleField, titleValue) }
-        if (slugField) entryFields[slugField.id] = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
-        if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: coerceFieldValue(bodyField, bodyValue) }
-        if (metaField && metaCol && optimized[metaCol]) {
-          entryFields[metaField.id] = { [defaultLocale]: coerceFieldValue(metaField, optimized[metaCol]) }
-        }
-        if (pageTypeField && pageTypeCol && optimized[pageTypeCol]) {
-          entryFields[pageTypeField.id] = { [defaultLocale]: coerceFieldValue(pageTypeField, optimized[pageTypeCol]) }
-        }
-        if (seoTitleField && seoTitleCol && optimized[seoTitleCol]) {
-          entryFields[seoTitleField.id] = { [defaultLocale]: coerceFieldValue(seoTitleField, optimized[seoTitleCol]) }
-        }
-
-        for (const field of fields) {
-          if (entryFields[field.id]) continue
-          const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
-          if (matchingCol && optimized[matchingCol] !== undefined && optimized[matchingCol] !== '') {
-            entryFields[field.id] = { [defaultLocale]: coerceFieldValue(field, optimized[matchingCol]) }
-          }
-        }
-
-        const res = await fetch(
-          `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/vnd.contentful.management.v1+json',
-              'X-Contentful-Content-Type': contentTypeId
-            },
-            body: JSON.stringify({ fields: entryFields })
-          }
-        )
-
-        const data = await res.json()
-        if (res.ok) {
-          results.push({ index: i, status: 'success', title: titleValue })
-        } else {
-          console.error('CF Entry Error:', JSON.stringify(data))
-          results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler', details: data.details })
-        }
-      } catch (e) {
-        results.push({ index: i, status: 'error', title: `Eintrag ${i + 1}`, error: e.message })
-        migrationLog.push({ index: i, entries: [{ action: 'error', error: e.message }] })
-      }
-    }
-
-    const successCount = results.filter(r => r.status === 'success').length
-    const encodingFixed = migrationLog.flatMap(l => l.entries).filter(e => e.action === 'encoding_fixed').length
-    const enhanced = migrationLog.flatMap(l => l.entries).filter(e => e.action?.startsWith('l')).length
-    const stronglyChanged = wordCountLog.filter(w => w.stronglyChanged).length
-
-    return Response.json({
-      results,
-      summary: {
-        total: rows.length,
-        success: successCount,
-        errors: rows.length - successCount,
-        encodingFixed,
-        enhanced,
-        stronglyChanged,
-      },
-      migrationLog,
-      wordCountLog,
-      contentTypeUsed: contentTypeId,
-    })
-  } catch (e) {
-    console.error(e)
-    return Response.json({ error: e.message }, { status: 500 })
-  }
-}
+    const
+      
