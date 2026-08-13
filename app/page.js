@@ -732,6 +732,7 @@ async function handleCSVUpload(file) {
       },
     })
   }
+  
 async function handleZipUpload(file) {
   if (!file) return
   setZipFile(file)
@@ -822,6 +823,7 @@ const text = contentHtml
       setZipError(data.error)
     } else {
       setInventory(data)
+      setCsvRawRows(data.allPages || [])
       setTimeout(() => setAnimateNumbers(true), 100)
     }
   } catch (e) {
