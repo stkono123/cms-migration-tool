@@ -63,7 +63,7 @@ ${pagesBlock}`,
         fileName: p.fileName || src.path || `file-${i}.html`,
         title: p.pageTitle || src.title || `Seite ${i + 1}`,
         pageTitle: p.pageTitle || src.title || `Seite ${i + 1}`,
-        body: p.body || '',
+        body: src.text || p.body || '',
         sectionType: p.sectionType || 'Page',
         hasCTA: p.hasCTA || false,
         seoTitle: src.seoTitle || p.seoTitle || src.title || '',
@@ -74,7 +74,7 @@ ${pagesBlock}`,
         migrationSource: 'zip',
       }
     })
-
+    
     if (pages.length === 0) {
       pageTexts.forEach((p, i) => {
         pages.push({
