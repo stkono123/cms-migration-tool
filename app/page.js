@@ -802,8 +802,10 @@ async function handleZipUpload(file) {
         const tag = child.tagName?.toLowerCase()
         const innerText = child.innerText?.trim()
         if (!innerText) continue
+        if (['h1','h2','h3','h4','p','ul','ol'].includes(tag)) {
         if (seen.has(innerText)) continue
         seen.add(innerText)
+      }
         if (tag === 'h1' || tag === 'h2') {
           nodes.push({ nodeType: 'heading-2', data: {}, content: [{ nodeType: 'text', value: innerText, marks: [], data: {} }] })
         } else if (tag === 'h3' || tag === 'h4') {
