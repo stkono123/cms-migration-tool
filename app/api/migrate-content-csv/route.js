@@ -235,7 +235,9 @@ export async function POST(request) {
 
         // Slug: aus Titel generieren, max 80 Zeichen
         const slugValue = makeSlug(titleValue, i)
-        const bodyValue = bodyAfter
+        const bodyValue = (bodyCol && typeof row[bodyCol] === 'object' && row[bodyCol]?.nodeType)
+          ? row[bodyCol]
+          : bodyAfter
 
         if (titleField) entryFields[titleField.id] = { [defaultLocale]: coerceFieldValue(titleField, titleValue) }
         if (slugField) entryFields[slugField.id] = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
