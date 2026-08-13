@@ -832,7 +832,7 @@ async function handleZipUpload(file) {
       }
       const text = (contentEl).innerText.replace(/\s+/g, ' ').trim().slice(0, 5000)
 
-      pageTexts.push({ path, title, text, metaDescription, ogTitle, ogDescription, canonicalUrl })
+      pageTexts.push({ path, title, text, richText, metaDescription, ogTitle, ogDescription, canonicalUrl })    
     }
 
     const res = await fetch('/api/analyze-zip', {
