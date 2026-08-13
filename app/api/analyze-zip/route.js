@@ -75,14 +75,14 @@ ${pagesBlock}`,
       }
     })
     
-    if (pages.length === 0) {
+  if (pages.length === 0) {
       pageTexts.forEach((p, i) => {
         pages.push({
           id: `zip-${i}`,
           fileName: p.path,
           title: p.title,
           pageTitle: p.title,
-          body: p.text.slice(0, 300),
+          body: p.text || '',
           sectionType: 'Page',
           hasCTA: false,
           seoTitle: p.title || '',
