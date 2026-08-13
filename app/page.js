@@ -780,14 +780,31 @@ async function handleZipUpload(file) {
         || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i)
       const canonicalUrl = canonicalMatch ? canonicalMatch[1].trim() : ''
 
-      const text = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 3000)
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+const bodyHtml = bodyMatch ? bodyMatch[1] : html
+
+const mainMatch = bodyHtml.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
+  || bodyHtml.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+  || bodyHtml.match(/<div[^>]+(?:id|class)=["'][^"']*(?:content|main|page-content|entry-content)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
+
+let contentHtml = mainMatch ? mainMatch[1] : bodyHtml
+
+contentHtml = contentHtml
+  .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+  .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+  .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+  .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
+  .replace(/class=["'][^"']*(?:cookie|consent|banner|accessibility|skip-link|breadcrumb)[^"']*["']/gi, '')
+  .replace(/<[^>]+class=["'][^"']*(?:cookie|consent|banner|accessibility|skip-link|breadcrumb)[^"']*["'][^>]*>[\s\S]*?<\/[a-z]+>/gi, '')
+
+const text = contentHtml
+  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .slice(0, 3000)
 
       pageTexts.push({ path, title, text, metaDescription, ogTitle, ogDescription, canonicalUrl })
     }
