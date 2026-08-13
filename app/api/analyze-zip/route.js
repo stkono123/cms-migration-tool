@@ -96,4 +96,30 @@ ${pagesBlock}`,
     }
 
     const inventory = {
-      shopName: parsed.siteName || fileName?.replace(/\.zip$/i
+      shopName: parsed.siteName || fileName?.replace(/\.zip$/i, '') || 'ZIP Import',
+      source: 'zip',
+      fileName: fileName || 'archive.zip',
+      fileCount: pageTexts.length,
+      columns: ['fileName', 'pageTitle', 'body', 'sectionType', 'hasCTA', 'seoTitle', 'metaDescription', 'ogTitle', 'ogDescription', 'canonicalUrl'],
+      detectedContentCols: ['pageTitle', 'body', 'metaDescription'],
+      detectedCommerceCols: [],
+      hasCommerce: false,
+      hasContent: true,
+      productCount: 0,
+      pages: pages.slice(0, 5),
+      allPages: pages,
+      totalContentRows: pages.length,
+      blogs: [],
+      metafields: [],
+      metafieldSources: { shop: 0, product: 0 },
+      totalRows: pages.length,
+      assetUrls: [],
+      suggestedContentType: parsed.suggestedContentType || 'WebPage',
+    }
+
+    return Response.json(inventory)
+  } catch (e) {
+    console.error(e)
+    return Response.json({ error: e.message }, { status: 500 })
+  }
+}
