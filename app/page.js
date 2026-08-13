@@ -750,9 +750,9 @@ async function handleZipUpload(file) {
     zip.forEach((relativePath, zipFile) => {
       if (zipFile.dir) return
       if (relativePath.startsWith('__MACOSX') || /\/\./.test(relativePath)) return
-      if (/\.html?$/i.test(relativePath)) {
-        htmlEntries.push({ path: relativePath, zipFile })
-      }
+      if (/\.html?$/i.test(relativePath) && !relativePath.includes('_files/')) {
+      htmlEntries.push({ path: relativePath, zipFile })
+    }
     })
 
     const limit = Math.min(htmlEntries.length, 20)
