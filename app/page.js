@@ -782,31 +782,20 @@ async function handleZipUpload(file) {
       const canonicalUrl = canonicalMatch ? canonicalMatch[1].trim() : ''
 
       const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-const bodyHtml = bodyMatch ? bodyMatch[1] : html
-
-const mainMatch = bodyHtml.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
-  || bodyHtml.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
-  || bodyHtml.match(/<div[^>]+id=["'](?:content|singleslotpage|main|page-content|entry-content)["'][^>]*>([\s\S]*?)<\/div>/i)
-  || bodyHtml.match(/<div[^>]+class=["'][^"']*(?:content|main|page-content|entry-content)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
-
-let contentHtml = mainMatch ? mainMatch[1] : bodyHtml
-
-contentHtml = contentHtml
-  .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
-  .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
-  .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
-  .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
-  .replace(/class=["'][^"']*(?:cookie|consent|banner|accessibility|skip-link|breadcrumb)[^"']*["']/gi, '')
-  .replace(/<[^>]+class=["'][^"']*(?:cookie|consent|banner|accessibility|skip-link|breadcrumb)[^"']*["'][^>]*>[\s\S]*?<\/[a-z]+>/gi, '')
-
-const text = contentHtml
-  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-  .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-  .replace(/<[^>]+>/g, ' ')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .slice(0, 3000)
+      
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+      
+      for (const sel of ['header', 'footer', 'nav', 'aside', 'script', 'style',
+        '#breadcrumbs--container', '#sticky_nav', '.cookie', '.consent', '.banner']) {
+        doc.querySelectorAll(sel).forEach(el => el.remove())
+      }
+      
+      const contentEl = doc.querySelector('#content, #singleslotpage, main, article, [role="main"]')
+      const text = (contentEl || doc.body).innerText
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 5000)
 
       pageTexts.push({ path, title, text, metaDescription, ogTitle, ogDescription, canonicalUrl })
     }
