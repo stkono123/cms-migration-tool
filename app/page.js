@@ -732,46 +732,69 @@ async function handleCSVUpload(file) {
       },
     })
   }
+async function handleZipUpload(file) {
+  if (!file) return
+  setZipFile(file)
+  setZipError(null)
+  setAnalyzing(true)
+  setAnimateNumbers(false)
+  setAnalyzeStep(0)
+  const stepInterval = setInterval(() => {
+    setAnalyzeStep(s => s >= analyzeSteps.length - 1 ? s : s + 1)
+  }, 600)
+  try {
+    const JSZip = (await import('jszip')).default
+    const zip = await JSZip.loadAsync(file)
 
- async function handleZipUpload(file) {
-    if (!file) return
-    setZipFile(file)
-    setZipError(null)
-    setAnalyzing(true)
-    setAnimateNumbers(false)
-    setAnalyzeStep(0)
-    const stepInterval = setInterval(() => {
-      setAnalyzeStep(s => s >= analyzeSteps.length - 1 ? s : s + 1)
-    }, 600)
-    try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = e => resolve(e.target.result.split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-      const res = await fetch('/api/analyze-zip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, fileName: file.name }),
-      })
-      const data = await res.json()
-      clearInterval(stepInterval)
-      setAnalyzeStep(analyzeSteps.length - 1)
-      await new Promise(r => setTimeout(r, 800))
-      if (data.error) {
-        setZipError(data.error)
-      } else {
-        setInventory(data)
-        setTimeout(() => setAnimateNumbers(true), 100)
+    const htmlEntries = []
+    zip.forEach((relativePath, zipFile) => {
+      if (zipFile.dir) return
+      if (relativePath.startsWith('__MACOSX') || /\/\./.test(relativePath)) return
+      if (/\.html?$/i.test(relativePath)) {
+        htmlEntries.push({ path: relativePath, zipFile })
       }
-    } catch (e) {
-      clearInterval(stepInterval)
-      setZipError('Fehler beim Verarbeiten der ZIP-Datei.')
-      console.error(e)
+    })
+
+    const limit = Math.min(htmlEntries.length, 20)
+    const pageTexts = []
+    for (let i = 0; i < limit; i++) {
+      const { path, zipFile } = htmlEntries[i]
+      const html = await zipFile.async('string')
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+      const title = titleMatch ? titleMatch[1].trim() : path.replace(/.*\//, '').replace(/\.html?$/i, '')
+      const text = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 3000)
+      pageTexts.push({ path, title, text })
     }
-    setAnalyzing(false)
+
+    const res = await fetch('/api/analyze-zip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageTexts, fileName: file.name }),
+    })
+    const data = await res.json()
+    clearInterval(stepInterval)
+    setAnalyzeStep(analyzeSteps.length - 1)
+    await new Promise(r => setTimeout(r, 800))
+    if (data.error) {
+      setZipError(data.error)
+    } else {
+      setInventory(data)
+      setTimeout(() => setAnimateNumbers(true), 100)
+    }
+  } catch (e) {
+    clearInterval(stepInterval)
+    setZipError('Fehler beim Verarbeiten der ZIP-Datei.')
+    console.error(e)
   }
+  setAnalyzing(false)
+}
 
   const handleFolderUpload = (fileList) => {
     const files = Array.from(fileList)
