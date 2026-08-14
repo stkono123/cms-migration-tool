@@ -126,6 +126,16 @@ export async function POST(request) {
         }
       }
 
+      // Generisches Mapping für alle weiteren Felder (SEO, OG, etc.)
+      const usedFieldIds = new Set([titleField?.id, slugField?.id, bodyField?.id].filter(Boolean))
+      for (const field of fields) {
+        if (usedFieldIds.has(field.id)) continue
+        const matchingKey = Object.keys(page).find(k => k.toLowerCase() === field.id.toLowerCase())
+        if (matchingKey && page[matchingKey]) {
+          entryFields[field.id] = { [defaultLocale]: page[matchingKey].toString() }
+        }
+      }
+
       const res = await fetch(
         `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
         {
