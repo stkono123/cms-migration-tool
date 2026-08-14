@@ -52,10 +52,12 @@ export async function POST(request) {
       const contentTypeId = pageContentType.sys.id
       const fields = pageContentType.fields || []
 
-      const titleField = fields.find(f => ['title', 'titel', 'name', 'seitentitel'].some(k => f.id.toLowerCase().includes(k)))
+      const titleField = fields.find(f => f.id === pageContentType.displayField)
+        || fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
       const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
-      const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description', 'seiteninhalt'].some(k => f.id.toLowerCase().includes(k)))
-
+      const bodyField  = fields.find(f => f.type === 'RichText' || f.type === 'Text')
+        || fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
+      
       const results = []
 
       for (const page of pages) {
@@ -158,9 +160,11 @@ export async function POST(request) {
     const contentTypeId = pageContentType.sys.id
     const fields = pageContentType.fields || []
 
-    const titleField = fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
+    const titleField = fields.find(f => f.id === pageContentType.displayField)
+      || fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
     const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
-    const bodyField  = fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
+    const bodyField  = fields.find(f => f.type === 'RichText' || f.type === 'Text')
+      || fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
 
     const columns = Object.keys(rows[0])
     const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
