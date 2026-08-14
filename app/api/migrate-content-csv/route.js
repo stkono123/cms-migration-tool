@@ -215,12 +215,23 @@ export async function POST(request) {
     console.log(`[migrate-csv] Field mapping: title=${fmt(titleField)} slug=${fmt(slugField)} body=${fmt(bodyField)} meta=${fmt(metaField)} seoTitle=${fmt(seoTitleField)} ogTitle=${fmt(ogTitleField)} ogDesc=${fmt(ogDescField)} canonical=${fmt(canonicalField)}`)
 
     // ── Language context ──────────────────────────────────────────────
-    // Resolved once from representative body content before the loop.
-    // Short cells (titles, IDs) are deliberately excluded from the sample
-    // to avoid misdetecting a brand name or product code as the source language.
-    const bodySamples = bodyCol
-      ? rows.slice(0, 5).map(r => r[bodyCol]).filter(Boolean)
-      : []
+    // Sample from the frontend-designated content columns (contentCols) —
+    // these are exactly the columns that will be sent through optimizeText,
+    // so detection is based on the same data that will be optimised.
+    // We supplement with the auto-detected bodyCol as a second source.
+    // This avoids the failure mode where bodyCol heuristics miss a
+    // column called "Beschreibung", "Volltext", etc.
+    const samplingCols = contentCols.length > 0
+      ? contentCols
+      : bodyCol ? [bodyCol] : []
+
+    const bodySamples = [
+      ...samplingCols.flatMap(col => rows.slice(0, 3).map(r => r[col]).filter(v => typeof v === 'string')),
+      ...(bodyCol && !samplingCols.includes(bodyCol)
+        ? rows.slice(0, 3).map(r => r[bodyCol]).filter(Boolean)
+        : []),
+    ]
+
     const languageContext = await resolveLanguageContext({ settings, bodySamples })
     console.log(`[migrate-csv] Language context:`, languageContext)
 

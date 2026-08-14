@@ -205,10 +205,11 @@ export async function POST(request) {
     const slugCol  = columns.find(c => ['uid', 'slug', 'handle', 'url'].some(k => c.toLowerCase().includes(k))) || columns[0]
     const bodyCol  = columns.find(c => ['description', 'body', 'content', 'text'].some(k => c.toLowerCase().includes(k)))
 
-    // Language context — from body column content, not titles
-    const bodySamples = bodyCol
-      ? rows.slice(0, 5).map(r => r[bodyCol]).filter(Boolean)
-      : []
+    // Language context — sample from content columns (same as what gets optimised)
+    const samplingCols = contentCols?.length > 0 ? contentCols : bodyCol ? [bodyCol] : []
+    const bodySamples = samplingCols.flatMap(col =>
+      rows.slice(0, 3).map(r => r[col]).filter(v => typeof v === 'string')
+    )
     const languageContext = await resolveLanguageContext({ settings, bodySamples })
     console.log('[migrate-contentful/csv] Language context:', languageContext)
 

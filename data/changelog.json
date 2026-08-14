@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.6.0",
+    "date": "2026-08-14",
+    "changes": [
+      "Architektur-Refactoring: Sprach-Erkennung aus repräsentativem Body-Content (nicht aus erster Zelle)",
+      "Language-Context wird einmal pro Migration-Batch aufgelöst und explizit durchgereicht — kein Mutation-Side-Effect auf settings mehr",
+      "Sampling für Spracherkennung nutzt jetzt die frontend-designierten contentCols, nicht nur bodyCol-Heuristik",
+      "Neue lib/pipeline/richtext.js: extractPlainText, buildRichTextFromString, toRichText zentral und einheitlich",
+      "fixEncoding aus text-optimizer.js exportiert — analyze-csv importiert statt lokaler Kopie",
+      "Fallback-Logik in Spracherkennung: kurze Samples werden kombiniert statt verworfen"
+    ]
+  },
+  {
     "version": "1.5.52",
     "date": "2026-08-14",
     "changes": [
