@@ -1,63 +1,29 @@
-import { optimizeCSVRow, optimizeText } from '../../../lib/pipeline/text-optimizer.js'
+import { optimizeCSVRow, optimizeText, fixEncoding } from '../../../lib/pipeline/text-optimizer.js'
+import { extractPlainText, buildRichTextFromString, toRichText } from '../../../lib/pipeline/richtext.js'
+import { resolveLanguageContext } from '../../../lib/pipeline/language-context.js'
+
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
-function toRichText(text) {
-  return {
-    nodeType: 'document',
-    data: {},
-    content: [{
-      nodeType: 'paragraph',
-      data: {},
-      content: [{ nodeType: 'text', value: String(text ?? ''), marks: [], data: {} }]
-    }]
-  }
-}
-
-// Extrahiert reinen Text aus einem Contentful RichText-Dokument
-// (wird benoetigt, um Objekt-Body-Werte wie aus dem ZIP-Kanal fuer die
-// Text-Optimierung zugaenglich zu machen)
-function extractPlainText(doc) {
-  if (!doc?.content) return ''
-  const parts = []
-  function walk(nodes) {
-    for (const node of nodes) {
-      if (node.nodeType === 'text') parts.push(node.value)
-      else if (node.content) walk(node.content)
-    }
-  }
-  walk(doc.content)
-  return parts.join('\n\n')
-}
-
-// Baut aus optimiertem Fliesstext wieder ein RichText-Dokument
-// (Absaetze werden anhand von Leerzeilen getrennt)
-function buildRichTextFromString(text) {
-  const paragraphs = String(text ?? '').split(/\n\n+/).map(p => p.trim()).filter(Boolean)
-  return {
-    nodeType: 'document',
-    data: {},
-    content: (paragraphs.length ? paragraphs : [String(text ?? '')]).map(p => ({
-      nodeType: 'paragraph',
-      data: {},
-      content: [{ nodeType: 'text', value: p, marks: [], data: {} }]
-    }))
-  }
-}
+// ─── Field value coercion ────────────────────────────────────────────────────
 
 function coerceFieldValue(field, rawValue) {
   if (field.type === 'RichText') {
-    return (typeof rawValue === 'object' && rawValue?.nodeType) ? rawValue : toRichText(String(rawValue ?? ''))
+    return (typeof rawValue === 'object' && rawValue?.nodeType)
+      ? rawValue
+      : toRichText(String(rawValue ?? ''))
   }
   const str = String(rawValue ?? '')
   switch (field.type) {
-    case 'Boolean':   return str.toLowerCase() === 'true'
-    case 'Integer':   return parseInt(str) || 0
-    case 'Number':    return parseFloat(str) || 0
-    case 'Symbol':    return str.slice(0, 256)
-    default:          return str
+    case 'Boolean': return str.toLowerCase() === 'true'
+    case 'Integer': return parseInt(str)  || 0
+    case 'Number':  return parseFloat(str) || 0
+    case 'Symbol':  return str.slice(0, 256)
+    default:        return str
   }
 }
+
+// ─── Word-count diff helpers ─────────────────────────────────────────────────
 
 function countWords(text) {
   if (!text || typeof text !== 'string') return 0
@@ -66,7 +32,7 @@ function countWords(text) {
 
 function lcsWordDiff(before, after) {
   const a = (before || '').trim().split(/\s+/).filter(Boolean)
-  const b = (after || '').trim().split(/\s+/).filter(Boolean)
+  const b = (after  || '').trim().split(/\s+/).filter(Boolean)
   const m = a.length, n = b.length
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
   for (let i = 1; i <= m; i++) {
@@ -79,16 +45,18 @@ function lcsWordDiff(before, after) {
 }
 
 function wordCountDiff(beforeText, afterText) {
-  const words_before = countWords(beforeText)
-  const words_after = countWords(afterText)
-  const words_delta_absolute = words_after - words_before
-  const words_delta_percent = words_before > 0
+  const words_before          = countWords(beforeText)
+  const words_after           = countWords(afterText)
+  const words_delta_absolute  = words_after - words_before
+  const words_delta_percent   = words_before > 0
     ? Math.round((words_delta_absolute / words_before) * 100)
     : 0
   const { words_changed, words_added } = lcsWordDiff(beforeText, afterText)
   const stronglyChanged = Math.abs(words_delta_percent) > 30
   return { words_before, words_after, words_delta_absolute, words_delta_percent, words_changed, words_added, stronglyChanged }
 }
+
+// ─── Slug helper ─────────────────────────────────────────────────────────────
 
 function makeSlug(text, index) {
   return (text || `entry-${index}`)
@@ -101,6 +69,8 @@ function makeSlug(text, index) {
     .slice(0, 80)
 }
 
+// ─── Route handler ───────────────────────────────────────────────────────────
+
 export async function POST(request) {
   try {
     const { rows, contentCols, settings, target, contentType } = await request.json()
@@ -108,25 +78,27 @@ export async function POST(request) {
     if (!rows || rows.length === 0) {
       return Response.json({ error: 'Keine Rows übergeben' }, { status: 400 })
     }
-      console.log('Rows erhalten:', rows.length, 'contentCols:', contentCols)
-      console.log('Erste Row:', JSON.stringify(rows[0]))
-    
-    const spaceId = process.env.CONTENTFUL_SPACE_ID
-    const token = process.env.CONTENTFUL_CMA_TOKEN
+    console.log('Rows erhalten:', rows.length, 'contentCols:', contentCols)
+    console.log('Erste Row:', JSON.stringify(rows[0]))
+
+    const spaceId   = process.env.CONTENTFUL_SPACE_ID
+    const token     = process.env.CONTENTFUL_CMA_TOKEN
     const environment = 'master'
 
+    // ── Contentful locales ────────────────────────────────────────────
     const localeRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,
       { headers: { 'Authorization': `Bearer ${token}` } }
     )
-    const localeData = await localeRes.json()
+    const localeData  = await localeRes.json()
     const defaultLocale = (localeData.items || []).find(l => l.default)?.code || 'en-US'
 
+    // ── Content type ──────────────────────────────────────────────────
     const ctRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
       { headers: { 'Authorization': `Bearer ${token}` } }
     )
-    const ctData = await ctRes.json()
+    const ctData       = await ctRes.json()
     const contentTypes = ctData.items || []
 
     const pageContentType =
@@ -145,20 +117,21 @@ export async function POST(request) {
     if (!pageContentType) {
       return Response.json({
         error: 'Kein Content Type gefunden',
-        availableTypes: contentTypes.map(ct => ct.sys.id)
+        availableTypes: contentTypes.map(ct => ct.sys.id),
       }, { status: 400 })
     }
 
     const contentTypeId = pageContentType.sys.id
-    const fields = pageContentType.fields || []
+    const fields        = pageContentType.fields || []
 
+    // ── Field detection ───────────────────────────────────────────────
     const titleField = fields.find(f => {
       const id = f.id.toLowerCase()
       return !id.includes('seo') && (id.includes('title') || id.includes('titel') || id.includes('name'))
     })
     const slugField = fields.find(f =>
       f.id.toLowerCase().includes('slug') ||
-      f.id.toLowerCase().includes('uid') ||
+      f.id.toLowerCase().includes('uid')  ||
       f.id.toLowerCase().includes('url')
     )
     const bodyField = fields.find(f => {
@@ -166,7 +139,7 @@ export async function POST(request) {
       return (
         !id.includes('seo') && !id.includes('meta') && !id.includes('beschreibung') &&
         (id.includes('body') || id.includes('content') || id.includes('description') ||
-         id.includes('text') || id.includes('copy') || id.includes('summary') ||
+         id.includes('text') || id.includes('copy')  || id.includes('summary') ||
          id.includes('excerpt') || id.includes('abstract') || id.includes('teaser') ||
          id.includes('intro') || id.includes('richtext') || id.includes('long') ||
          id.includes('inhalt') || id.includes('seiteninhalt') || id.includes('seiteninhal'))
@@ -207,15 +180,15 @@ export async function POST(request) {
       const id = f.id.toLowerCase()
       return id.includes('og') && (id.includes('desc') || id.includes('description'))
     })
-    const canonicalField = fields.find(f => {
-      const id = f.id.toLowerCase()
-      return id.includes('canonical')
-    })
+    const canonicalField = fields.find(f =>
+      f.id.toLowerCase().includes('canonical')
+    )
 
-    const columns = Object.keys(rows[0])
-    const titleCol = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
-    const slugCol = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
-    const bodyCol = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
+    // ── CSV column detection ──────────────────────────────────────────
+    const columns    = Object.keys(rows[0])
+    const titleCol   = columns.find(c => ['title', 'name', 'label', 'headline'].some(k => c.toLowerCase().includes(k))) || columns[1]
+    const slugCol    = columns.find(c => ['uid', 'slug', 'handle', 'url', 'path'].some(k => c.toLowerCase().includes(k))) || columns[0]
+    const bodyCol    = columns.find(c => ['description', 'body', 'content', 'text', 'label', 'inhalt', 'seiteninhalt'].some(k => c.toLowerCase().includes(k)))
     const seoTitleCol = columns.find(c => {
       const l = c.toLowerCase()
       return l === 'seotitle' || l === 'seo_title' || l === 'seo-title' ||
@@ -232,62 +205,71 @@ export async function POST(request) {
         l.includes('seo_desc') || l.includes('seo-desc') || l.includes('seo')
       )
     })
-    const pageTypeCol = columns.find(c => ['seitentyp', 'pagetype', 'page_type', 'page-type', 'type'].some(k => c.toLowerCase() === k || c.toLowerCase().includes(k)))
-    const ogTitleCol = columns.find(c => c.toLowerCase().includes('ogtitle') || c.toLowerCase() === 'og_title' || c.toLowerCase() === 'og-title')
-    const ogDescCol = columns.find(c => c.toLowerCase().includes('ogdesc') || c.toLowerCase().includes('og_desc') || c.toLowerCase().includes('og-desc') || c.toLowerCase().includes('ogdescription'))
+    const pageTypeCol  = columns.find(c => ['seitentyp', 'pagetype', 'page_type', 'page-type', 'type'].some(k => c.toLowerCase() === k || c.toLowerCase().includes(k)))
+    const ogTitleCol   = columns.find(c => c.toLowerCase().includes('ogtitle') || c.toLowerCase() === 'og_title' || c.toLowerCase() === 'og-title')
+    const ogDescCol    = columns.find(c => c.toLowerCase().includes('ogdesc') || c.toLowerCase().includes('og_desc') || c.toLowerCase().includes('og-desc') || c.toLowerCase().includes('ogdescription'))
     const canonicalCol = columns.find(c => c.toLowerCase().includes('canonical'))
 
     const fmt = f => f ? `${f.id} (${f.type})` : 'NOT FOUND'
     console.log(`[migrate-csv] Content type: "${contentTypeId}" — fields (${fields.length}):`)
     console.log(`[migrate-csv] Field mapping: title=${fmt(titleField)} slug=${fmt(slugField)} body=${fmt(bodyField)} meta=${fmt(metaField)} seoTitle=${fmt(seoTitleField)} ogTitle=${fmt(ogTitleField)} ogDesc=${fmt(ogDescField)} canonical=${fmt(canonicalField)}`)
 
-    const results = []
+    // ── Language context ──────────────────────────────────────────────
+    // Resolved once from representative body content before the loop.
+    // Short cells (titles, IDs) are deliberately excluded from the sample
+    // to avoid misdetecting a brand name or product code as the source language.
+    const bodySamples = bodyCol
+      ? rows.slice(0, 5).map(r => r[bodyCol]).filter(Boolean)
+      : []
+    const languageContext = await resolveLanguageContext({ settings, bodySamples })
+    console.log(`[migrate-csv] Language context:`, languageContext)
+
+    // ── Migration loop ────────────────────────────────────────────────
+    const results      = []
     const migrationLog = []
     const wordCountLog = []
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       try {
-        // Body kann entweder ein String sein (klassische CSV-Quelle) oder ein
-        // fertiges RichText-Objekt (z. B. aus dem ZIP-Kanal). Objekte werden
-        // vor der Optimierung in Klartext umgewandelt, damit optimizeText
-        // greifen kann — und danach wieder als RichText zusammengebaut.
-        const rawBodyValue = bodyCol ? row[bodyCol] : undefined
+        // Body can arrive as a string (CSV) or as a RichText document (ZIP channel).
+        // RichText objects are converted to plain text for AI optimisation, then
+        // reconstructed as RichText afterwards.
+        const rawBodyValue  = bodyCol ? row[bodyCol] : undefined
         const bodyIsRichText = !!(rawBodyValue && typeof rawBodyValue === 'object' && rawBodyValue.nodeType === 'document')
         const bodyBefore = bodyIsRichText
           ? extractPlainText(rawBodyValue)
           : (typeof rawBodyValue === 'string' ? rawBodyValue : '')
 
         const effectiveContentCols = [...new Set([...contentCols, titleCol].filter(Boolean))]
-        const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings)
+        const { optimized, log } = await optimizeCSVRow(row, effectiveContentCols, settings, languageContext)
         if (log.length > 0) migrationLog.push({ index: i, entries: log })
 
         let bodyAfter = bodyIsRichText
           ? bodyBefore
           : (bodyCol ? (typeof optimized[bodyCol] === 'string' ? optimized[bodyCol] : '') : '')
 
-        // Fuer RichText-Body-Objekte greift optimizeCSVRow nicht (es
-        // verarbeitet nur Strings), daher hier separat optimieren.
+        // RichText bodies bypass optimizeCSVRow (which only handles strings),
+        // so optimise them separately here when a level > 0 is requested.
         if (bodyIsRichText && settings?.textLevel > 0 && bodyBefore) {
-          bodyAfter = await optimizeText(bodyBefore, settings)
+          bodyAfter = await optimizeText(bodyBefore, settings, languageContext)
         }
 
         const diff = wordCountDiff(bodyBefore, bodyAfter)
         wordCountLog.push({ index: i, title: optimized[titleCol] || `Eintrag ${i + 1}`, ...diff })
 
         const entryFields = {}
-        const rawTitle = optimized[titleCol] || `Eintrag ${i + 1}`
+
+        // Title — strip markdown headings and multi-sentence text from optimised output
+        const rawTitle  = optimized[titleCol] || `Eintrag ${i + 1}`
         const titleValue = rawTitle
           .split(/\n/).map(l => l.trim()).find(l => l.length > 0)
           ?.replace(/^#+\s*/, '').split(/(?<=[.!?])\s+/)[0].slice(0, 200).trim()
           || `Eintrag ${i + 1}`
 
-        // Slug: aus Titel generieren, max 80 Zeichen
         const slugValue = makeSlug(titleValue, i)
 
-        // War es ein RichText-Objekt und wurde nicht optimiert (Level 0),
-        // bleibt die urspruengliche Formatierung erhalten. Wurde optimiert,
-        // wird aus dem neuen Text ein frisches RichText-Dokument gebaut.
+        // Reconstruct RichText if the body was optimised; keep original if not.
         const bodyValue = bodyIsRichText
           ? (settings?.textLevel > 0 && bodyBefore
               ? buildRichTextFromString(bodyAfter)
@@ -295,44 +277,40 @@ export async function POST(request) {
           : bodyAfter
 
         if (titleField) entryFields[titleField.id] = { [defaultLocale]: coerceFieldValue(titleField, titleValue) }
-        if (slugField) entryFields[slugField.id] = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
-        if (bodyField) entryFields[bodyField.id] = { [defaultLocale]: coerceFieldValue(bodyField, bodyValue) }
+        if (slugField)  entryFields[slugField.id]  = { [defaultLocale]: coerceFieldValue(slugField, slugValue) }
+        if (bodyField)  entryFields[bodyField.id]  = { [defaultLocale]: coerceFieldValue(bodyField, bodyValue) }
 
-        // Meta Description — aus Row oder KI-generiert
+        // SEO / OG fields
         const metaValue = (metaCol && optimized[metaCol]) || row.metaDescription || ''
         if (metaField && metaValue) {
           entryFields[metaField.id] = { [defaultLocale]: coerceFieldValue(metaField, metaValue.slice(0, 160)) }
         }
 
-        // SEO Title
         const seoTitleValue = (seoTitleCol && optimized[seoTitleCol]) || row.seoTitle || ''
         if (seoTitleField && seoTitleValue) {
           entryFields[seoTitleField.id] = { [defaultLocale]: coerceFieldValue(seoTitleField, seoTitleValue.slice(0, 60)) }
         }
 
-        // OG Title
         const ogTitleValue = (ogTitleCol && optimized[ogTitleCol]) || row.ogTitle || seoTitleValue || titleValue
         if (ogTitleField && ogTitleValue) {
           entryFields[ogTitleField.id] = { [defaultLocale]: coerceFieldValue(ogTitleField, ogTitleValue.slice(0, 60)) }
         }
 
-        // OG Description
         const ogDescValue = (ogDescCol && optimized[ogDescCol]) || row.ogDescription || metaValue
         if (ogDescField && ogDescValue) {
           entryFields[ogDescField.id] = { [defaultLocale]: coerceFieldValue(ogDescField, ogDescValue.slice(0, 160)) }
         }
 
-        // Canonical URL
         const canonicalValue = (canonicalCol && optimized[canonicalCol]) || row.canonicalUrl || ''
         if (canonicalField && canonicalValue) {
           entryFields[canonicalField.id] = { [defaultLocale]: coerceFieldValue(canonicalField, canonicalValue) }
         }
 
-        // Page Type
         if (pageTypeField && pageTypeCol && optimized[pageTypeCol]) {
           entryFields[pageTypeField.id] = { [defaultLocale]: coerceFieldValue(pageTypeField, optimized[pageTypeCol]) }
         }
 
+        // Generic pass: any remaining CT field whose ID matches a CSV column name
         for (const field of fields) {
           if (entryFields[field.id]) continue
           const matchingCol = columns.find(c => c.toLowerCase() === field.id.toLowerCase())
@@ -348,9 +326,9 @@ export async function POST(request) {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/vnd.contentful.management.v1+json',
-              'X-Contentful-Content-Type': contentTypeId
+              'X-Contentful-Content-Type': contentTypeId,
             },
-            body: JSON.stringify({ fields: entryFields })
+            body: JSON.stringify({ fields: entryFields }),
           }
         )
 
@@ -367,9 +345,9 @@ export async function POST(request) {
       }
     }
 
-    const successCount = results.filter(r => r.status === 'success').length
-    const encodingFixed = migrationLog.flatMap(l => l.entries).filter(e => e.action === 'encoding_fixed').length
-    const enhanced = migrationLog.flatMap(l => l.entries).filter(e => e.action?.startsWith('l')).length
+    const successCount    = results.filter(r => r.status === 'success').length
+    const encodingFixed   = migrationLog.flatMap(l => l.entries).filter(e => e.action === 'encoding_fixed').length
+    const enhanced        = migrationLog.flatMap(l => l.entries).filter(e => e.action?.startsWith('l')).length
     const stronglyChanged = wordCountLog.filter(w => w.stronglyChanged).length
 
     return Response.json({
@@ -385,6 +363,7 @@ export async function POST(request) {
       migrationLog,
       wordCountLog,
       contentTypeUsed: contentTypeId,
+      languageContext,
     })
   } catch (e) {
     console.error(e)

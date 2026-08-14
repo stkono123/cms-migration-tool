@@ -1,3 +1,5 @@
+import { fixEncoding } from '../../../lib/pipeline/text-optimizer.js'
+
 export async function POST(request) {
   try {
     const { rows, fileName } = await request.json()
@@ -7,15 +9,6 @@ export async function POST(request) {
     }
 
     const columns = Object.keys(rows[0])
-
-    const fixEncoding = (str) => {
-      if (typeof str !== 'string') return str
-      try {
-        return decodeURIComponent(escape(str))
-      } catch {
-        return str
-      }
-    }
 
     const cleanRows = rows.map(row => {
       const clean = {}
