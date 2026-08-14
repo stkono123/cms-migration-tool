@@ -65,24 +65,32 @@ export async function POST(request) {
           if (slugField)  entryFields[slugField.id]  = { [defaultLocale]: page.handle }
           if (bodyField) {
             const isRichText = bodyField.type === 'RichText'
+            const rawBody = page.body_html ?? page.body ?? ''
+          
             if (isRichText) {
-              const richTextValue = {
-                nodeType: 'document',
-                data: {},
-                content: [{
-                  nodeType: 'paragraph',
+              let richTextValue
+              if (rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document') {
+                richTextValue = rawBody
+              } else {
+                const textContent = typeof rawBody === 'string' ? rawBody.replace(/<[^>]*>/g, '') : ''
+                richTextValue = {
+                  nodeType: 'document',
                   data: {},
                   content: [{
-                    nodeType: 'text',
-                    value: page.body_html ? page.body_html.replace(/<[^>]*>/g, '') : '',
-                    marks: [],
-                    data: {}
+                    nodeType: 'paragraph',
+                    data: {},
+                    content: [{
+                      nodeType: 'text',
+                      value: textContent,
+                      marks: [],
+                      data: {}
+                    }]
                   }]
-                }]
+                }
               }
               entryFields[bodyField.id] = { [defaultLocale]: richTextValue }
             } else {
-              entryFields[bodyField.id] = { [defaultLocale]: page.body_html || '' }
+              entryFields[bodyField.id] = { [defaultLocale]: typeof rawBody === 'string' ? rawBody : '' }
             }
           }
           const res = await fetch(
