@@ -49,105 +49,116 @@ export async function POST(request) {
 
     // ── Shopify-Pages-Pfad ──────────────────────────────────────────
     if (body.pages) {
-      const { pages, settings } = body
+  const { pages, settings } = body
 
-      if (!pages || pages.length === 0) {
-        return Response.json({ error: 'Keine Pages übergeben' }, { status: 400 })
+  if (!pages || pages.length === 0) {
+    return Response.json({ error: 'Keine Pages übergeben' }, { status: 400 })
+  }
+
+  const ctRes = await fetch(
+    `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  )
+  const ctData = await ctRes.json()
+  const contentTypes = ctData.items || []
+
+  const pageContentType = contentTypes.find(ct =>
+    ct.sys.id.toLowerCase().includes('page') ||
+    ct.sys.id.toLowerCase().includes('seite') ||
+    ct.name?.toLowerCase().includes('page') ||
+    ct.name?.toLowerCase().includes('seite')
+  )
+
+  if (!pageContentType) {
+    return Response.json({
+      error: 'Kein passender Content Type gefunden',
+      availableTypes: contentTypes.map(ct => ct.sys.id)
+    }, { status: 400 })
+  }
+
+  const contentTypeId = pageContentType.sys.id
+  const fields = pageContentType.fields || []
+
+  const titleField = fields.find(f => f.id === pageContentType.displayField)
+    || fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
+  const slugField = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
+  const bodyField = fields.find(f =>
+    (f.type === 'RichText' || f.type === 'Text') &&
+    ['body', 'content', 'inhalt', 'seiteninhalt', 'text'].some(k => f.id.toLowerCase().includes(k))
+  ) || fields.find(f => f.type === 'RichText' || f.type === 'Text')
+
+  const results = []
+
+  for (const page of pages) {
+    try {
+      const entryFields = {}
+
+      if (titleField) {
+        entryFields[titleField.id] = { [defaultLocale]: page.title || '' }
       }
 
-      const ctRes = await fetch(
-        `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=100`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      )
-      const ctData = await ctRes.json()
-      const contentTypes = ctData.items || []
-
-      const pageContentType = contentTypes.find(ct =>
-        ct.sys.id.toLowerCase().includes('page') ||
-        ct.sys.id.toLowerCase().includes('seite') ||
-        ct.name?.toLowerCase().includes('page') ||
-        ct.name?.toLowerCase().includes('seite')
-      )
-
-      if (!pageContentType) {
-        return Response.json({
-          error: 'Kein passender Content Type gefunden',
-          availableTypes: contentTypes.map(ct => ct.sys.id)
-        }, { status: 400 })
+      if (slugField) {
+        const slugBase = page.handle || page.fileName?.replace(/\.html?$/i, '') || page.title || 'page'
+        entryFields[slugField.id] = { [defaultLocale]: slugBase.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-') }
       }
 
-      const contentTypeId = pageContentType.sys.id
-      const fields = pageContentType.fields || []
+      if (bodyField) {
+        const isRichText = bodyField.type === 'RichText'
+        const rawBody = page.body_html ?? page.body ?? ''
 
-      const titleField = fields.find(f => f.id === pageContentType.displayField)
-        || fields.find(f => ['title', 'titel', 'name'].some(k => f.id.toLowerCase().includes(k)))
-      const slugField  = fields.find(f => ['slug', 'uid', 'url', 'handle'].some(k => f.id.toLowerCase().includes(k)))
-      const bodyField  = fields.find(f => f.type === 'RichText' || f.type === 'Text')
-        || fields.find(f => ['body', 'content', 'inhalt', 'description'].some(k => f.id.toLowerCase().includes(k)))
-      
-      const results = []
+        const plainText = rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document'
+          ? extractPlainText(rawBody)
+          : typeof rawBody === 'string' ? rawBody.replace(/<[^>]*>/g, '') : ''
 
-      for (const page of pages) {
-        try {
-          const entryFields = {}
-          if (titleField) entryFields[titleField.id] = { [defaultLocale]: page.title }
-          if (slugField)  entryFields[slugField.id]  = { [defaultLocale]: page.handle }
-          if (bodyField) {
-            const isRichText = bodyField.type === 'RichText'
-            const rawBody = page.body_html ?? page.body ?? ''
-          
-            const plainText = rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document'
-              ? extractPlainText(rawBody)
-              : typeof rawBody === 'string' ? rawBody.replace(/<[^>]*>/g, '') : ''
-          
-            const optimizedText = settings?.textLevel > 0
-              ? await optimizeText(plainText, settings)
-              : null
-          
-            if (isRichText) {
-              const richTextValue = optimizedText
-                ? buildRichTextFromString(optimizedText)
-                : rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document'
-                  ? rawBody
-                  : buildRichTextFromString(plainText)
-              entryFields[bodyField.id] = { [defaultLocale]: richTextValue }
-            } else {
-              entryFields[bodyField.id] = { [defaultLocale]: optimizedText || plainText }
-            }
-          }
-          const res = await fetch(
-            `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/vnd.contentful.management.v1+json',
-                'X-Contentful-Content-Type': contentTypeId
-              },
-              body: JSON.stringify({ fields: entryFields })
-            }
-          )
-          const data = await res.json()
-          if (res.ok) {
-            results.push({ status: 'success', title: page.title })
-          } else {
-            console.error('CF Entry Error:', JSON.stringify(data))
-            results.push({ status: 'error', title: page.title, error: data.message || JSON.stringify(data.details) || 'Fehler' })
-          }
-        } catch (e) {
-          results.push({ status: 'error', title: page.title || 'Unbekannt', error: e.message })
+        const optimizedText = (settings?.textLevel > 0 && plainText)
+          ? await optimizeText(plainText, settings)
+          : null
+
+        const finalText = optimizedText || plainText
+
+        if (isRichText) {
+          const richTextValue = rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document' && !optimizedText
+            ? rawBody
+            : buildRichTextFromString(finalText)
+          entryFields[bodyField.id] = { [defaultLocale]: richTextValue }
+        } else {
+          entryFields[bodyField.id] = { [defaultLocale]: finalText }
         }
       }
 
-      return Response.json({
-        results,
-        summary: {
-          total: pages.length,
-          success: results.filter(r => r.status === 'success').length,
-          errors: results.filter(r => r.status === 'error').length,
+      const res = await fetch(
+        `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/vnd.contentful.management.v1+json',
+            'X-Contentful-Content-Type': contentTypeId
+          },
+          body: JSON.stringify({ fields: entryFields })
         }
-      })
+      )
+      const data = await res.json()
+      if (res.ok) {
+        results.push({ status: 'success', title: page.title })
+      } else {
+        console.error('CF Entry Error:', JSON.stringify(data))
+        results.push({ status: 'error', title: page.title, error: data.message || JSON.stringify(data.details) || 'Fehler' })
+      }
+    } catch (e) {
+      results.push({ status: 'error', title: page.title || 'Unbekannt', error: e.message })
     }
+  }
+
+  return Response.json({
+    results,
+    summary: {
+      total: pages.length,
+      success: results.filter(r => r.status === 'success').length,
+      errors: results.filter(r => r.status === 'error').length,
+    }
+  })
+}
 
     // ── CSV-Rows-Pfad ───────────────────────────────────────────────
     const { rows, contentCols, settings, target } = body
