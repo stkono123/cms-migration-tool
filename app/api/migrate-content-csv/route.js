@@ -1,6 +1,7 @@
 import { optimizeCSVRow, optimizeText, fixEncoding } from '../../../lib/pipeline/text-optimizer.js'
 import { extractPlainText, buildRichTextFromString, toRichText } from '../../../lib/pipeline/richtext.js'
 import { resolveLanguageContext } from '../../../lib/pipeline/language-context.js'
+import { toSlug } from '../../../lib/pipeline/slug.js'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -57,15 +58,11 @@ function wordCountDiff(beforeText, afterText) {
 }
 
 // ─── Slug helper ─────────────────────────────────────────────────────────────
+// Delegates to lib/pipeline/slug.js which converts German umlauts first
+// so "für" → "fuer", not "fr".
 
 function makeSlug(text, index) {
-  return (text || `entry-${index}`)
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+  return toSlug((text || `entry-${index}`).toString())
     .slice(0, 80)
 }
 

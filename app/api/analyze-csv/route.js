@@ -1,4 +1,5 @@
 import { fixEncoding } from '../../../lib/pipeline/text-optimizer.js'
+import { toSlug } from '../../../lib/pipeline/slug.js'
 
 export async function POST(request) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request) {
       id: row[slugCol] || row[columns[0]] || `csv-entry-${i}`,
       title: row[titleCol] || row[columns[1]] || `Eintrag ${i + 1}`,
       body: row[bodyCol] || '',
-      handle: (row[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-'),
+      handle: toSlug((row[slugCol] || `entry-${i}`).toString()),
       sourceRow: row,
     }))
 

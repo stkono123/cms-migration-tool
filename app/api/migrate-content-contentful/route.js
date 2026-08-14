@@ -5,6 +5,7 @@
 import { optimizeCSVRow, optimizeText } from '../../../lib/pipeline/text-optimizer.js'
 import { extractPlainText, buildRichTextFromString } from '../../../lib/pipeline/richtext.js'
 import { resolveLanguageContext } from '../../../lib/pipeline/language-context.js'
+import { toSlug } from '../../../lib/pipeline/slug.js'
 
 export const runtime = 'nodejs'
 
@@ -87,9 +88,7 @@ export async function POST(request) {
 
           if (slugField) {
             const slugBase = page.handle || page.fileName?.replace(/\.html?$/i, '') || page.title || 'page'
-            entryFields[slugField.id] = {
-              [defaultLocale]: slugBase.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-'),
-            }
+            entryFields[slugField.id] = { [defaultLocale]: toSlug(slugBase) }
           }
 
           if (bodyField) {
@@ -224,7 +223,7 @@ export async function POST(request) {
 
         const entryFields  = {}
         const titleValue   = optimized[titleCol] || `Eintrag ${i + 1}`
-        const slugValue    = (optimized[slugCol] || `entry-${i}`).toString().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        const slugValue    = toSlug((optimized[slugCol] || `entry-${i}`).toString())
         const bodyValue    = bodyCol ? (optimized[bodyCol] || '') : ''
 
         if (titleField) entryFields[titleField.id] = { [defaultLocale]: titleValue }

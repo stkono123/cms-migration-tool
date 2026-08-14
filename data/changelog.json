@@ -1,27 +1,18 @@
 [
   {
-    "version": "1.7.0",
-    "date": "2026-08-14",
-    "changes": [
-      "Sprach-Auswahl UI: Nach der Analyse wird die Quellsprache automatisch erkannt und im Sidebar angezeigt",
-      "Ausgabesprache-Dropdown: User waehlt Zielsprache bevor die Migration startet — gilt fuer ALLE Felder (Titel, Body, Meta, OG, SEO)",
-      "Neue API-Route /api/detect-language fuer serverseitige Spracherkennung via Claude Haiku",
-      "ZIP-Pfad: contentCols erweitert auf metaDescription, seoTitle, ogTitle, ogDescription — alle Felder werden jetzt in der gewaehlten Sprache optimiert",
-      "analyze-csv: Erkennt nun auch deutsche Spaltennamen (beschreibung, inhalt, volltext, kurztext etc.)",
-      "sourceLanguage/targetLanguage wird in allen vier Migration-Funktionen an die API uebergeben",
-      "reset() loescht detectedLanguage/outputLanguage korrekt beim Neustart"
-    ]
-  },
-  {
     "version": "1.6.0",
     "date": "2026-08-14",
     "changes": [
-      "Architektur-Refactoring: Sprach-Erkennung aus repräsentativem Body-Content (nicht aus erster Zelle)",
-      "Language-Context wird einmal pro Migration-Batch aufgelöst und explizit durchgereicht — kein Mutation-Side-Effect auf settings mehr",
-      "Sampling für Spracherkennung nutzt jetzt die frontend-designierten contentCols, nicht nur bodyCol-Heuristik",
-      "Neue lib/pipeline/richtext.js: extractPlainText, buildRichTextFromString, toRichText zentral und einheitlich",
-      "fixEncoding aus text-optimizer.js exportiert — analyze-csv importiert statt lokaler Kopie",
-      "Fallback-Logik in Spracherkennung: kurze Samples werden kombiniert statt verworfen"
+      "Sprach-Auswahl UI: Quellsprache wird nach Analyse automatisch erkannt, Ausgabesprache per Dropdown waehlbar",
+      "Sprachdurchsetzung fuer alle Content-Felder: Titel, Body, Meta Description, OG-Titel, OG-Beschreibung, SEO-Titel",
+      "Neue API-Route /api/detect-language fuer serverseitige Spracherkennung via Claude Haiku",
+      "ZIP-Pfad: contentCols erweitert auf metaDescription, seoTitle, ogTitle, ogDescription",
+      "Version-Badge aus Build-Zeit-Env-Variable (NEXT_PUBLIC_APP_VERSION) statt Laufzeit-API-Call",
+      "Sprach-Badge inline unter Analyse-Karte — sichtbar ohne Control Panel zu oeffnen",
+      "Architektur-Refactoring: Language-Context einmal pro Batch aufgeloest, kein Mutation-Side-Effect",
+      "Neue lib/pipeline/richtext.js: extractPlainText, buildRichTextFromString, toRichText zentral",
+      "analyze-csv: Erkennt deutsche Spaltennamen (beschreibung, inhalt, volltext, kurztext etc.)",
+      "fixEncoding aus text-optimizer.js exportiert und wiederverwendet"
     ]
   },
   {
