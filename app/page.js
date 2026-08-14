@@ -1167,7 +1167,15 @@ async function migrateProductsToCT() {
       const res = await fetch('/api/migrate-content-contentful', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages: inventory?.pages || [] }),
+        body: JSON.stringify({
+          pages: inventory?.pages || [],
+          settings: {
+            textLevel,
+            textPersona: seoPersona,
+            textKeyword: seoKeyword,
+            toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
+          }
+        }),
       })
       const data = await res.json()
       setMigrateResultsContentful(data.results)
