@@ -266,6 +266,25 @@ const inputStyle = {
   outline: 'none',
 }
 
+// ─── Language options (used in sidebar language-selection UI) ─────────────────
+const LANG_OPTIONS = [
+  { code: 'de', label: 'Deutsch' },
+  { code: 'en', label: 'Englisch' },
+  { code: 'fr', label: 'Franzoesisch' },
+  { code: 'es', label: 'Spanisch' },
+  { code: 'it', label: 'Italienisch' },
+  { code: 'nl', label: 'Niederlaendisch' },
+  { code: 'pl', label: 'Polnisch' },
+  { code: 'pt', label: 'Portugiesisch' },
+  { code: 'cs', label: 'Tschechisch' },
+  { code: 'hu', label: 'Ungarisch' },
+]
+const LANG_LABELS = {
+  de: 'Deutsch', en: 'Englisch', fr: 'Franzoesisch', es: 'Spanisch',
+  it: 'Italienisch', nl: 'Niederlaendisch', pl: 'Polnisch', pt: 'Portugiesisch',
+  cs: 'Tschechisch', hu: 'Ungarisch',
+}
+
 const reviewInputStyle = {
   background: '#080b12',
   border: '1px solid #312e81',
@@ -451,6 +470,10 @@ export default function Home() {
   const [toneOfVoice, setToneOfVoice] = useState('neutral')
   const [toneOfVoiceEnabled, setToneOfVoiceEnabled] = useState(false)
   const [toneOfVoicePdf, setToneOfVoicePdf] = useState(null)
+  // Language detection — resolved once after analysis, before migration starts
+  const [detectedLanguage, setDetectedLanguage] = useState(null)   // ISO 639-1 code, e.g. 'de'
+  const [outputLanguage, setOutputLanguage] = useState(null)        // user-chosen output language
+  const [langDetecting, setLangDetecting] = useState(false)
   const [selectedStatuses, setSelectedStatuses] = useState(['Active', 'Draft', 'Archived'])
   const [trendMinScore, setTrendMinScore] = useState('none')
   const [trendCheckRunning, setTrendCheckRunning] = useState(false)
@@ -689,6 +712,7 @@ export default function Home() {
       setAnalyzeStep(analyzeSteps.length - 1)
       await new Promise(r => setTimeout(r, 800))
       setInventory(data)
+      detectLanguageFromInventory(data, [])
       setTimeout(() => setAnimateNumbers(true), 100)
     } catch (e) {
       clearInterval(stepInterval)
@@ -730,6 +754,7 @@ async function handleCSVUpload(file) {
           setAnalyzeStep(analyzeSteps.length - 1)
           await new Promise(r => setTimeout(r, 800))
           setInventory(data)
+          detectLanguageFromInventory(data, results.data)
           setTimeout(() => setAnimateNumbers(true), 100)
         } catch (e) {
           clearInterval(stepInterval)
@@ -864,6 +889,7 @@ async function handleZipUpload(file) {
     } else {
       setInventory(data)
       setCsvRawRows(data.allPages || [])
+      detectLanguageFromInventory(data, data.allPages || [])
       setTimeout(() => setAnimateNumbers(true), 100)
     }
   } catch (e) {
@@ -938,7 +964,46 @@ async function handleZipUpload(file) {
     }
     setInventory(combinedInventory)
     setUrlBulkResults(allPages)
+    detectLanguageFromInventory(combinedInventory, allPages)
     setUrlStatus('connected')
+  }
+
+  // Calls /api/detect-language with a sample from the analysed content and
+  // sets detectedLanguage + outputLanguage (if not already chosen by the user).
+  async function detectLanguageFromInventory(inv, rawRows) {
+    setLangDetecting(true)
+    try {
+      const samples = []
+      const cols = inv?.detectedContentCols || []
+      const rows = rawRows || []
+      for (const col of cols.slice(0, 3)) {
+        samples.push(...rows.slice(0, 3).map(r => r[col]).filter(v => typeof v === 'string' && v.length > 0))
+      }
+      // Fallback: sample from ZIP page body / metaDescription when CSV rows are empty
+      if (samples.length === 0 && inv?.allPages?.length > 0) {
+        samples.push(
+          ...inv.allPages.slice(0, 3)
+            .map(p => p.body || p.metaDescription || p.title || '')
+            .filter(Boolean)
+        )
+      }
+      if (samples.length > 0) {
+        const res = await fetch('/api/detect-language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ samples }),
+        })
+        if (res.ok) {
+          const ctx = await res.json()
+          setDetectedLanguage(ctx.sourceLanguage)
+          // Only set output language if the user has not already chosen one
+          setOutputLanguage(prev => prev || ctx.sourceLanguage)
+        }
+      }
+    } catch (e) {
+      console.error('Language detection failed:', e)
+    }
+    setLangDetecting(false)
   }
 
   async function startMapping() {
@@ -1065,6 +1130,8 @@ async function migrateProductsToCT() {
             textKeyword: seoKeyword,
             toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
             toneOfVoicePdfText: toneOfVoiceEnabled ? toneOfVoicePdfText : '',
+            sourceLanguage: detectedLanguage || undefined,
+            targetLanguage: outputLanguage || undefined,
           },
           target: csvTarget,
           contentType: csvContentType,
@@ -1103,7 +1170,11 @@ async function migrateProductsToCT() {
             sourceUrl: p.sourceUrl,
           })),
           contentCols: ['title', 'body'],
-          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          settings: {
+            textLevel, textPersona: seoPersona, textKeyword: seoKeyword,
+            sourceLanguage: detectedLanguage || undefined,
+            targetLanguage: outputLanguage || undefined,
+          },
           target: 'contentful',
         }),
       })
@@ -1140,8 +1211,13 @@ async function migrateProductsToCT() {
             ogDescription: p.ogDescription || '',
             canonicalUrl: p.canonicalUrl || '',
           })),
-          contentCols: ['title', 'body'],
-          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          // All text fields that must be optimised in the target language
+          contentCols: ['title', 'body', 'metaDescription', 'seoTitle', 'ogTitle', 'ogDescription'],
+          settings: {
+            textLevel, textPersona: seoPersona, textKeyword: seoKeyword,
+            sourceLanguage: detectedLanguage || undefined,
+            targetLanguage: outputLanguage || undefined,
+          },
           target: 'contentful',
           contentType: csvContentType,
         }),
@@ -1174,6 +1250,8 @@ async function migrateProductsToCT() {
             textPersona: seoPersona,
             textKeyword: seoKeyword,
             toneOfVoice: toneOfVoiceEnabled ? toneOfVoice : 'neutral',
+            sourceLanguage: detectedLanguage || undefined,
+            targetLanguage: outputLanguage || undefined,
           }
         }),
       })
@@ -1257,6 +1335,9 @@ async function migrateProductsToCT() {
     setTrendCheckResult(null)
     setSelectedBlogs([])
     setSelectedMetafieldNamespaces([])
+    setDetectedLanguage(null)
+    setOutputLanguage(null)
+    setLangDetecting(false)
   }
 
   async function runDeepCheck(check) {
@@ -2249,6 +2330,41 @@ async function migrateProductsToCT() {
                     </div>
                   </div>
                   <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+
+                  {/* Sprache — erscheint nach der Analyse */}
+                  {(langDetecting || detectedLanguage) && (
+                    <>
+                      <div style={{ marginBottom: 20 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Sprache</div>
+                        {langDetecting ? (
+                          <div style={{ fontSize: 12, color: '#475569', fontStyle: 'italic' }}>Sprache wird erkannt...</div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#a5b4fc', fontFamily: 'JetBrains Mono, monospace' }}>{(detectedLanguage || 'en').toUpperCase()}</span>
+                              <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                                {LANG_LABELS[detectedLanguage] || detectedLanguage} erkannt
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Ausgabesprache (alle Felder)</div>
+                            <select
+                              value={outputLanguage || detectedLanguage || 'de'}
+                              onChange={e => setOutputLanguage(e.target.value)}
+                              style={{ ...inputStyle, cursor: 'pointer' }}
+                            >
+                              {LANG_OPTIONS.map(l => (
+                                <option key={l.code} value={l.code}>{l.label}</option>
+                              ))}
+                            </select>
+                            <div style={{ fontSize: 10, color: '#334155', marginTop: 6 }}>
+                              Gilt fuer alle Textfelder: Titel, Body, Meta, OG, SEO
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ height: 1, background: '#1e293b', marginBottom: 20 }} />
+                    </>
+                  )}
 
                  {/* Tone of Voice */}
                   <div style={{ marginBottom: 20 }}>

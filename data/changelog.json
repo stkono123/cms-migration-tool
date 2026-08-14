@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.7.0",
+    "date": "2026-08-14",
+    "changes": [
+      "Sprach-Auswahl UI: Nach der Analyse wird die Quellsprache automatisch erkannt und im Sidebar angezeigt",
+      "Ausgabesprache-Dropdown: User waehlt Zielsprache bevor die Migration startet — gilt fuer ALLE Felder (Titel, Body, Meta, OG, SEO)",
+      "Neue API-Route /api/detect-language fuer serverseitige Spracherkennung via Claude Haiku",
+      "ZIP-Pfad: contentCols erweitert auf metaDescription, seoTitle, ogTitle, ogDescription — alle Felder werden jetzt in der gewaehlten Sprache optimiert",
+      "analyze-csv: Erkennt nun auch deutsche Spaltennamen (beschreibung, inhalt, volltext, kurztext etc.)",
+      "sourceLanguage/targetLanguage wird in allen vier Migration-Funktionen an die API uebergeben",
+      "reset() loescht detectedLanguage/outputLanguage korrekt beim Neustart"
+    ]
+  },
+  {
     "version": "1.6.0",
     "date": "2026-08-14",
     "changes": [

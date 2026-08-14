@@ -18,7 +18,16 @@ export async function POST(request) {
       return clean
     })
 
-    const contentColumns = ['title', 'name', 'label', 'description', 'body', 'content', 'text', 'summary', 'excerpt', 'meta_description', 'seo_description']
+    // English and German column name keywords that indicate human-readable text content
+    const contentColumns = [
+      // English
+      'title', 'name', 'label', 'description', 'body', 'content', 'text', 'summary', 'excerpt',
+      'meta_description', 'seo_description', 'meta', 'seo', 'og_description', 'og_title', 'teaser',
+      // German
+      'titel', 'bezeichnung', 'beschreibung', 'inhalt', 'volltext', 'kurztext', 'kurzbeschreibung',
+      'langtext', 'einleitung', 'zusammenfassung', 'seitentitel', 'seotitel', 'seo_titel',
+      'metabeschreibung', 'ogbeschreibung',
+    ]
     const commerceColumns = ['price', 'sku', 'stock', 'inventory', 'weight', 'quantity', 'vendor', 'barcode', 'compare_at_price']
 
     const detectedContentCols = columns.filter(c => contentColumns.some(k => c.toLowerCase().includes(k)))
