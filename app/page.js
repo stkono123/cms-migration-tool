@@ -1444,7 +1444,7 @@ async function migrateProductsToCT() {
         }}
       >
         <span style={{ color: '#6366f1', fontWeight: 700 }}>
-          v{changelog.length > 0 ? changelog[0].version : '—'}
+          v{process.env.NEXT_PUBLIC_APP_VERSION || (changelog.length > 0 ? changelog[0].version : '—')}
         </span>
         <span style={{ color: '#334155' }}>·</span>
         <span>{gitHash}</span>
@@ -2220,6 +2220,39 @@ async function migrateProductsToCT() {
                 </div>
               )}
             </div>
+
+            {/* Sprach-Badge — direkt sichtbar nach der Analyse */}
+            {(langDetecting || detectedLanguage) && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                background: '#0f1623', border: '1px solid rgba(99,102,241,0.25)',
+                borderRadius: 10, padding: '12px 18px', marginBottom: 16,
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Sprache</span>
+                {langDetecting ? (
+                  <span style={{ fontSize: 12, color: '#475569', fontStyle: 'italic' }}>wird erkannt...</span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#a5b4fc', fontFamily: 'JetBrains Mono, monospace', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 4, padding: '2px 7px' }}>
+                      {(detectedLanguage || 'en').toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{LANG_LABELS[detectedLanguage] || detectedLanguage} erkannt</span>
+                    <span style={{ color: '#1e293b' }}>|</span>
+                    <span style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>Ausgabe:</span>
+                    <select
+                      value={outputLanguage || detectedLanguage || 'de'}
+                      onChange={e => setOutputLanguage(e.target.value)}
+                      style={{ background: '#080b12', border: '1px solid #1e293b', borderRadius: 6, padding: '4px 8px', color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {LANG_OPTIONS.map(l => (
+                        <option key={l.code} value={l.code}>{l.label}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: 10, color: '#334155' }}>gilt fuer alle Felder (Titel, Body, Meta, OG, SEO)</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* ════════════════════════════════════════════════════
                 MIGRATION CONTROL PANEL
