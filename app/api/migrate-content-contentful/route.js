@@ -2,7 +2,34 @@
 // Unterstützt zwei Quellformate:
 //   - Shopify-Pages: { pages: [...] }  → direkte Migration mit title/slug/body
 //   - CSV-Rows:      { rows, contentCols, settings, target }
-import { optimizeCSVRow } from '../../../lib/pipeline/text-optimizer.js'
+import { optimizeCSVRow, optimizeText } from '../../../lib/pipeline/text-optimizer.js'
+
+function extractPlainText(doc) {
+  if (!doc?.content) return ''
+  const parts = []
+  function walk(nodes) {
+    for (const node of nodes) {
+      if (node.nodeType === 'text') parts.push(node.value)
+      else if (node.content) walk(node.content)
+    }
+  }
+  walk(doc.content)
+  return parts.join(' ')
+}
+
+function buildRichTextFromString(text) {
+  const paragraphs = text.split(/\n\n+/).filter(p => p.trim())
+  return {
+    nodeType: 'document',
+    data: {},
+    content: (paragraphs.length ? paragraphs : [text]).map(p => ({
+      nodeType: 'paragraph',
+      data: {},
+      content: [{ nodeType: 'text', value: p.trim(), marks: [], data: {} }]
+    }))
+  }
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(request) {
@@ -22,7 +49,7 @@ export async function POST(request) {
 
     // ── Shopify-Pages-Pfad ──────────────────────────────────────────
     if (body.pages) {
-      const { pages } = body
+      const { pages, settings } = body
 
       if (!pages || pages.length === 0) {
         return Response.json({ error: 'Keine Pages übergeben' }, { status: 400 })
@@ -69,30 +96,23 @@ export async function POST(request) {
             const isRichText = bodyField.type === 'RichText'
             const rawBody = page.body_html ?? page.body ?? ''
           
+            const plainText = rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document'
+              ? extractPlainText(rawBody)
+              : typeof rawBody === 'string' ? rawBody.replace(/<[^>]*>/g, '') : ''
+          
+            const optimizedText = settings?.textLevel > 0
+              ? await optimizeText(plainText, settings)
+              : null
+          
             if (isRichText) {
-              let richTextValue
-              if (rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document') {
-                richTextValue = rawBody
-              } else {
-                const textContent = typeof rawBody === 'string' ? rawBody.replace(/<[^>]*>/g, '') : ''
-                richTextValue = {
-                  nodeType: 'document',
-                  data: {},
-                  content: [{
-                    nodeType: 'paragraph',
-                    data: {},
-                    content: [{
-                      nodeType: 'text',
-                      value: textContent,
-                      marks: [],
-                      data: {}
-                    }]
-                  }]
-                }
-              }
+              const richTextValue = optimizedText
+                ? buildRichTextFromString(optimizedText)
+                : rawBody && typeof rawBody === 'object' && rawBody.nodeType === 'document'
+                  ? rawBody
+                  : buildRichTextFromString(plainText)
               entryFields[bodyField.id] = { [defaultLocale]: richTextValue }
             } else {
-              entryFields[bodyField.id] = { [defaultLocale]: typeof rawBody === 'string' ? rawBody : '' }
+              entryFields[bodyField.id] = { [defaultLocale]: optimizedText || plainText }
             }
           }
           const res = await fetch(
