@@ -920,13 +920,18 @@ async function handleZipUpload(file) {
       })
     })
 
-    // Categorise each file into one of four buckets based on filename
+    // Categorise each file into one of four buckets based on filename.
+    // Order matters: more-specific checks must precede broader prefix fallbacks.
+    // 'contentpage' must come before 'otherpages_' so that a file such as
+    // "otherpages_contentpage.csv" is correctly routed to contentPages.
     const cat = (name) => {
       const n = name.toLowerCase()
-      if (n.includes('contentslotforpage'))                               return 'contentSlotForPages'
-      if (n.includes('contentslot'))                                      return 'contentSlots'  // after the above
-      if (n.includes('wcmshtmlcomponent') || n.startsWith('otherpages_')) return 'htmlComponents'
-      if (n.includes('contentpage') || n.startsWith('wcmspages_'))        return 'contentPages'
+      if (n.includes('contentslotforpage'))  return 'contentSlotForPages'  // before 'contentslot'
+      if (n.includes('contentslot'))         return 'contentSlots'
+      if (n.includes('contentpage'))         return 'contentPages'          // before 'otherpages_'
+      if (n.startsWith('wcmspages_'))        return 'contentPages'
+      if (n.includes('wcmshtmlcomponent'))   return 'htmlComponents'
+      if (n.startsWith('otherpages_'))       return 'htmlComponents'
       return null
     }
 
