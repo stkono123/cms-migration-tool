@@ -65,6 +65,7 @@ function coerceFieldValue(field, rawValue) {
     case 'Integer':   return parseInt(str) || 0
     case 'Number':    return parseFloat(str) || 0
     case 'Symbol':    return str.slice(0, 256)
+    case 'Text':      return str.slice(0, 50000)
     default:          return str
   }
 }
