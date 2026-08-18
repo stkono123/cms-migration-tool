@@ -956,23 +956,17 @@ async function handleZipUpload(file) {
     }, 600)
 
     try {
-      const res  = await fetch('/api/analyze-sap-wcms', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(buckets),
-      })
-      const data = await res.json()
+      // Join entirely client-side — avoids sending large parsed CSV payloads
+      // to the server (which would hit Vercel's 4.5 MB request-body limit).
+      const { analyzeSapWcms } = await import('../lib/adapters/sap-wcms/analyze.js')
+      const data = analyzeSapWcms(buckets)
       clearInterval(stepInterval)
       setAnalyzeStep(analyzeSteps.length - 1)
       await new Promise(r => setTimeout(r, 800))
-      if (data.error) {
-        setSapError(data.error)
-      } else {
-        setInventory(data)
-        setCsvRawRows(data.allPages || [])
-        setSapReady(true)
-        setTimeout(() => setAnimateNumbers(true), 100)
-      }
+      setInventory(data)
+      setCsvRawRows(data.allPages || [])
+      setSapReady(true)
+      setTimeout(() => setAnimateNumbers(true), 100)
     } catch (e) {
       clearInterval(stepInterval)
       setSapError('Fehler beim Verarbeiten der SAP WCMS-Dateien.')
