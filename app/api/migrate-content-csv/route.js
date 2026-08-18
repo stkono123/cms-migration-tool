@@ -45,11 +45,21 @@ function buildRichTextFromString(text) {
   }
 }
 
+// Remove characters that survive JSON.stringify in Node.js but break
+// many JSON parsers (including Contentful's): null bytes, lone Unicode
+// surrogates, and C0 control characters (except tab/LF/CR).
+function sanitizeStr(s) {
+  return String(s ?? '')
+    .replace(/\x00/g, '')
+    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\\uD800-\\uDBFF])[\uDC00-\uDFFF]/g, '')
+}
+
 function coerceFieldValue(field, rawValue) {
   if (field.type === 'RichText') {
-    return (typeof rawValue === 'object' && rawValue?.nodeType) ? rawValue : toRichText(String(rawValue ?? ''))
+    return (typeof rawValue === 'object' && rawValue?.nodeType) ? rawValue : toRichText(sanitizeStr(rawValue))
   }
-  const str = String(rawValue ?? '')
+  const str = sanitizeStr(rawValue)
   switch (field.type) {
     case 'Boolean':   return str.toLowerCase() === 'true'
     case 'Integer':   return parseInt(str) || 0
@@ -361,8 +371,15 @@ export async function POST(request) {
         if (res.ok) {
           results.push({ index: i, status: 'success', title: titleValue })
         } else {
-          console.error('CF Entry Error:', JSON.stringify(data))
-          results.push({ index: i, status: 'error', title: titleValue, error: data.message || 'Fehler', details: data.details })
+          const errDetails = (data.details?.errors || [])
+            .map(e => `${e.name} on field "${e.path?.join('.')}" — ${e.details || e.value}`)
+            .join('; ')
+          console.error(
+            `[migrate-csv] FAILED entry #${i} slug="${slugValue}" title="${titleValue}":`,
+            data.message,
+            errDetails || JSON.stringify(data.details ?? data)
+          )
+          results.push({ index: i, status: 'error', title: titleValue, slug: slugValue, error: data.message || 'Fehler', details: data.details })
         }
       } catch (e) {
         results.push({ index: i, status: 'error', title: `Eintrag ${i + 1}`, error: e.message })
