@@ -40,6 +40,13 @@ const ZipLogo = () => (
   </svg>
 )
 
+const SAPLogo = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="4" fill="#009DE0" opacity="0.15"/>
+    <text x="12" y="16" textAnchor="middle" fill="#009DE0" fontSize="7" fontWeight="bold" fontFamily="monospace">SAP</text>
+  </svg>
+)
+
 // ─────────────────────────────────────────────────────────────────
 // KONSTANTEN
 // ─────────────────────────────────────────────────────────────────
@@ -49,7 +56,7 @@ const SOURCE_SYSTEMS = [
   { id: 'url', label: 'URL / Web-Fetch', logo: null, available: true },
   { id: 'zip', label: 'Lokale Dateien', logo: ZipLogo, available: true },
   { id: 'adobe', label: 'Adobe Commerce', logo: null, available: false },
-  { id: 'sap', label: 'SAP Commerce', logo: null, available: false },
+  { id: 'sap', label: 'SAP Commerce', logo: SAPLogo, available: true },
   { id: 'wordpress', label: 'WordPress', logo: null, available: false },
 ]
 
@@ -411,6 +418,12 @@ export default function Home() {
   const [urlBulkProgress, setUrlBulkProgress] = useState(0)
   const [urlBulkResults, setUrlBulkResults] = useState([])
 
+  // SAP WCMS state
+  const [sapFiles, setSapFiles] = useState({})         // { contentPages: n, ... } per bucket
+  const [sapDragOver, setSapDragOver] = useState(false)
+  const [sapError, setSapError] = useState(null)
+  const [sapReady, setSapReady] = useState(false)
+
   // Pipeline state
   const [inventory, setInventory] = useState(null)
   const [animateNumbers, setAnimateNumbers] = useState(false)
@@ -484,7 +497,10 @@ export default function Home() {
   const ctSkipped = ctStatus === 'skipped'
   const ctReady = ctActive || ctSkipped
   const allConnected =
-    (sourceSystem === 'csv' ? !!csvFile : sourceSystem === 'zip' ? !!zipFile : shopifyStatus === 'connected') &&
+    (sourceSystem === 'csv' ? !!csvFile
+    : sourceSystem === 'zip' ? !!zipFile
+    : sourceSystem === 'sap' ? sapReady
+    : shopifyStatus === 'connected') &&
     ctReady &&
     contentfulStatus === 'connected'
 
@@ -609,6 +625,19 @@ export default function Home() {
           .finally(() => setCsvContentTypesLoading(false))
       }
       if (inventory.source === 'zip') {
+        setCsvTarget('contentful')
+        setCsvContentTypesLoading(true)
+        fetch('/api/get-contentful-models', { method: 'POST' })
+          .then(r => r.json())
+          .then(data => {
+            const types = (data.items || []).map(ct => ({ id: ct.sys.id, name: ct.name }))
+            setCsvContentTypes(types)
+            if (types.length > 0) setCsvContentType(types[0].id)
+          })
+          .catch(() => {})
+          .finally(() => setCsvContentTypesLoading(false))
+      }
+      if (inventory.source === 'sap-wcms') {
         setCsvTarget('contentful')
         setCsvContentTypesLoading(true)
         fetch('/api/get-contentful-models', { method: 'POST' })
@@ -873,6 +902,84 @@ async function handleZipUpload(file) {
   }
   setAnalyzing(false)
 }
+
+  async function handleSapWcmsUpload(fileList) {
+    setSapError(null)
+    setSapReady(false)
+    setSapFiles({})
+
+    const Papa = (await import('papaparse')).default
+
+    const parseFile = (file) => new Promise(resolve => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ';',          // SAP WCMS exports are semicolon-delimited
+        complete: r => resolve(r.data),
+        error:    () => resolve([]),
+      })
+    })
+
+    // Categorise each file into one of four buckets based on filename
+    const cat = (name) => {
+      const n = name.toLowerCase()
+      if (n.includes('contentslotforpage'))                               return 'contentSlotForPages'
+      if (n.includes('contentslot'))                                      return 'contentSlots'  // after the above
+      if (n.includes('wcmshtmlcomponent') || n.startsWith('otherpages_')) return 'htmlComponents'
+      if (n.includes('contentpage') || n.startsWith('wcmspages_'))        return 'contentPages'
+      return null
+    }
+
+    const buckets = { contentPages: [], contentSlots: [], contentSlotForPages: [], htmlComponents: [] }
+    const seen    = {}
+
+    for (const file of Array.from(fileList)) {
+      const key = cat(file.name)
+      if (!key) continue
+      const rows = await parseFile(file)
+      buckets[key].push(...rows)
+      seen[key] = (seen[key] || 0) + 1
+    }
+
+    setSapFiles(seen)
+
+    if (!buckets.contentPages.length) {
+      setSapError('ContentPage.csv (oder wcmspages_*.csv) wurde nicht erkannt oder ist leer.')
+      return
+    }
+
+    setAnalyzing(true)
+    setAnimateNumbers(false)
+    setAnalyzeStep(0)
+    const stepInterval = setInterval(() => {
+      setAnalyzeStep(s => s >= analyzeSteps.length - 1 ? s : s + 1)
+    }, 600)
+
+    try {
+      const res  = await fetch('/api/analyze-sap-wcms', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(buckets),
+      })
+      const data = await res.json()
+      clearInterval(stepInterval)
+      setAnalyzeStep(analyzeSteps.length - 1)
+      await new Promise(r => setTimeout(r, 800))
+      if (data.error) {
+        setSapError(data.error)
+      } else {
+        setInventory(data)
+        setCsvRawRows(data.allPages || [])
+        setSapReady(true)
+        setTimeout(() => setAnimateNumbers(true), 100)
+      }
+    } catch (e) {
+      clearInterval(stepInterval)
+      setSapError('Fehler beim Verarbeiten der SAP WCMS-Dateien.')
+      console.error(e)
+    }
+    setAnalyzing(false)
+  }
 
   const handleFolderUpload = (fileList) => {
     const files = Array.from(fileList)
@@ -1161,6 +1268,51 @@ async function migrateProductsToCT() {
     setMigratingContentful(false)
   }
 
+  async function migrateSapWcmsContent() {
+    setMigratingContentful(true)
+    try {
+      const pages = inventory?.allPages || []
+      // Remap SAP fields to conventional names so migrate-content-csv can
+      // detect title / slug / body automatically via its column-matching logic,
+      // while locale variants (htmlDe…) are picked up by the exact-id fallback loop.
+      const rows = pages.map(p => ({
+        title:      p.label || p.name || p.uid,
+        slug:       p.uid,
+        body:       p.htmlEn,
+        htmlDe:     p.htmlDe,
+        htmlFr:     p.htmlFr,
+        htmlIt:     p.htmlIt,
+        htmlEs:     p.htmlEs,
+        pageStatus: p.pageStatus,
+        customCss:  p.customCss,
+        customJs:   p.customJs,
+      }))
+      const res = await fetch('/api/migrate-content-csv', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rows,
+          contentCols: ['body', 'htmlDe', 'htmlFr', 'htmlIt', 'htmlEs', 'title'],
+          settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
+          target: 'contentful',
+          contentType: csvContentType,
+        }),
+      })
+      const data = await res.json()
+      setMigrateResultsContentful(
+        (data.results || []).map((r, idx) => ({
+          title: pages[idx]?.label || pages[idx]?.name || pages[idx]?.uid || `Seite ${idx + 1}`,
+          status: r.status,
+          error: r.error,
+        }))
+      )
+      setWordCountLog(data.wordCountLog || [])
+    } catch (e) {
+      console.error(e)
+    }
+    setMigratingContentful(false)
+  }
+
   async function migrateContentToContentful() {
     setMigratingContentful(true)
     try {
@@ -1251,6 +1403,9 @@ async function migrateProductsToCT() {
     setCsvParseError(null)
     setZipFile(null)
     setZipError(null)
+    setSapFiles({})
+    setSapReady(false)
+    setSapError(null)
     // Control Panel zuruecksetzen
     setControlPanelOpen(false)
     setEdgeCasesOpen(false)
@@ -1428,7 +1583,12 @@ async function migrateProductsToCT() {
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Quellsystem</div>
-                <StatusDot status={sourceSystem === 'csv' ? (csvFile ? 'connected' : 'idle') : sourceSystem === 'zip' ? (zipFile ? 'connected' : 'idle') : shopifyStatus} />
+                <StatusDot status={
+                  sourceSystem === 'csv' ? (csvFile   ? 'connected' : 'idle')
+                  : sourceSystem === 'zip' ? (zipFile  ? 'connected' : 'idle')
+                  : sourceSystem === 'sap' ? (sapReady ? 'connected' : 'idle')
+                  : shopifyStatus
+                } />
               </div>
 
               {/* Source System Dropdown */}
@@ -1480,7 +1640,7 @@ async function migrateProductsToCT() {
               </div>
 
               {/* Shopify Fields */}
-              {sourceSystem !== 'csv' && sourceSystem !== 'url' && sourceSystem !== 'zip' && (                <>
+              {sourceSystem !== 'csv' && sourceSystem !== 'url' && sourceSystem !== 'zip' && sourceSystem !== 'sap' && (                <>
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domain</div>
                     <input style={inputStyle} value={shopifyDomain} onChange={e => setShopifyDomain(e.target.value)} placeholder="shop.myshopify.com" />
@@ -1636,6 +1796,77 @@ async function migrateProductsToCT() {
   </div>
 )}
 
+              {/* SAP WCMS Multi-File Upload */}
+              {sourceSystem === 'sap' && (
+                <div style={{ marginBottom: 14 }}>
+                  {/* Drop zone */}
+                  <div
+                    onDragOver={e => { e.preventDefault(); setSapDragOver(true) }}
+                    onDragLeave={() => setSapDragOver(false)}
+                    onDrop={e => { e.preventDefault(); setSapDragOver(false); if (e.dataTransfer.files.length > 0) handleSapWcmsUpload(e.dataTransfer.files) }}
+                    onClick={() => document.getElementById('sap-file-input').click()}
+                    style={{
+                      border: `2px dashed ${sapDragOver ? '#009DE0' : sapReady ? '#009DE044' : '#1e293b'}`,
+                      borderRadius: 10, padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
+                      background: sapDragOver ? 'rgba(0,157,224,0.05)' : '#080b12',
+                      transition: 'all 0.2s', marginBottom: 8,
+                    }}
+                  >
+                    {sapReady ? (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#009DE0', marginBottom: 4 }}>
+                          [OK] {Object.values(sapFiles).reduce((a, b) => a + b, 0)} CSV-Datei(en) verarbeitet
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Klicken, um andere Dateien wählen</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>📋</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>SAP WCMS CSV-Dateien hier ablegen</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>Mehrere Dateien auswählen — Semikolon-getrennt, UTF-8</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* File checklist */}
+                  <div style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
+                    {[
+                      { key: 'contentPages',        label: 'ContentPage.csv',        hint: 'oder wcmspages_*.csv' },
+                      { key: 'contentSlotForPages',  label: 'ContentSlotForPage.csv', hint: 'Pflicht für Join' },
+                      { key: 'contentSlots',         label: 'ContentSlot.csv',        hint: 'Slot-Definitionen' },
+                      { key: 'htmlComponents',       label: 'WCMSHTMLComponent.csv',  hint: 'oder otherpages_*.csv' },
+                    ].map(({ key, label, hint }) => {
+                      const found = (sapFiles[key] || 0) > 0
+                      return (
+                        <div key={key} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '5px 8px', borderRadius: 6,
+                          background: found ? 'rgba(0,157,224,0.08)' : '#0a0e1a',
+                          border: `1px solid ${found ? '#009DE033' : '#1e293b'}`,
+                          fontSize: 11,
+                        }}>
+                          <span style={{ color: found ? '#009DE0' : '#334155', fontWeight: 700, fontFamily: 'monospace', fontSize: 10, minWidth: 28 }}>
+                            {found ? '[OK]' : '[ ]'}
+                          </span>
+                          <span style={{ color: found ? '#94a3b8' : '#475569', fontWeight: 600 }}>{label}</span>
+                          <span style={{ color: '#334155', marginLeft: 'auto', fontSize: 10 }}>{hint}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <input
+                    id="sap-file-input"
+                    type="file"
+                    accept=".csv"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files.length > 0) handleSapWcmsUpload(e.target.files) }}
+                  />
+                  {sapError && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>{sapError}</div>}
+                </div>
+              )}
+
            {/* URL Input */}
               {sourceSystem === 'url' && (
                 <div style={{ marginBottom: 14 }}>
@@ -1685,6 +1916,8 @@ async function migrateProductsToCT() {
               ? <ConnectButton status={csvFile ? 'connected' : 'idle'} onClick={() => {}} label="CSV bereit" />
               : sourceSystem === 'zip'
               ? <ConnectButton status={zipFile ? 'connected' : 'idle'} onClick={() => {}} label="ZIP bereit" />
+              : sourceSystem === 'sap'
+              ? <ConnectButton status={sapReady ? 'connected' : 'idle'} onClick={() => {}} label="SAP WCMS bereit" />
               : sourceSystem === 'url'
               ? <ConnectButton status={urlStatus} onClick={analyzeUrlBulk} label={urlStatus === 'loading' ? `${urlBulkProgress}/${urlBulkList.length}` : 'URLs analysieren'} />
               : <ConnectButton status={shopifyStatus} onClick={testShopify} label="Shopify" />
@@ -2805,6 +3038,36 @@ async function migrateProductsToCT() {
               </div>
             )}
 
+            {/* SAP WCMS -- Contentful Content Type Auswahl */}
+            {inventory.source === 'sap-wcms' && (
+              <div style={{ background: '#0f1623', border: '1px solid #009DE033', borderRadius: 14, padding: 20, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <SAPLogo />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#009DE0', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Contentful Content Type</div>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+                  Ziel-Content-Type für die migrierten SAP WCMS-Seiten.
+                </div>
+                {csvContentTypesLoading ? (
+                  <div style={{ fontSize: 11, color: '#475569' }}>Lädt Content Types…</div>
+                ) : csvContentTypes.length > 0 ? (
+                  <select
+                    value={csvContentType}
+                    onChange={e => setCsvContentType(e.target.value)}
+                    style={{ ...inputStyle, width: '100%', appearance: 'none', cursor: 'pointer' }}
+                  >
+                    {csvContentTypes.map(ct => (
+                      <option key={ct.id} value={ct.id}>{ct.name} ({ct.id})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ fontSize: 11, color: '#ef4444' }}>
+                    Keine Content Types gefunden – ist Contentful verbunden und ein Model bereits angelegt?
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* KI MACH-Mapping Button -- EIN EINZIGER, am Ende des Inventar-Blocks */}
             <button
               onClick={() => { setReviewConfirmed(true); startMapping(); }}
@@ -3104,7 +3367,7 @@ async function migrateProductsToCT() {
                         : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
                     <button
-                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : migrateContentToContentful}
+                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : inventory?.source === 'sap-wcms' ? migrateSapWcmsContent : migrateContentToContentful}
                       disabled={migratingContentful}
                       style={{
                         width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',

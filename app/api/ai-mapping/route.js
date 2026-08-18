@@ -1,10 +1,11 @@
 // Generische AI-Mapping Route
 // Zielsysteme und Prompt kommen aus dem jeweiligen Quellsystem-Adapter
-// Unterstützte Quellsysteme aktuell: shopify, csv, zip
+// Unterstützte Quellsysteme aktuell: shopify, csv, zip, sap-wcms
 export const runtime = 'nodejs'
 import { buildMappingPrompt as buildShopifyPrompt } from '../../../lib/adapters/shopify/ai-prompt.js'
 import { buildMappingPrompt as buildCSVPrompt } from '../../../lib/adapters/csv/ai-prompt.js'
 import { buildMappingPrompt as buildZipPrompt } from '../../../lib/adapters/zip/ai-prompt.js'
+import { buildMappingPrompt as buildSapWcmsPrompt } from '../../../lib/adapters/sap-wcms/ai-prompt.js'
 
 export async function POST(request) {
   try {
@@ -18,6 +19,8 @@ export async function POST(request) {
       prompt = buildCSVPrompt(inventory, targets, csvTarget)
     } else if (inventory.source === 'zip') {
       prompt = buildZipPrompt(inventory, targets, uploadedModel)
+    } else if (inventory.source === 'sap-wcms') {
+      prompt = buildSapWcmsPrompt(inventory, targets, uploadedModel)
     } else {
       prompt = buildShopifyPrompt(inventory, targets, uploadedModel)
     }
