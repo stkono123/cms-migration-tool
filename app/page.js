@@ -1271,27 +1271,27 @@ async function migrateProductsToCT() {
     setMigratingContentful(true)
     try {
       const pages = inventory?.allPages || []
-      // Remap SAP fields to conventional names so migrate-content-csv can
-      // detect title / slug / body automatically via its column-matching logic,
-      // while locale variants (htmlDe…) are picked up by the exact-id fallback loop.
+      // Use exact Contentful field IDs as column names so the route's
+      // direct-match loop (field.id === column) picks them up without heuristics.
       const rows = pages.map(p => ({
-        title:      p.label || p.name || p.uid,
-        slug:       p.uid,
-        body:       p.htmlEn,
+        name:       p.name || p.uid,
+        uid:        p.uid,
+        label:      p.label || p.name || p.uid,
+        pageStatus: p.pageStatus,
+        customCss:  p.customCss,
+        customJs:   p.customJs,
+        htmlEn:     p.htmlEn,
         htmlDe:     p.htmlDe,
         htmlFr:     p.htmlFr,
         htmlIt:     p.htmlIt,
         htmlEs:     p.htmlEs,
-        pageStatus: p.pageStatus,
-        customCss:  p.customCss,
-        customJs:   p.customJs,
       }))
       const res = await fetch('/api/migrate-content-csv', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rows,
-          contentCols: ['body', 'htmlDe', 'htmlFr', 'htmlIt', 'htmlEs', 'title'],
+          contentCols: ['htmlEn', 'htmlDe', 'htmlFr', 'htmlIt', 'htmlEs', 'label'],
           settings: { textLevel, textPersona: seoPersona, textKeyword: seoKeyword },
           target: 'contentful',
           contentType: csvContentType,

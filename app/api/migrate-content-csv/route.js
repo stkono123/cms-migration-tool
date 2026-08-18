@@ -282,8 +282,11 @@ export async function POST(request) {
           ?.replace(/^#+\s*/, '').split(/(?<=[.!?])\s+/)[0].slice(0, 200).trim()
           || `Eintrag ${i + 1}`
 
-        // Slug: aus Titel generieren, max 80 Zeichen
-        const slugValue = makeSlug(titleValue, i)
+        // Slug: prefer the value from the detected slug column (e.g. "uid", "slug")
+        // so that SAP WCMS page UIDs are preserved exactly. Fall back to
+        // generating from the title when no slug column value is present.
+        const rawSlugFromCol = slugCol ? String(row[slugCol] || '').trim() : ''
+        const slugValue = rawSlugFromCol || makeSlug(titleValue, i)
 
         // War es ein RichText-Objekt und wurde nicht optimiert (Level 0),
         // bleibt die urspruengliche Formatierung erhalten. Wurde optimiert,
