@@ -377,7 +377,7 @@ export default function Home() {
     }
   }
   // Connection state
-  const [sourceSystem, setSourceSystem] = useState('shopify')
+  const [sourceSystem, setSourceSystem] = useState('sap')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
   const [shopifyDomain, setShopifyDomain] = useState('')
   const [shopifyToken, setShopifyToken] = useState('................................')
