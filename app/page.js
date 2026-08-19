@@ -385,7 +385,7 @@ export default function Home() {
   const [shopifyTokenReal, setShopifyTokenReal] = useState('')
   const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [ctStatus, setCtStatus] = useState('idle')
-  const [contentfulSpace, setContentfulSpace] = useState('')
+  const [contentfulSpace, setContentfulSpace] = useState(process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID || '')
   const [contentfulToken, setContentfulToken] = useState('................................')
   const [contentfulTokenEditing, setContentfulTokenEditing] = useState(false)
   const [contentfulTokenReal, setContentfulTokenReal] = useState('')
