@@ -1,7 +1,7 @@
 [
   {
-    "version": "1.5.65",
-    "date": "2026-08-18",
+    "version": "1.5.66",
+    "date": "2026-08-19",
     "changes": [
       "ZIP-Kanal: HTML-Dateien aus wget-Crawl als Migrationsquelle",
       "Automatische Sprach-Erkennung mit targetLanguage-Hook für zukünftige Übersetzungen",
