@@ -1,0 +1,43 @@
+image: node:20
+
+# Runs on every push to main.
+# Skips commits that already contain [skip ci] (our own auto-bumps)
+# or [release] (manual major/minor bumps).
+#
+# Required pipeline variable (Settings > Repository variables):
+#   BITBUCKET_ACCESS_TOKEN  — a repository HTTP access token with "Repositories: Write" scope.
+#   Set it as "secured" so it is masked in logs.
+
+pipelines:
+  branches:
+    main:
+      - step:
+          name: Bump patch version
+          script:
+            - COMMIT_MSG=$(git log --format=%s -1)
+            - |
+              if echo "$COMMIT_MSG" | grep -qE '\[skip ci\]|\[release\]'; then
+                echo "Skipping auto-commit: $COMMIT_MSG"
+                exit 0
+              fi
+            - CURRENT=$(node -e "const d=require('./data/changelog.json'); console.log(d[0].version)")
+            - MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            - MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            - PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            - NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            - TODAY=$(date -u +%Y-%m-%d)
+            - |
+              node -e "
+                const fs = require('fs');
+                const log = JSON.parse(fs.readFileSync('./data/changelog.json', 'utf8'));
+                log[0].version = '$NEW_VERSION';
+                log[0].date    = '$TODAY';
+                fs.writeFileSync('./data/changelog.json', JSON.stringify(log, null, 2) + '\n');
+              "
+            - echo "Bumped $CURRENT -> $NEW_VERSION ($TODAY)"
+            - git config user.name  "Bitbucket Pipelines"
+            - git config user.email "pipelines@bitbucket.org"
+            - git remote set-url origin "https://x-token-auth:${BITBUCKET_ACCESS_TOKEN}@bitbucket.org/mindcurv/miq-migrateiq-ui.git"
+            - git add data/changelog.json
+            - git diff --staged --quiet || git commit -m "chore: bump to $NEW_VERSION [skip ci]"
+            - git push origin main

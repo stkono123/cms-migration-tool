@@ -385,7 +385,7 @@ export default function Home() {
   const [shopifyTokenReal, setShopifyTokenReal] = useState('')
   const [shopifyStatus, setShopifyStatus] = useState('idle')
   const [ctStatus, setCtStatus] = useState('idle')
-  const [contentfulSpace, setContentfulSpace] = useState('1ub4n2ex18h8')
+  const [contentfulSpace, setContentfulSpace] = useState('')
   const [contentfulToken, setContentfulToken] = useState('................................')
   const [contentfulTokenEditing, setContentfulTokenEditing] = useState(false)
   const [contentfulTokenReal, setContentfulTokenReal] = useState('')
@@ -444,8 +444,10 @@ export default function Home() {
   const [migratingContentful, setMigratingContentful] = useState(false)
   const [migrateResultsContentful, setMigrateResultsContentful] = useState(null)
   const [wordCountLog, setWordCountLog] = useState([])
-  const [resettingContentful, setResettingContentful] = useState(false)
-  const [resettingCT, setResettingCT] = useState(false)
+  const [resettingCFContent, setResettingCFContent] = useState(false)
+  const [resettingCFModel, setResettingCFModel] = useState(false)
+  const [resettingCTContent, setResettingCTContent] = useState(false)
+  const [resettingCTModel, setResettingCTModel] = useState(false)
   const [modelMode, setModelMode] = useState('create')
   const [uploadedModel, setUploadedModel] = useState(null)
   const [parsingModel, setParsingModel] = useState(false)
@@ -1336,30 +1338,50 @@ async function migrateProductsToCT() {
     setMigratingContentful(false)
   }
 
-  async function resetContentful() {
-    if (!confirm('Alle Contentful Entries und Content Types loeschen?')) return
-    setResettingContentful(true)
+  async function resetCFContent() {
+    setResettingCFContent(true)
     try {
-      await fetch('/api/reset-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-      setDeployResultsContentful(null)
+      await fetch('/api/reset-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: 'content' }) })
       setMigrateResultsContentful(null)
     } catch (e) {
       console.error(e)
     }
-    setResettingContentful(false)
+    setResettingCFContent(false)
   }
 
-  async function resetCT() {
-    if (!confirm('Alle commercetools Produkte und Product Types loeschen?')) return
-    setResettingCT(true)
+  async function resetCFModel() {
+    if (!confirm('Alle Contentful Content Types unwiderruflich löschen?')) return
+    setResettingCFModel(true)
     try {
-      await fetch('/api/reset-commercetools', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-      setDeployResultsCT(null)
+      await fetch('/api/reset-contentful', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: 'model' }) })
+      setDeployResultsContentful(null)
+    } catch (e) {
+      console.error(e)
+    }
+    setResettingCFModel(false)
+  }
+
+  async function resetCTContent() {
+    setResettingCTContent(true)
+    try {
+      await fetch('/api/reset-commercetools', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: 'content' }) })
       setMigrateResultsCT(null)
     } catch (e) {
       console.error(e)
     }
-    setResettingCT(false)
+    setResettingCTContent(false)
+  }
+
+  async function resetCTModel() {
+    if (!confirm('Alle commercetools Product Types unwiderruflich löschen?')) return
+    setResettingCTModel(true)
+    try {
+      await fetch('/api/reset-commercetools', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: 'model' }) })
+      setDeployResultsCT(null)
+    } catch (e) {
+      console.error(e)
+    }
+    setResettingCTModel(false)
   }
 
  async function loadExistingModels() {
@@ -2066,19 +2088,42 @@ async function migrateProductsToCT() {
             <div style={{ height: 1, background: '#1e293b', margin: '16px 0' }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Zurücksetzen</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {/* Spaltenköpfe */}
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#00B2E3', textTransform: 'uppercase', letterSpacing: '0.08em', paddingLeft: 2 }}>commercetools</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', paddingLeft: 2 }}>Contentful</div>
+              {/* Zeile 1: Content löschen (keine Rückfrage) */}
               <button
-  onClick={resetCT}
-  disabled={resettingCT || ctSkipped}
-  style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCT || ctSkipped ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCT || ctSkipped ? '#64748b' : '#00B2E3' }}
+                onClick={resetCTContent}
+                disabled={resettingCTContent || ctSkipped}
+                title="Alle CT-Produkte löschen"
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(0,178,227,0.3)', background: 'rgba(0,178,227,0.08)', cursor: resettingCTContent || ctSkipped ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCTContent || ctSkipped ? '#64748b' : '#00B2E3' }}
               >
-                {resettingCT ? 'Wird geleert...' : 'commercetools leeren'}
+                {resettingCTContent ? 'Wird gelöscht...' : 'Produkte löschen'}
               </button>
               <button
-                onClick={resetContentful}
-                disabled={resettingContentful}
-                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingContentful ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingContentful ? '#64748b' : '#ef4444' }}
+                onClick={resetCFContent}
+                disabled={resettingCFContent}
+                title="Alle CF-Entries löschen"
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', cursor: resettingCFContent ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCFContent ? '#64748b' : '#ef4444' }}
               >
-                {resettingContentful ? 'Wird geleert...' : 'Contentful leeren'}
+                {resettingCFContent ? 'Wird gelöscht...' : 'Entries löschen'}
+              </button>
+              {/* Zeile 2: Content Model löschen (mit Rückfrage) */}
+              <button
+                onClick={resetCTModel}
+                disabled={resettingCTModel || ctSkipped}
+                title="Alle CT-Product Types löschen — Rückfrage erforderlich"
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.07)', cursor: resettingCTModel || ctSkipped ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCTModel || ctSkipped ? '#64748b' : '#f59e0b' }}
+              >
+                {resettingCTModel ? 'Wird gelöscht...' : 'Product Types löschen'}
+              </button>
+              <button
+                onClick={resetCFModel}
+                disabled={resettingCFModel}
+                title="Alle CF-Content Types löschen — Rückfrage erforderlich"
+                style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.07)', cursor: resettingCFModel ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: resettingCFModel ? '#64748b' : '#f59e0b' }}
+              >
+                {resettingCFModel ? 'Wird gelöscht...' : 'Content Types löschen'}
               </button>
             </div>
             {modelMode === 'existing' && existingModels && (

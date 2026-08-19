@@ -1,11 +1,15 @@
 // commercetools-spezifische Reset-Route
-// Löscht alle Produkte und Product Types im Projekt
-// Für andere Zielsysteme: reset-{system}/route.js anlegen
+// target: 'content' → nur Produkte löschen
+// target: 'model'   → nur Product Types löschen
+// target: 'all'     → beides (Fallback für alte Aufrufe ohne target)
 
 export const runtime = 'nodejs'
 
 export async function POST(request) {
   try {
+    const body = await request.json().catch(() => ({}))
+    const target = body.target ?? 'all'
+
     const ctProjectKey = process.env.CT_PROJECT_KEY
     const ctClientId = process.env.CT_CLIENT_ID
     const ctClientSecret = process.env.CT_CLIENT_SECRET
@@ -14,7 +18,7 @@ export async function POST(request) {
 
     const results = { productsDeleted: 0, productTypesDeleted: 0, errors: [] }
 
-    // 1. CT Auth Token holen
+    // Auth Token holen
     const authResponse = await fetch(`${ctAuthUrl}/oauth/token`, {
       method: 'POST',
       headers: {
@@ -29,55 +33,59 @@ export async function POST(request) {
     }
     const accessToken = authData.access_token
 
-    // 2. Alle Produkte unpublishen und löschen
-    const productsRes = await fetch(
-      `${ctApiUrl}/${ctProjectKey}/products?limit=500`,
-      { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    )
-    const productsData = await productsRes.json()
+    // 1. Produkte löschen (wenn target 'content' oder 'all')
+    if (target === 'content' || target === 'all') {
+      const productsRes = await fetch(
+        `${ctApiUrl}/${ctProjectKey}/products?limit=500`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      )
+      const productsData = await productsRes.json()
 
-    for (const product of productsData.results || []) {
-      try {
-        if (product.masterData?.published) {
-          await fetch(
-            `${ctApiUrl}/${ctProjectKey}/products/${product.id}`,
-            {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ version: product.version, actions: [{ action: 'unpublish' }] })
-            }
+      for (const product of productsData.results || []) {
+        try {
+          if (product.masterData?.published) {
+            await fetch(
+              `${ctApiUrl}/${ctProjectKey}/products/${product.id}`,
+              {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ version: product.version, actions: [{ action: 'unpublish' }] })
+              }
+            )
+          }
+          const deleteRes = await fetch(
+            `${ctApiUrl}/${ctProjectKey}/products/${product.id}?version=${product.version}`,
+            { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
           )
+          if (deleteRes.ok) results.productsDeleted++
+        } catch (e) {
+          results.errors.push(`Product ${product.id}: ${e.message}`)
         }
-        const deleteRes = await fetch(
-          `${ctApiUrl}/${ctProjectKey}/products/${product.id}?version=${product.version}`,
-          { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
-        )
-        if (deleteRes.ok) results.productsDeleted++
-      } catch (e) {
-        results.errors.push(`Product ${product.id}: ${e.message}`)
       }
     }
 
-    // 3. Alle Product Types löschen
-    const ptRes = await fetch(
-      `${ctApiUrl}/${ctProjectKey}/product-types?limit=100`,
-      { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    )
-    const ptData = await ptRes.json()
+    // 2. Product Types löschen (wenn target 'model' oder 'all')
+    if (target === 'model' || target === 'all') {
+      const ptRes = await fetch(
+        `${ctApiUrl}/${ctProjectKey}/product-types?limit=100`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      )
+      const ptData = await ptRes.json()
 
-    for (const pt of ptData.results || []) {
-      try {
-        const deleteRes = await fetch(
-          `${ctApiUrl}/${ctProjectKey}/product-types/${pt.id}?version=${pt.version}`,
-          { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
-        )
-        if (deleteRes.ok) results.productTypesDeleted++
-        else {
-          const err = await deleteRes.json()
-          results.errors.push(`ProductType ${pt.name}: ${err.message}`)
+      for (const pt of ptData.results || []) {
+        try {
+          const deleteRes = await fetch(
+            `${ctApiUrl}/${ctProjectKey}/product-types/${pt.id}?version=${pt.version}`,
+            { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } }
+          )
+          if (deleteRes.ok) results.productTypesDeleted++
+          else {
+            const err = await deleteRes.json()
+            results.errors.push(`ProductType ${pt.name}: ${err.message}`)
+          }
+        } catch (e) {
+          results.errors.push(`ProductType ${pt.id}: ${e.message}`)
         }
-      } catch (e) {
-        results.errors.push(`ProductType ${pt.id}: ${e.message}`)
       }
     }
 

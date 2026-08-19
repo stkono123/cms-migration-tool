@@ -122,7 +122,7 @@ export async function POST(request) {
 
     const spaceId = process.env.CONTENTFUL_SPACE_ID
     const token = process.env.CONTENTFUL_CMA_TOKEN
-    const environment = 'master'
+    const environment = process.env.CONTENTFUL_ENVIRONMENT || 'master'
 
     const localeRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,

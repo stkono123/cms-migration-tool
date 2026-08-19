@@ -6,7 +6,7 @@ export async function POST() {
     const token = process.env.CONTENTFUL_CMA_TOKEN
 
     const res = await fetch(
-      `https://api.contentful.com/spaces/${spaceId}/environments/master/content_types?limit=200`,
+      `https://api.contentful.com/spaces/${spaceId}/environments/${process.env.CONTENTFUL_ENVIRONMENT || 'master'}/content_types?limit=200`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     const data = await res.json()

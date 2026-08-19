@@ -8,7 +8,7 @@ export async function POST(request) {
     const { contentTypes } = await request.json()
     const spaceId = process.env.CONTENTFUL_SPACE_ID
     const token = process.env.CONTENTFUL_CMA_TOKEN
-    const environment = 'master'
+    const environment = process.env.CONTENTFUL_ENVIRONMENT || 'master'
     const results = []
 
     for (const ct of contentTypes) {
