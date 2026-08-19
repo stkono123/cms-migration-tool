@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.7.0",
+    "date": "2026-08-19",
+    "changes": [
+      "Name-based slot-to-component matching: HTML fields now populated correctly for all pages where the component name embeds the page uid",
+      "Timing-based fallback now only runs on components not matched by name",
+      "Environment migration: moved to Bitbucket, ACN Vercel (mindcurv), ACN Contentful sandbox"
+    ]
+  },
+  {
     "version": "1.5.68",
     "date": "2026-08-19",
     "changes": [
