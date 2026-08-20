@@ -410,6 +410,12 @@ export default function Home() {
   const [folderHtmlCount, setFolderHtmlCount] = useState(0)
   const [zipTotalHtmlCount, setZipTotalHtmlCount] = useState(0)
 
+  // Punchout state (Slug-Lookup-Tabelle für D2C ZIP-Migration)
+  const [punchoutFile, setPunchoutFile] = useState(null)
+  const [punchoutMap, setPunchoutMap] = useState(null)   // Map: oldUrl → { newSlug, eyebrow, zone, klasse }
+  const [punchoutDragOver, setPunchoutDragOver] = useState(false)
+  const [punchoutError, setPunchoutError] = useState(null)
+
   // URL state
   const [urlInput, setUrlInput] = useState('')
   const [urlStatus, setUrlStatus] = useState('idle')
@@ -984,6 +990,50 @@ async function handleZipUpload(file) {
     setAnalyzing(false)
   }
 
+  async function handlePunchoutUpload(file) {
+    if (!file) return
+    setPunchoutFile(file)
+    setPunchoutError(null)
+    setPunchoutMap(null)
+    try {
+      const Papa = (await import('papaparse')).default
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        encoding: 'UTF-8',
+        delimitersToGuess: [',', ';', '\t', '|'],
+        complete: (results) => {
+          if (results.errors.length > 0 && results.data.length === 0) {
+            setPunchoutError('Punchout-CSV konnte nicht gelesen werden.')
+            return
+          }
+          // Build lookup map: old URL (without trailing slash, lowercase) → entry
+          const map = {}
+          for (const row of results.data) {
+            const url = (row.URL || '').trim().replace(/\/$/, '')
+            if (!url) continue
+            const newUrl = (row.New_URL || '').trim()
+            // Derive slug from New_URL: strip origin + language prefix /de/de or /us/en etc.
+            const slugMatch = newUrl.match(/^https?:\/\/[^/]+(?:\/[a-z]{2}\/[a-z]{2})?(\/.*)?$/)
+            const newSlug = slugMatch?.[1]?.replace(/\/$/, '') || null
+            map[url.toLowerCase()] = {
+              newSlug,
+              eyebrow: (row.newSlug_1 || '').trim() || null,
+              zone: (row.migrations_zone || '').trim(),
+              klasse: (row.klasse || '').trim(),
+              newUrl,
+            }
+          }
+          setPunchoutMap(map)
+          console.log(`Punchout geladen: ${Object.keys(map).length} URLs`)
+        },
+        error: () => setPunchoutError('Fehler beim Parsen der Punchout-CSV.'),
+      })
+    } catch (e) {
+      setPunchoutError('Fehler beim Laden von PapaParse.')
+    }
+  }
+
   const handleFolderUpload = (fileList) => {
     const files = Array.from(fileList)
     const htmlFiles = files.filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm'))
@@ -1284,8 +1334,18 @@ async function migrateProductsToCT() {
           .replace(/\s*–\s*Scott.*$/i, ''))
       }
 
-      function d2cParseHtml(html, filePath) {
-        // Meta
+      function d2cParseHtml(html, filePath, lookup) {
+        // ── Punchout lookup ──────────────────────────────────────────────
+        // Construct the canonical old URL from the ZIP file path, then look up
+        // in Simon's Punchout CSV to get the new slug, silo (eyebrow), and migration zone.
+        const oldUrlPath = filePath
+          .replace(/^.*?www\.scott-sports\.com/, '')  // strip everything up to domain
+          .replace(/\/index\.html?$/i, '')
+          .replace(/\.html?$/i, '')
+        const oldUrl = ('https://www.scott-sports.com' + oldUrlPath).toLowerCase().replace(/\/$/, '')
+        const punchoutEntry = lookup ? (lookup[oldUrl] || null) : null
+
+        // ── Meta fields ──────────────────────────────────────────────────
         const titleM = html.match(/<title[^>]*>([^<]+)<\/title>/i)
         const rawTitle = titleM ? titleM[1] : filePath.split('/').pop().replace(/\.html?$/, '')
         const title = d2cCleanTitle(rawTitle) || 'Untitled'
@@ -1306,10 +1366,9 @@ async function migrateProductsToCT() {
           || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i)
         const canonicalUrl = canonM ? canonM[1].trim() : ''
 
-        // Strip global noise (script, style, nav, header, footer, aside).
-        // NOTE: Do NOT try to find a "main content area" with a greedy/non-greedy
-        // regex — sites like Scott Sports have no <main> tag and the #content div
-        // is only a thin 120-char wrapper. Scanning the full cleaned HTML is better.
+        // ── Strip global noise ───────────────────────────────────────────
+        // NOTE: No main-content-area detection — Scott Sports has no <main> tag
+        // and #content div is only a ~120-char wrapper. Full cleaned HTML scan is better.
         const cleaned = html
           .replace(/<!--[\s\S]*?-->/g, '')
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -1330,22 +1389,21 @@ async function migrateProductsToCT() {
           .filter(t => t.length > 5 && !D2C_BOILERPLATE.some(re => re.test(t)))
         const subline = h2Texts[0] ? h2Texts[0].slice(0, 255) : ''
 
-        // Body: remaining H2s + H3s + <p> from full cleaned HTML
-        // Boilerplate-filtered, deduplicated, max 20 items
+        // eyebrow from Punchout (newSlug_1 = Silo), e.g. "biking", "running", "gear"
+        const eyebrow = punchoutEntry?.eyebrow || null
+
+        // Body: remaining H2s + H3s + <p> — boilerplate-filtered, deduplicated, max 20
         const seen = new Set()
         const bodyNodes = []
-
         h2Texts.slice(1).forEach(t => {
           if (!seen.has(t)) { seen.add(t); bodyNodes.push(t) }
         })
-
         for (const m of cleaned.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)) {
           const t = d2cStripTags(m[1])
           if (t.length > 5 && !seen.has(t) && !D2C_BOILERPLATE.some(re => re.test(t))) {
             seen.add(t); bodyNodes.push(t)
           }
         }
-
         for (const m of cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
           const t = d2cStripTags(m[1])
           if (t.length > 30 && !seen.has(t) && !D2C_BOILERPLATE.some(re => re.test(t))) {
@@ -1353,21 +1411,30 @@ async function migrateProductsToCT() {
           }
           if (bodyNodes.length >= 20) break
         }
-
         const body = bodyNodes.join('\n\n')
 
-        // Derive slug from file path
-        const relPath = filePath
-          .replace(/^.*\/de\/de\//, '/')
-          .replace(/^.*?www\.[^/]+/, '')
-          .replace(/\/index\.html?$/i, '')
-          .replace(/\.html?$/i, '')
-          .toLowerCase()
-          .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 's')
-          .replace(/[^a-z0-9/]/g, '-').replace(/-+/g, '-').replace(/\/$/, '')
-        const slug = (relPath.startsWith('/') ? relPath : '/' + relPath) || '/page'
+        // ── Slug ─────────────────────────────────────────────────────────
+        // Priority: Punchout New_URL → fallback to file path derivation
+        let slug
+        if (punchoutEntry?.newSlug) {
+          slug = punchoutEntry.newSlug
+        } else {
+          const relPath = filePath
+            .replace(/^.*?www\.[^/]+/, '')
+            .replace(/^.*\/de\/de\//, '/')
+            .replace(/\/index\.html?$/i, '')
+            .replace(/\.html?$/i, '')
+            .toLowerCase()
+            .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 's')
+            .replace(/[^a-z0-9/]/g, '-').replace(/-+/g, '-').replace(/\/$/, '')
+          slug = (relPath.startsWith('/') ? relPath : '/' + relPath) || '/page'
+        }
 
-        return { title, h1, subline, body, metaDescription, keywords, canonicalUrl, slug, path: filePath }
+        // Punchout metadata for logging/filtering
+        const zone  = punchoutEntry?.zone  || null
+        const klasse = punchoutEntry?.klasse || null
+
+        return { title, h1, eyebrow, subline, body, metaDescription, keywords, canonicalUrl, slug, path: filePath, zone, klasse }
       }
 
       try {
@@ -1393,7 +1460,10 @@ async function migrateProductsToCT() {
 
           for (const { path, entry } of batch) {
             const html = await entry.async('string')
-            pages.push(d2cParseHtml(html, path))
+            const parsed = d2cParseHtml(html, path, punchoutMap || null)
+            // Optional: log zone/klasse for debugging (visible in browser console)
+            if (parsed.zone) console.log(`[D2C] ${parsed.zone} (${parsed.klasse}) → ${parsed.slug}`)
+            pages.push(parsed)
           }
 
           try {
@@ -3599,6 +3669,43 @@ async function migrateProductsToCT() {
                           ? `${zipTotalHtmlCount} HTML-Dateien → D2C Contentful (contentPage)`
                           : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
+
+                    {/* Punchout-Upload — nur für D2C ZIP-Migration */}
+                    {inventory?.source === 'zip' && csvContentType === 'contentPage' && (
+                      <div style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                          Punchout CSV (optional) — Slug-Lookup &amp; Silo-Zuordnung
+                        </div>
+                        <div
+                          onDragOver={e => { e.preventDefault(); setPunchoutDragOver(true) }}
+                          onDragLeave={() => setPunchoutDragOver(false)}
+                          onDrop={e => { e.preventDefault(); setPunchoutDragOver(false); const f = e.dataTransfer.files[0]; if (f) handlePunchoutUpload(f) }}
+                          onClick={() => document.getElementById('punchout-input').click()}
+                          style={{
+                            border: `2px dashed ${punchoutDragOver ? '#a5b4fc' : punchoutMap ? '#a5b4fc44' : '#1e293b'}`,
+                            borderRadius: 8, padding: '12px 14px', textAlign: 'center', cursor: 'pointer',
+                            background: punchoutDragOver ? 'rgba(165,180,252,0.05)' : '#080b12', transition: 'all 0.2s',
+                          }}
+                        >
+                          {punchoutMap ? (
+                            <div style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>
+                              ✓ {punchoutFile?.name} — {Object.keys(punchoutMap).length} URLs geladen
+                              <span style={{ color: '#475569', fontWeight: 400, marginLeft: 8 }}>
+                                ({Object.values(punchoutMap).filter(r => r.zone === 'Migrieren').length} Migrieren · {Object.values(punchoutMap).filter(r => r.zone === 'Evaluieren').length} Evaluieren · {Object.values(punchoutMap).filter(r => r.zone === 'Rueckbauen').length} Rückbauen)
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 2 }}>punchout_DE_slim.csv hier ablegen</div>
+                              <div style={{ fontSize: 11, color: '#334155' }}>Simons Slugs werden als Lookup für New_URL, Eyebrow und migrations_zone verwendet</div>
+                            </div>
+                          )}
+                        </div>
+                        <input id="punchout-input" type="file" accept=".csv,.tsv" style={{ display: 'none' }}
+                          onChange={e => { if (e.target.files[0]) handlePunchoutUpload(e.target.files[0]) }} />
+                        {punchoutError && <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444' }}>{punchoutError}</div>}
+                      </div>
+                    )}
                     <button
                       onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : inventory?.source === 'sap-wcms' ? migrateSapWcmsContent : migrateContentToContentful}
                       disabled={migratingContentful}

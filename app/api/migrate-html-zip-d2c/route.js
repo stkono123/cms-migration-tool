@@ -2,8 +2,8 @@
 // Creates a linked entry chain per page:
 //   headlineBlock → editorialText → sectionText → seo → contentPage
 //
-// Accepts: POST { pages: Array<{ path, title, h1, subline, body, metaDescription,
-//                                slug, canonicalUrl, keywords }>, locale? }
+// Accepts: POST { pages: Array<{ path, title, h1, eyebrow, subline, body, metaDescription,
+//                                slug, canonicalUrl, keywords, zone, klasse }>, locale? }
 // Returns: { results, summary }
 //
 // Learning notes (from 10-page Scott Sports extraction):
@@ -83,13 +83,18 @@ export async function POST(request) {
     const environment = process.env.CONTENTFUL_ENVIRONMENT || 'master'
     const baseUrl = `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries`
 
-    // Resolve default locale once
+    // Resolve locales.
+    // defaultLocale = Contentful default (= 'en' in this space) — required for non-localized fields.
+    // contentLocale = language of the crawled content (= 'de' for Scott Sports DE).
+    // Non-localized fields (internalName, slug, pageType, link fields) use defaultLocale.
+    // Localized content fields (headline, title, description, eyebrow …) use contentLocale.
     const localeRes = await fetch(
       `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/locales`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     const localeData = await localeRes.json()
-    const locale = reqLocale || (localeData.items || []).find(l => l.default)?.code || 'de-DE'
+    const defaultLocale = (localeData.items || []).find(l => l.default)?.code || 'en'
+    const contentLocale = reqLocale || 'de'
 
     const results = []
 
@@ -98,6 +103,7 @@ export async function POST(request) {
       const rawTitle = (page.title || page.path?.replace(/.*\//, '').replace(/\.html?$/, '') || `Seite ${i + 1}`).trim()
       const safeTitle = rawTitle.slice(0, 250)
       const h1Text    = (page.h1 || safeTitle).slice(0, 250)
+      const eyebrow   = (page.eyebrow || '').slice(0, 255)   // from Punchout newSlug_1 (silo)
       const subline   = (page.subline || '').slice(0, 255)
       const bodyText  = (page.body || '').slice(0, 10000)
       const metaDesc  = (page.metaDescription || '').slice(0, 500)
@@ -108,49 +114,57 @@ export async function POST(request) {
 
       try {
         // 1. headlineBlock
+        // internalName = non-localized → defaultLocale ('en')
+        // headline / eyebrow / subline = localized → contentLocale ('de')
         const hbFields = {
-          internalName: { [locale]: `[HB] ${internalName}` },
-          headline: { [locale]: buildRichTextDoc(h1Text) },
+          internalName: { [defaultLocale]: `[HB] ${internalName}` },
+          headline: { [contentLocale]: buildRichTextDoc(h1Text) },
         }
-        if (subline) hbFields.subline = { [locale]: subline }
+        if (eyebrow) hbFields.eyebrow = { [contentLocale]: eyebrow }
+        if (subline) hbFields.subline = { [contentLocale]: subline }
         const hbEntry = await cfPost(baseUrl, token, 'headlineBlock', hbFields)
 
         // 2. editorialText
+        // internalName = non-localized → defaultLocale; text = localized → contentLocale
         const etEntry = await cfPost(baseUrl, token, 'editorialText', {
-          internalName: { [locale]: `[ET] ${internalName}` },
-          text: { [locale]: buildRichTextDoc(bodyText || ' ') },
+          internalName: { [defaultLocale]: `[ET] ${internalName}` },
+          text: { [contentLocale]: buildRichTextDoc(bodyText || ' ') },
         })
 
-        // 3. sectionText
+        // 3. sectionText — all fields non-localized → defaultLocale
         const stEntry = await cfPost(baseUrl, token, 'sectionText', {
-          internalName: { [locale]: `[ST] ${internalName}` },
-          headline: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
-          text: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
-          textVariant: { [locale]: 'normal' },
-          columnWidth: { [locale]: 12 },
-          textColumns: { [locale]: 1 },
+          internalName: { [defaultLocale]: `[ST] ${internalName}` },
+          headline: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
+          text: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
+          textVariant: { [defaultLocale]: 'normal' },
+          columnWidth: { [defaultLocale]: 12 },
+          textColumns: { [defaultLocale]: 1 },
         })
 
         // 4. seo
+        // internalName, noindex, nofollow = non-localized → defaultLocale
+        // title, description, canonicalUrl, keywords = localized → contentLocale
         const seoFields = {
-          internalName: { [locale]: `[SEO] ${internalName}` },
-          title: { [locale]: safeTitle },
-          description: { [locale]: metaDesc },
-          hideFromSearchEnginesNoindex: { [locale]: false },
-          excludeLinksFromRankingsNofollow: { [locale]: false },
+          internalName: { [defaultLocale]: `[SEO] ${internalName}` },
+          title: { [contentLocale]: safeTitle },
+          description: { [contentLocale]: metaDesc },
+          hideFromSearchEnginesNoindex: { [defaultLocale]: false },
+          excludeLinksFromRankingsNofollow: { [defaultLocale]: false },
         }
-        if (canonicalUrl) seoFields.canonicalUrl = { [locale]: canonicalUrl }
-        if (keywords.length > 0) seoFields.keywords = { [locale]: keywords }
+        if (canonicalUrl) seoFields.canonicalUrl = { [contentLocale]: canonicalUrl }
+        if (keywords.length > 0) seoFields.keywords = { [contentLocale]: keywords }
         const seoEntry = await cfPost(baseUrl, token, 'seo', seoFields)
 
         // 5. contentPage
+        // internalName, slug, pageType, sections, seoMetadata = non-localized → defaultLocale
+        // title = localized → contentLocale
         await cfPost(baseUrl, token, 'contentPage', {
-          internalName: { [locale]: internalName },
-          slug: { [locale]: slug },
-          title: { [locale]: safeTitle },
-          pageType: { [locale]: 'family' },
-          sections: { [locale]: [{ sys: { type: 'Link', linkType: 'Entry', id: stEntry.sys.id } }] },
-          seoMetadata: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: seoEntry.sys.id } } },
+          internalName: { [defaultLocale]: internalName },
+          slug: { [defaultLocale]: slug },
+          title: { [contentLocale]: safeTitle },
+          pageType: { [defaultLocale]: 'family' },
+          sections: { [defaultLocale]: [{ sys: { type: 'Link', linkType: 'Entry', id: stEntry.sys.id } }] },
+          seoMetadata: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: seoEntry.sys.id } } },
         })
 
         results.push({ status: 'success', title: safeTitle, slug })
