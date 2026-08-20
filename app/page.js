@@ -408,6 +408,7 @@ export default function Home() {
   const [zipInputMode, setZipInputMode] = useState('file')
   const [folderFiles, setFolderFiles] = useState(null)
   const [folderHtmlCount, setFolderHtmlCount] = useState(0)
+  const [zipTotalHtmlCount, setZipTotalHtmlCount] = useState(0)
 
   // URL state
   const [urlInput, setUrlInput] = useState('')
@@ -795,6 +796,7 @@ async function handleZipUpload(file) {
       }
     })
 
+    setZipTotalHtmlCount(htmlEntries.length)
     const limit = Math.min(htmlEntries.length, 20)
     const pageTexts = []
     for (let i = 0; i < limit; i++) {
@@ -1231,6 +1233,79 @@ async function migrateProductsToCT() {
 
   async function migrateZipContent() {
     setMigratingContentful(true)
+
+    // D2C path: when target is contentPage, parse the full ZIP and create linked entry chains.
+    if (csvContentType === 'contentPage' && zipFile) {
+      try {
+        const JSZip = (await import('jszip')).default
+        const zip = await JSZip.loadAsync(zipFile)
+
+        // Collect all HTML entries
+        const htmlEntries = []
+        zip.forEach((relativePath, entry) => {
+          if (entry.dir) return
+          if (relativePath.startsWith('__MACOSX') || /\/\./.test(relativePath)) return
+          if (/\.html?$/i.test(relativePath) && !relativePath.includes('_files/')) {
+            htmlEntries.push({ path: relativePath, entry })
+          }
+        })
+
+        const BATCH_SIZE = 25
+        const allResults = []
+
+        for (let offset = 0; offset < htmlEntries.length; offset += BATCH_SIZE) {
+          const batch = htmlEntries.slice(offset, offset + BATCH_SIZE)
+          const pages = []
+
+          for (const { path, entry } of batch) {
+            const html = await entry.async('string')
+
+            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+            const title = titleMatch ? titleMatch[1].trim() : path.replace(/.*\//, '').replace(/\.html?$/i, '')
+
+            const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)
+            const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''
+
+            const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)
+            const metaDescription = metaDescMatch ? metaDescMatch[1].trim() : ''
+
+            // Extract paragraph text (skip nav/header/footer via heuristic)
+            const bodySection = html
+              .replace(/<(?:script|style|nav|header|footer|aside)[^>]*>[\s\S]*?<\/(?:script|style|nav|header|footer|aside)>/gi, '')
+            const paragraphs = []
+            const pMatches = [...bodySection.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+            for (const m of pMatches) {
+              const t = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+              if (t.length > 20) paragraphs.push(t)
+            }
+            const body = [...new Set(paragraphs)].slice(0, 15).join('\n\n')
+
+            pages.push({ path, title, h1, body, metaDescription })
+          }
+
+          try {
+            const res = await fetch('/api/migrate-html-zip-d2c', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pages }),
+            })
+            const data = await res.json()
+            allResults.push(...(data.results || []))
+            // Live progress update after each batch
+            setMigrateResultsContentful([...allResults])
+          } catch (e) {
+            console.error('D2C batch error:', e)
+          }
+        }
+      } catch (e) {
+        console.error('migrateZipContent (D2C):', e)
+      }
+      setMigratingContentful(false)
+      return
+    }
+
+    // Standard path (non-D2C content types)
     try {
       const pages = inventory?.allPages || inventory?.pages || []
       const res = await fetch('/api/migrate-content-csv', {
@@ -3408,7 +3483,9 @@ async function migrateProductsToCT() {
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
                       {inventory?.source === 'url'
                         ? `${urlBulkResults.length} Pages werden migriert`
-                        : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
+                        : inventory?.source === 'zip' && csvContentType === 'contentPage' && zipTotalHtmlCount > 0
+                          ? `${zipTotalHtmlCount} HTML-Dateien → D2C Contentful (contentPage)`
+                          : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
                     <button
                       onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : inventory?.source === 'sap-wcms' ? migrateSapWcmsContent : migrateContentToContentful}
@@ -3422,7 +3499,9 @@ async function migrateProductsToCT() {
                       }}
                     >
                       {migratingContentful
-                        ? 'Migriere Pages...'
+                        ? inventory?.source === 'zip' && csvContentType === 'contentPage'
+                          ? `Migriere... ${(migrateResultsContentful || []).length}${zipTotalHtmlCount > 0 ? `/${zipTotalHtmlCount}` : ''} Seiten`
+                          : 'Migriere Pages...'
                         : migrateResultsContentful
                           ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
                           : 'Pages nach Contentful migrieren'}
