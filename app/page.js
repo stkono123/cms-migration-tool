@@ -1350,10 +1350,12 @@ async function migrateProductsToCT() {
         const rawTitle = titleM ? titleM[1] : filePath.split('/').pop().replace(/\.html?$/, '')
         const title = d2cCleanTitle(rawTitle) || 'Untitled'
 
-        // Description: strip HTML tags (some CMSes output og:description with <p> tags)
+        // Description: strip HTML tags (some CMSes output og:description with <p> tags).
+        // Apply d2cDecodeEntities twice: some pages double-encode (&amp;lt;p&amp;gt;),
+        // so one decode leaves &lt;p&gt; which stripTags cannot remove.
         const metaDesc = d2cMetaAttr(html, 'description')
         const ogDesc   = d2cOgAttr(html, 'description')
-        const metaDescription = d2cStripTags(metaDesc || ogDesc || '').slice(0, 500)
+        const metaDescription = d2cStripTags(d2cDecodeEntities(metaDesc || ogDesc || '')).slice(0, 500)
 
         // Keywords array (max 20)
         const kwRaw = d2cMetaAttr(html, 'keywords')

@@ -12,7 +12,8 @@
 //   - keywords    = from <meta name="keywords">, max 20, array of strings
 //   - body        = H3s + remaining H2s + <p> from full cleaned HTML,
 //                   boilerplate-filtered, max 20 paragraphs
-//   - description = stripTags(og:description || meta description)
+//   - description = stripTags(decodeEntities×2(og:description || meta description))
+//                  double-decode catches pages that store HTML-encoded tags in og:description
 //   - Product/campaign pages may have empty bodies if JS-rendered
 
 export const runtime = 'nodejs'
