@@ -2,8 +2,18 @@
 // Creates a linked entry chain per page:
 //   headlineBlock → editorialText → sectionText → seo → contentPage
 //
-// Accepts: POST { pages: Array<{ path, title, h1, body, metaDescription, slug }>, locale? }
+// Accepts: POST { pages: Array<{ path, title, h1, subline, body, metaDescription,
+//                                slug, canonicalUrl, keywords }>, locale? }
 // Returns: { results, summary }
+//
+// Learning notes (from 10-page Scott Sports extraction):
+//   - subline     = first H2 on the page (cleaned)
+//   - canonicalUrl = from <link rel="canonical">
+//   - keywords    = from <meta name="keywords">, max 20, array of strings
+//   - body        = H3s + remaining H2s + <p> from full cleaned HTML,
+//                   boilerplate-filtered, max 20 paragraphs
+//   - description = stripTags(og:description || meta description)
+//   - Product/campaign pages may have empty bodies if JS-rendered
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -21,11 +31,11 @@ function buildRichTextDoc(text) {
 }
 
 function deriveSlug(path) {
-  // Strip leading crawler path prefix up to the domain
   let slug = path
-    .replace(/^.*?www\.[^/]+/, '') // remove everything up to and including the domain
-    .replace(/\/index\.html?$/i, '') // /index.html → ''
-    .replace(/\.html?$/i, '')        // page.html → page
+    .replace(/^.*?www\.[^/]+/, '')  // strip domain prefix
+    .replace(/^.*?\/de\/de\//, '/') // strip language prefix e.g. /de/de/
+    .replace(/\/index\.html?$/i, '')
+    .replace(/\.html?$/i, '')
     .toLowerCase()
     .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 's')
     .replace(/[^a-z0-9/]/g, '-')
@@ -33,11 +43,9 @@ function deriveSlug(path) {
     .replace(/\/$/, '')
 
   if (!slug.startsWith('/')) slug = '/' + slug
-  // Ensure it matches ^\/[a-z0-9\-\/]+$ — must have at least one char after /
   if (!/^\/[a-z0-9\-\/]+$/.test(slug)) {
     slug = slug.replace(/[^a-z0-9\-\/]/g, '-').replace(/-+/g, '-')
   }
-  // Fallback for truly empty slugs
   if (slug === '/') slug = '/page'
   return slug
 }
@@ -89,49 +97,51 @@ export async function POST(request) {
       const page = pages[i]
       const rawTitle = (page.title || page.path?.replace(/.*\//, '').replace(/\.html?$/, '') || `Seite ${i + 1}`).trim()
       const safeTitle = rawTitle.slice(0, 250)
-      const h1Text = (page.h1 || safeTitle).slice(0, 250)
-      const bodyText = (page.body || '').slice(0, 10000)
-      const metaDesc = (page.metaDescription || '').slice(0, 500)
-      const slug = page.slug ? page.slug : deriveSlug(page.path || '')
-
-      // Make internalName unique by appending the slug
+      const h1Text    = (page.h1 || safeTitle).slice(0, 250)
+      const subline   = (page.subline || '').slice(0, 255)
+      const bodyText  = (page.body || '').slice(0, 10000)
+      const metaDesc  = (page.metaDescription || '').slice(0, 500)
+      const canonicalUrl = page.canonicalUrl || ''
+      const keywords  = Array.isArray(page.keywords) ? page.keywords.slice(0, 20) : []
+      const slug      = page.slug ? page.slug : deriveSlug(page.path || '')
       const internalName = `${safeTitle} | ${slug}`.slice(0, 255)
 
       try {
         // 1. headlineBlock
-        const hbEntry = await cfPost(baseUrl, token, 'headlineBlock', {
+        const hbFields = {
           internalName: { [locale]: `[HB] ${internalName}` },
           headline: { [locale]: buildRichTextDoc(h1Text) },
-        })
-        const hbId = hbEntry.sys.id
+        }
+        if (subline) hbFields.subline = { [locale]: subline }
+        const hbEntry = await cfPost(baseUrl, token, 'headlineBlock', hbFields)
 
         // 2. editorialText
         const etEntry = await cfPost(baseUrl, token, 'editorialText', {
           internalName: { [locale]: `[ET] ${internalName}` },
           text: { [locale]: buildRichTextDoc(bodyText || ' ') },
         })
-        const etId = etEntry.sys.id
 
-        // 3. sectionText (headline + text + required enum fields)
+        // 3. sectionText
         const stEntry = await cfPost(baseUrl, token, 'sectionText', {
           internalName: { [locale]: `[ST] ${internalName}` },
-          headline: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: hbId } } },
-          text: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: etId } } },
+          headline: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
+          text: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
           textVariant: { [locale]: 'normal' },
           columnWidth: { [locale]: 12 },
           textColumns: { [locale]: 1 },
         })
-        const stId = stEntry.sys.id
 
         // 4. seo
-        const seoEntry = await cfPost(baseUrl, token, 'seo', {
+        const seoFields = {
           internalName: { [locale]: `[SEO] ${internalName}` },
           title: { [locale]: safeTitle },
           description: { [locale]: metaDesc },
           hideFromSearchEnginesNoindex: { [locale]: false },
           excludeLinksFromRankingsNofollow: { [locale]: false },
-        })
-        const seoId = seoEntry.sys.id
+        }
+        if (canonicalUrl) seoFields.canonicalUrl = { [locale]: canonicalUrl }
+        if (keywords.length > 0) seoFields.keywords = { [locale]: keywords }
+        const seoEntry = await cfPost(baseUrl, token, 'seo', seoFields)
 
         // 5. contentPage
         await cfPost(baseUrl, token, 'contentPage', {
@@ -139,8 +149,8 @@ export async function POST(request) {
           slug: { [locale]: slug },
           title: { [locale]: safeTitle },
           pageType: { [locale]: 'family' },
-          sections: { [locale]: [{ sys: { type: 'Link', linkType: 'Entry', id: stId } }] },
-          seoMetadata: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: seoId } } },
+          sections: { [locale]: [{ sys: { type: 'Link', linkType: 'Entry', id: stEntry.sys.id } }] },
+          seoMetadata: { [locale]: { sys: { type: 'Link', linkType: 'Entry', id: seoEntry.sys.id } } },
         })
 
         results.push({ status: 'success', title: safeTitle, slug })

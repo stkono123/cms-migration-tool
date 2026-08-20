@@ -1236,6 +1236,140 @@ async function migrateProductsToCT() {
 
     // D2C path: when target is contentPage, parse the full ZIP and create linked entry chains.
     if (csvContentType === 'contentPage' && zipFile) {
+      // ── Improved HTML parsing helpers (learned from 10-page Scott Sports extraction) ──
+
+      // Global boilerplate patterns that appear on every crawled page (browser warnings,
+      // global nav text, third-party service notices). Matched against stripped paragraph text.
+      const D2C_BOILERPLATE = [
+        /warnung.*browser/i,
+        /bitte aktualisieren/i,
+        /service eines drittanbieter/i,
+        /videoinhalte einzubetten/i,
+        /cookie/i,
+        /^menschen,?\s*produkte/i,
+        /^entdecke unser universum/i,
+      ]
+
+      function d2cDecodeEntities(s) {
+        return (s || '')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/&amp;/gi, '&')
+          .replace(/&lt;/gi, '<')
+          .replace(/&gt;/gi, '>')
+          .replace(/&quot;/gi, '"')
+          .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+          .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+          .trim()
+      }
+
+      function d2cStripTags(s) {
+        return d2cDecodeEntities((s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+      }
+
+      function d2cMetaAttr(html, name) {
+        const m = html.match(new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'))
+          || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, 'i'))
+        return m ? d2cDecodeEntities(m[1]) : ''
+      }
+
+      function d2cOgAttr(html, property) {
+        const m = html.match(new RegExp(`<meta[^>]+property=["']og:${property}["'][^>]+content=["']([^"']+)["']`, 'i'))
+          || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${property}["']`, 'i'))
+        return m ? d2cDecodeEntities(m[1]) : ''
+      }
+
+      function d2cCleanTitle(raw) {
+        return d2cDecodeEntities((raw || '')
+          .replace(/\s*\|\s*Scott.*$/i, '')
+          .replace(/\s*–\s*Scott.*$/i, ''))
+      }
+
+      function d2cParseHtml(html, filePath) {
+        // Meta
+        const titleM = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+        const rawTitle = titleM ? titleM[1] : filePath.split('/').pop().replace(/\.html?$/, '')
+        const title = d2cCleanTitle(rawTitle) || 'Untitled'
+
+        // Description: strip HTML tags (some CMSes output og:description with <p> tags)
+        const metaDesc = d2cMetaAttr(html, 'description')
+        const ogDesc   = d2cOgAttr(html, 'description')
+        const metaDescription = d2cStripTags(metaDesc || ogDesc || '').slice(0, 500)
+
+        // Keywords array (max 20)
+        const kwRaw = d2cMetaAttr(html, 'keywords')
+        const keywords = kwRaw
+          ? kwRaw.split(',').map(k => k.trim()).filter(Boolean).slice(0, 20)
+          : []
+
+        // Canonical URL
+        const canonM = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
+          || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i)
+        const canonicalUrl = canonM ? canonM[1].trim() : ''
+
+        // Strip global noise (script, style, nav, header, footer, aside).
+        // NOTE: Do NOT try to find a "main content area" with a greedy/non-greedy
+        // regex — sites like Scott Sports have no <main> tag and the #content div
+        // is only a thin 120-char wrapper. Scanning the full cleaned HTML is better.
+        const cleaned = html
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+          .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+          .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+          .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
+
+        // H1
+        const h1M = cleaned.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)
+        const h1 = h1M ? d2cStripTags(h1M[1]) : ''
+
+        // H2 texts — first becomes subline, rest go into body
+        const h2Matches = [...cleaned.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)]
+        const h2Texts = h2Matches
+          .map(m => d2cStripTags(m[1]))
+          .filter(t => t.length > 5 && !D2C_BOILERPLATE.some(re => re.test(t)))
+        const subline = h2Texts[0] ? h2Texts[0].slice(0, 255) : ''
+
+        // Body: remaining H2s + H3s + <p> from full cleaned HTML
+        // Boilerplate-filtered, deduplicated, max 20 items
+        const seen = new Set()
+        const bodyNodes = []
+
+        h2Texts.slice(1).forEach(t => {
+          if (!seen.has(t)) { seen.add(t); bodyNodes.push(t) }
+        })
+
+        for (const m of cleaned.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)) {
+          const t = d2cStripTags(m[1])
+          if (t.length > 5 && !seen.has(t) && !D2C_BOILERPLATE.some(re => re.test(t))) {
+            seen.add(t); bodyNodes.push(t)
+          }
+        }
+
+        for (const m of cleaned.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+          const t = d2cStripTags(m[1])
+          if (t.length > 30 && !seen.has(t) && !D2C_BOILERPLATE.some(re => re.test(t))) {
+            seen.add(t); bodyNodes.push(t)
+          }
+          if (bodyNodes.length >= 20) break
+        }
+
+        const body = bodyNodes.join('\n\n')
+
+        // Derive slug from file path
+        const relPath = filePath
+          .replace(/^.*\/de\/de\//, '/')
+          .replace(/^.*?www\.[^/]+/, '')
+          .replace(/\/index\.html?$/i, '')
+          .replace(/\.html?$/i, '')
+          .toLowerCase()
+          .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 's')
+          .replace(/[^a-z0-9/]/g, '-').replace(/-+/g, '-').replace(/\/$/, '')
+        const slug = (relPath.startsWith('/') ? relPath : '/' + relPath) || '/page'
+
+        return { title, h1, subline, body, metaDescription, keywords, canonicalUrl, slug, path: filePath }
+      }
+
       try {
         const JSZip = (await import('jszip')).default
         const zip = await JSZip.loadAsync(zipFile)
@@ -1259,29 +1393,7 @@ async function migrateProductsToCT() {
 
           for (const { path, entry } of batch) {
             const html = await entry.async('string')
-
-            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-            const title = titleMatch ? titleMatch[1].trim() : path.replace(/.*\//, '').replace(/\.html?$/i, '')
-
-            const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)
-            const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''
-
-            const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
-              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i)
-            const metaDescription = metaDescMatch ? metaDescMatch[1].trim() : ''
-
-            // Extract paragraph text (skip nav/header/footer via heuristic)
-            const bodySection = html
-              .replace(/<(?:script|style|nav|header|footer|aside)[^>]*>[\s\S]*?<\/(?:script|style|nav|header|footer|aside)>/gi, '')
-            const paragraphs = []
-            const pMatches = [...bodySection.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-            for (const m of pMatches) {
-              const t = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-              if (t.length > 20) paragraphs.push(t)
-            }
-            const body = [...new Set(paragraphs)].slice(0, 15).join('\n\n')
-
-            pages.push({ path, title, h1, body, metaDescription })
+            pages.push(d2cParseHtml(html, path))
           }
 
           try {
