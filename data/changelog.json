@@ -1,6 +1,6 @@
 [
   {
-    "version": "1.7.3",
+    "version": "1.7.4",
     "date": "2026-08-20",
     "changes": [
       "Name-based slot-to-component matching: HTML fields now populated correctly for all pages where the component name embeds the page uid",
