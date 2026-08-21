@@ -2926,11 +2926,11 @@ async function migrateProductsToCT() {
                     <span
                       key={p.id}
                       style={{
-                        background: p.published ? '#1e293b' : '#2d1a1a',
-                        border: p.published ? 'none' : '1px solid #7f1d1d',
+                        background: '#1e293b',
+                        border: p.published ? 'none' : '1px solid #334155',
                         borderRadius: 4, padding: '2px 8px', fontSize: 12,
                         marginRight: 6, marginBottom: 4, display: 'inline-block',
-                        color: p.published ? '#cbd5e1' : '#f87171',
+                        color: p.published ? '#cbd5e1' : '#64748b',
                       }}
                     >
                       {p.title}{!p.published && ' (hidden)'}
