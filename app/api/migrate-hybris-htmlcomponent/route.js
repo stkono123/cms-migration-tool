@@ -185,12 +185,14 @@ export async function POST(request) {
 
         // ── 3. sectionText ──────────────────────────────────────────
         const stEntry = await cfPost(baseUrl, token, 'sectionText', {
-          internalName: { [defaultLocale]: `[ST] ${internalName}` },
-          headline:    { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
-          text:        { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
-          textVariant: { [defaultLocale]: 'normal' },
-          columnWidth: { [defaultLocale]: 12 },
-          textColumns: { [defaultLocale]: 1 },
+          internalName:    { [defaultLocale]: `[ST] ${internalName}` },
+          headline:        { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
+          text:            { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
+          headlineVariant: { [defaultLocale]: 'h1' },
+          headlineDash:    { [defaultLocale]: false },
+          textVariant:     { [defaultLocale]: 'normal' },
+          columnWidth:     { [defaultLocale]: 12 },
+          textColumns:     { [defaultLocale]: 1 },
         })
 
         // ── 4. seo ──────────────────────────────────────────────────
