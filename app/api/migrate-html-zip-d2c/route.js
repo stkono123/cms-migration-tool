@@ -144,14 +144,16 @@ export async function POST(request) {
         })
 
         // 3. sectionText — all fields non-localized → defaultLocale
-        // headlineVariant + headlineDash weggelassen bis Feld-IDs in empty-environment2 bestätigt
+        // headlineVariant + headlineDash: Feld-IDs in empty-environment2 bestätigt (Default wäre h3/Yes)
         const stEntry = await cfPost(baseUrl, token, 'sectionText', {
-          internalName: { [defaultLocale]: `[ST] ${internalName}` },
-          headline: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
-          text: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
-          textVariant: { [defaultLocale]: 'normal' },
-          columnWidth: { [defaultLocale]: 12 },
-          textColumns: { [defaultLocale]: 1 },
+          internalName:    { [defaultLocale]: `[ST] ${internalName}` },
+          headline:        { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: hbEntry.sys.id } } },
+          text:            { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: etEntry.sys.id } } },
+          headlineVariant: { [defaultLocale]: 'h1' },
+          headlineDash:    { [defaultLocale]: false },
+          textVariant:     { [defaultLocale]: 'normal' },
+          columnWidth:     { [defaultLocale]: 12 },
+          textColumns:     { [defaultLocale]: 1 },
         })
 
         // 4. seo
