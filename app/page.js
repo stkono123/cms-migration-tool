@@ -1407,6 +1407,23 @@ async function migrateProductsToCT() {
         /service eines drittanbieter/i,
         /videoinhalte einzubetten/i,
         /cookie/i,
+        // CMP / Consent Management Platform Platzhalter
+        // z.B. Cookiebot: "Dieser Inhalt darf aufgrund von Trackern … nicht geladen werden."
+        /aufgrund von trackern/i,
+        /nicht offengelegt werden/i,
+        /cmp einrichten/i,
+        /liste der verwendeten technologien/i,
+        /dieser inhalt (darf|kann).{0,30}nicht geladen/i,
+        // JavaScript-deaktiviert-Warnungen
+        /javascript.{0,20}(aktivier|deaktiviert|einschalten)/i,
+        /ohne javascript/i,
+        /^bitte javascript/i,
+        // Allgemeine Lade-Platzhalter
+        /^(inhalt|seite|video|bild) wird geladen/i,
+        /^loading\.{0,3}$/i,
+        // Embed-Platzhalter (Social Media, YouTube, Maps)
+        /inhalt von .{0,30}(laden|anzeigen)/i,
+        /^(diesen beitrag|dieses video).{0,30}(instagram|facebook|twitter|youtube)/i,
         // Global nav / hero slogans
         /^menschen,?\s*produkte/i,
         /^entdecke unser universum/i,

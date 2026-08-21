@@ -42,20 +42,44 @@ function stripHtml(html) {
     .trim()
 }
 
-// Boilerplate patterns shared with the ZIP path
+// Boilerplate patterns shared with the ZIP path.
+// Matched against stripped paragraph text — filters browser warnings,
+// CMP placeholders, JS notices, embed stubs and sidebar widgets.
 const BOILERPLATE = [
+  // Browser / cookie / third-party service banners
   /warnung.*browser/i,
   /bitte aktualisieren/i,
   /service eines drittanbieter/i,
   /videoinhalte einzubetten/i,
   /cookie/i,
+  // CMP / Consent Management Platform Platzhalter
+  /aufgrund von trackern/i,
+  /nicht offengelegt werden/i,
+  /cmp einrichten/i,
+  /liste der verwendeten technologien/i,
+  /dieser inhalt (darf|kann).{0,30}nicht geladen/i,
+  // JavaScript-deaktiviert-Warnungen
+  /javascript.{0,20}(aktivier|deaktiviert|einschalten)/i,
+  /ohne javascript/i,
+  /^bitte javascript/i,
+  // Allgemeine Lade-Platzhalter
+  /^(inhalt|seite|video|bild) wird geladen/i,
+  /^loading\.{0,3}$/i,
+  // Embed-Platzhalter (Social Media, YouTube, Maps)
+  /inhalt von .{0,30}(laden|anzeigen)/i,
+  /^(diesen beitrag|dieses video).{0,30}(instagram|facebook|twitter|youtube)/i,
+  // Global nav / hero slogans
   /^menschen,?\s*produkte/i,
   /^entdecke unser universum/i,
+  // Athlete sidebar headers
   /^über\s+\S/i,
+  // Sidebar navigation CTA
   /^was hat .+ als n.chstes vor/i,
+  // Product recommendation / comparison widgets
   /^ähnliche produkte/i,
   /^empfohlene produkte/i,
   /^produkte vergleichen/i,
+  // Back-to-overview navigation links
   /^zurück zur übersicht/i,
 ]
 
