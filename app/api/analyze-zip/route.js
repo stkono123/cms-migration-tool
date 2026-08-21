@@ -21,7 +21,7 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
+        max_tokens: 4000,
         messages: [{
           role: 'user',
           content: `Analysiere diese HTML-Seiten. Erkenne fuer jede Seite Titel, kurze Inhaltsbeschreibung, Seitentyp und ob sie einen CTA enthaelt. Falls keine Meta Description vorhanden, generiere eine (max 160 Zeichen). Falls kein SEO Title vorhanden, generiere einen (max 60 Zeichen).
@@ -54,7 +54,14 @@ ${pagesBlock}`,
     const raw = aiData.content?.[0]?.text || '{}'
     const start = raw.indexOf('{')
     const end = raw.lastIndexOf('}')
-    const parsed = JSON.parse(raw.slice(start, end + 1))
+    let parsed = {}
+    try {
+      parsed = JSON.parse(raw.slice(start, end + 1))
+    } catch (parseErr) {
+      // AI-JSON abgeschnitten (zu viele Tokens) — Fallback auf pageTexts ohne KI-Anreicherung
+      console.warn('analyze-zip: AI-JSON parse fehlgeschlagen, Fallback auf pageTexts:', parseErr.message)
+      parsed = { siteName: fileName?.replace(/\.zip$/i, ''), pages: [] }
+    }
 
     const pages = (parsed.pages || []).map((p, i) => {
       const src = pageTexts[i] || {}
