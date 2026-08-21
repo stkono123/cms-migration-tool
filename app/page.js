@@ -448,6 +448,7 @@ export default function Home() {
   const [analyzeStep, setAnalyzeStep] = useState(0)
   const [mapping, setMapping] = useState(null)
   const [mappingLoading, setMappingLoading] = useState(false)
+  const [mappingError, setMappingError] = useState(null)
   const [reviewedCT, setReviewedCT] = useState(null)
   const [reviewedContentful, setReviewedContentful] = useState(null)
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
@@ -1214,19 +1215,31 @@ async function handleZipUpload(file) {
 
   async function startMapping() {
     setMappingLoading(true)
-    console.log('uploadedModel beim Mapping:', uploadedModel)
+    setMappingError(null)
+    // Bei "Bestehendes Modell": existingModels als Ziel-Content-Types übergeben,
+    // damit die KI weiß, worauf sie mappen soll.
+    const modelForMapping = modelMode === 'existing'
+      ? (existingModels || []).map(ct => ({ name: ct.name, id: ct.sys?.id || ct.id }))
+      : uploadedModel
+    console.log('modelForMapping beim Mapping:', modelForMapping)
     try {
       const res = await fetch('/api/ai-mapping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inventory, csvTarget, uploadedModel: uploadedModel || null }),
+        body: JSON.stringify({ inventory, csvTarget, uploadedModel: modelForMapping || null }),
       })
       const parsed = await res.json()
+      if (!res.ok) {
+        setMappingError(parsed.error || `HTTP ${res.status}` + (parsed.details ? ': ' + parsed.details : ''))
+        setMappingLoading(false)
+        return
+      }
       setMapping(parsed)
       setReviewedCT(parsed.commercetools?.contentTypes?.map(ct => ({ ...ct })) || [])
       setReviewedContentful(parsed.contentful?.contentTypes?.map(ct => ({ ...ct })) || [])
     } catch (e) {
       console.error(e)
+      setMappingError(e.message || 'Netzwerkfehler beim KI-Mapping')
     }
     setMappingLoading(false)
   }
@@ -3666,6 +3679,12 @@ async function migrateProductsToCT() {
             >
               {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten'}
             </button>
+
+            {mappingError && (
+              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#1e0a0a', border: '1px solid #7f1d1d', color: '#f87171', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
+                [FEHLER] {mappingError}
+              </div>
+            )}
 
           </div>
         )}
