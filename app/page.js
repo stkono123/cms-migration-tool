@@ -657,7 +657,9 @@ export default function Home() {
           .then(data => {
             const types = (data.items || []).map(ct => ({ id: ct.sys.id, name: ct.name }))
             setCsvContentTypes(types)
-            if (types.length > 0) setCsvContentType(types[0].id)
+            // Für ZIP-Quellen bevorzuge contentPage (D2C-Pfad) gegenüber dem ersten Eintrag
+            const preferred = types.find(t => t.id === 'contentPage') || types[0]
+            if (preferred) setCsvContentType(preferred.id)
           })
           .catch(() => {})
           .finally(() => setCsvContentTypesLoading(false))
