@@ -4101,7 +4101,7 @@ async function migrateProductsToCT() {
                             ? `Migriere... ${(migrateResultsContentful || []).filter(r => r.status !== 'skipped').length} Seiten${punchoutMap ? ` (${(migrateResultsContentful || []).filter(r => r.status === 'skipped').length} übersprungen)` : zipTotalHtmlCount > 0 ? `/${zipTotalHtmlCount}` : ''}`
                             : 'Migriere Pages...'
                         : migrateResultsContentful
-                          ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
+                          ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).filter(r => r.status !== 'skipped').length} Pages migriert`
                           : 'Pages nach Contentful migrieren'}
                     </button>
                     {/* Bilder-Migrations-Button — nur für ZIP+contentPage */}
