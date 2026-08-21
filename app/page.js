@@ -416,6 +416,16 @@ export default function Home() {
   const [punchoutDragOver, setPunchoutDragOver] = useState(false)
   const [punchoutError, setPunchoutError] = useState(null)
 
+  // Hybris CSV-Pfad: ContentSlotV2 (slot → components) und ContentSlotForPages (slot → page)
+  const [slotV2File, setSlotV2File] = useState(null)
+  const [slotV2Map, setSlotV2Map] = useState(null)         // Map: componentUID → slotUID
+  const [slotV2DragOver, setSlotV2DragOver] = useState(false)
+  const [slotV2Error, setSlotV2Error] = useState(null)
+  const [slotForPagesFile, setSlotForPagesFile] = useState(null)
+  const [slotForPagesMap, setSlotForPagesMap] = useState(null)  // Map: slotUID → pageUID
+  const [slotForPagesDragOver, setSlotForPagesDragOver] = useState(false)
+  const [slotForPagesError, setSlotForPagesError] = useState(null)
+
   // URL state
   const [urlInput, setUrlInput] = useState('')
   const [urlStatus, setUrlStatus] = useState('idle')
@@ -500,6 +510,12 @@ export default function Home() {
   const sourceDropdownRef = useRef(null)
 
   // ── Derived state ──────────────────────────────────────────────
+
+  // Hybris HTMLComponent CSV erkennen: hat html_* Spalten + uid
+  const isHybrisHtmlCsv =
+    csvRawRows.length > 0 &&
+    Object.keys(csvRawRows[0] || {}).some(k => k.startsWith('html_')) &&
+    Object.keys(csvRawRows[0] || {}).includes('uid')
 
   // FIX: allConnected beruecksichtigt CSV korrekt
   const ctActive = ctStatus === 'connected'
@@ -751,6 +767,11 @@ async function handleCSVUpload(file) {
           return
         }
         setCsvRawRows(results.data)
+        // Auto-detect Hybris HTMLComponent format → set contentType
+        const cols = Object.keys(results.data[0] || {})
+        if (cols.includes('uid') && cols.some(c => c.startsWith('html_'))) {
+          setCsvContentType('contentPage')
+        }
         setAnalyzing(true)
         setAnimateNumbers(false)
         setAnalyzeStep(0)
@@ -1034,6 +1055,94 @@ async function handleZipUpload(file) {
     }
   }
 
+  // ── Hybris CSV: ContentSlotV2 upload (slot UID → component UIDs) ──
+  async function handleSlotV2Upload(file) {
+    if (!file) return
+    setSlotV2File(file)
+    setSlotV2Error(null)
+    setSlotV2Map(null)
+    try {
+      const Papa = (await import('papaparse')).default
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ';',
+        complete: (results) => {
+          if (results.errors.length > 0 && results.data.length === 0) {
+            setSlotV2Error('ContentSlotV2.csv konnte nicht gelesen werden.')
+            return
+          }
+          // Reverse map: componentUID → slotUID
+          const map = {}
+          for (const row of results.data) {
+            const slotUid = (row.uid || '').trim()
+            const components = (row.cmsComponents || '').split(',').map(s => s.trim()).filter(Boolean)
+            for (const compUid of components) {
+              map[compUid] = slotUid
+            }
+          }
+          setSlotV2Map(map)
+          console.log(`ContentSlotV2 geladen: ${Object.keys(map).length} Komponenten gemappt`)
+        },
+        error: () => setSlotV2Error('Fehler beim Parsen von ContentSlotV2.csv'),
+      })
+    } catch (e) {
+      setSlotV2Error('Fehler beim Laden von PapaParse.')
+    }
+  }
+
+  // ── Hybris CSV: ContentSlotForPages upload (slot UID → page UID) ──
+  async function handleSlotForPagesUpload(file) {
+    if (!file) return
+    setSlotForPagesFile(file)
+    setSlotForPagesError(null)
+    setSlotForPagesMap(null)
+    try {
+      const Papa = (await import('papaparse')).default
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ';',
+        complete: (results) => {
+          if (results.errors.length > 0 && results.data.length === 0) {
+            setSlotForPagesError('ContentSlotForPages.csv konnte nicht gelesen werden.')
+            return
+          }
+          const map = {}
+          for (const row of results.data) {
+            // contentSlot format: "scottb2cContentCatalog:staged:cs_00004H9M"
+            const rawSlot = (row.contentSlot || '').trim()
+            const slotUid = rawSlot.split(':').pop()
+            const rawPage = (row.page || '').trim()
+            const pageUid = rawPage.split(':').pop()
+            if (slotUid && pageUid) map[slotUid] = pageUid
+          }
+          setSlotForPagesMap(map)
+          console.log(`ContentSlotForPages geladen: ${Object.keys(map).length} Slot→Page Mappings`)
+        },
+        error: () => setSlotForPagesError('Fehler beim Parsen von ContentSlotForPages.csv'),
+      })
+    } catch (e) {
+      setSlotForPagesError('Fehler beim Laden von PapaParse.')
+    }
+  }
+
+  // ── Hybris CSV: slug resolution chain ────────────────────────────
+  // componentUID → slotUID → pageUID → old URL → Punchout → new slug
+  function resolveHybrisSlug(componentUid) {
+    // Step 1: component → slot
+    const slotUid = slotV2Map?.[componentUid]
+    if (!slotUid) return null
+    // Step 2: slot → page UID (e.g. "silence-2024")
+    const pageUid = slotForPagesMap?.[slotUid]
+    if (!pageUid) return null
+    // Step 3: reconstruct old URL for Punchout lookup
+    const oldUrl = `https://www.scott-sports.com/de/de/${pageUid}`.toLowerCase()
+    // Step 4: Punchout lookup
+    const entry = punchoutMap?.[oldUrl]
+    return entry?.newSlug || null
+  }
+
   const handleFolderUpload = (fileList) => {
     const files = Array.from(fileList)
     const htmlFiles = files.filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm'))
@@ -1289,15 +1398,28 @@ async function migrateProductsToCT() {
       // ── Improved HTML parsing helpers (learned from 10-page Scott Sports extraction) ──
 
       // Global boilerplate patterns that appear on every crawled page (browser warnings,
-      // global nav text, third-party service notices). Matched against stripped paragraph text.
+      // global nav text, third-party service notices, sidebar widgets). Matched against
+      // stripped paragraph text (length > 30) and H2/H3 headings.
       const D2C_BOILERPLATE = [
+        // Browser / cookie / third-party service banners
         /warnung.*browser/i,
         /bitte aktualisieren/i,
         /service eines drittanbieter/i,
         /videoinhalte einzubetten/i,
         /cookie/i,
+        // Global nav / hero slogans
         /^menschen,?\s*produkte/i,
         /^entdecke unser universum/i,
+        // Athlete sidebar headers ("Über Iris Pessey", "Über Scott", …)
+        /^über\s+\S/i,
+        // Sidebar navigation CTA ("Was hat Iris als Nächstes vor?")
+        /^was hat .+ als n.chstes vor/i,
+        // Product recommendation / comparison widgets
+        /^ähnliche produkte/i,
+        /^empfohlene produkte/i,
+        /^produkte vergleichen/i,
+        // Back-to-overview navigation links
+        /^zurück zur übersicht/i,
       ]
 
       function d2cDecodeEntities(s) {
@@ -1463,8 +1585,24 @@ async function migrateProductsToCT() {
           for (const { path, entry } of batch) {
             const html = await entry.async('string')
             const parsed = d2cParseHtml(html, path, punchoutMap || null)
-            // Optional: log zone/klasse for debugging (visible in browser console)
-            if (parsed.zone) console.log(`[D2C] ${parsed.zone} (${parsed.klasse}) → ${parsed.slug}`)
+
+            // ── Punchout-Filter (nur wenn Punchout geladen) ──────────
+            // Ohne Punchout: alle Seiten migrieren (Backward-Kompatibilität)
+            // Mit Punchout: nur Klasse A oder B + Zone "Migrieren"
+            if (punchoutMap) {
+              if (!parsed.zone) {
+                // Nicht im Punchout → überspringen
+                allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.path, reason: 'Nicht im Punchout' })
+                continue
+              }
+              if (parsed.zone !== 'Migrieren' || (parsed.klasse !== 'A' && parsed.klasse !== 'B')) {
+                // Im Punchout, aber falsche Zone oder Klasse C/D/E
+                allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.slug, reason: `${parsed.zone} · Klasse ${parsed.klasse}` })
+                continue
+              }
+            }
+
+            console.log(`[D2C] ${parsed.zone || '–'} (${parsed.klasse || '–'}) → ${parsed.slug}`)
             pages.push(parsed)
           }
 
@@ -1524,6 +1662,119 @@ async function migrateProductsToCT() {
       setWordCountLog(data.wordCountLog || [])
     } catch (e) {
       console.error(e)
+    }
+    setMigratingContentful(false)
+  }
+
+  // ── Hybris HTMLComponent CSV → contentPage migration ─────────────
+  async function migrateHybrisHtmlCsv() {
+    setMigratingContentful(true)
+    const allResults = []
+    try {
+      const BATCH_SIZE = 10
+      for (let offset = 0; offset < csvRawRows.length; offset += BATCH_SIZE) {
+        const batch = csvRawRows.slice(offset, offset + BATCH_SIZE)
+        const pages = batch.map(row => {
+          const uid  = (row['uid'] || '').trim()
+          const name = (row['name'] || uid).trim()
+          const slug = resolveHybrisSlug(uid) || `/${uid.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`
+          return {
+            uid,
+            name,
+            slug,
+            html: {
+              en: row['html_en'] || '',
+              de: row['html_de'] || '',
+              fr: row['html_fr'] || '',
+              it: row['html_it'] || '',
+              es: row['html_es'] || '',
+            },
+          }
+        })
+        try {
+          const res = await fetch('/api/migrate-hybris-htmlcomponent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pages }),
+          })
+          const data = await res.json()
+          allResults.push(...(data.results || []))
+          setMigrateResultsContentful([...allResults])
+        } catch (e) {
+          console.error('Hybris HTMLComponent batch error:', e)
+        }
+      }
+    } catch (e) {
+      console.error('migrateHybrisHtmlCsv:', e)
+    }
+    setMigratingContentful(false)
+  }
+
+  // ── Cloudinary-Bilder aus ZIP extrahieren und als Image [D2C] migrieren ──
+  async function migrateImagesFromZip() {
+    if (!zipFile) return
+    setMigratingContentful(true)
+    const allResults = []
+    try {
+      const JSZip = (await import('jszip')).default
+      const zip   = await JSZip.loadAsync(zipFile)
+
+      // Collect all Cloudinary image URLs from all HTML files
+      const imageMap = new Map() // url → { altText }
+      const cloudinaryPattern = /https?:\/\/[^"'\s>]+\/image\/upload\/[^"'\s>]+/gi
+
+      const htmlEntries = []
+      zip.forEach((relativePath, entry) => {
+        if (entry.dir) return
+        if (relativePath.startsWith('__MACOSX') || /\/\./.test(relativePath)) return
+        if (/\.html?$/i.test(relativePath) && !relativePath.includes('_files/')) {
+          htmlEntries.push({ path: relativePath, entry })
+        }
+      })
+
+      for (const { entry } of htmlEntries) {
+        const html = await entry.async('string')
+        // Extract <img src="..." alt="..."> tags
+        for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["'][^>]*(?:alt=["']([^"']*)["'])?[^>]*>/gi)) {
+          const src    = m[1]
+          const alt    = m[2] || ''
+          if (src.includes('/image/upload/')) {
+            if (!imageMap.has(src)) imageMap.set(src, { altText: alt })
+          }
+        }
+        // Also catch URLs without img tag (e.g. in CSS background or srcset)
+        for (const m of html.matchAll(cloudinaryPattern)) {
+          const url = m[0].replace(/['">\s]+$/, '')
+          if (!imageMap.has(url)) imageMap.set(url, { altText: '' })
+        }
+      }
+
+      const images = [...imageMap.entries()].map(([url, meta]) => ({
+        url,
+        altText: meta.altText,
+      }))
+
+      console.log(`[IMG] ${images.length} einzigartige Cloudinary-Bilder gefunden`)
+
+      // Migrate in batches of 20
+      const BATCH_SIZE = 20
+      for (let offset = 0; offset < images.length; offset += BATCH_SIZE) {
+        const batch = images.slice(offset, offset + BATCH_SIZE)
+        try {
+          const res  = await fetch('/api/migrate-images-cloudinary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images: batch }),
+          })
+          const data = await res.json()
+          allResults.push(...(data.results || []))
+          setMigrateResultsContentful([...allResults])
+        } catch (e) {
+          console.error('Image batch error:', e)
+        }
+      }
+    } catch (e) {
+      console.error('migrateImagesFromZip:', e)
     }
     setMigratingContentful(false)
   }
@@ -3672,8 +3923,8 @@ async function migrateProductsToCT() {
                           : `${inventory?.totalContentRows || inventory?.pages?.length || 0} Pages werden migriert`}
                     </div>
 
-                    {/* Punchout-Upload — nur für D2C ZIP-Migration */}
-                    {inventory?.source === 'zip' && csvContentType === 'contentPage' && (
+                    {/* Punchout-Upload — für D2C ZIP-Migration und Hybris CSV-Pfad */}
+                    {(inventory?.source === 'zip' && csvContentType === 'contentPage') || isHybrisHtmlCsv ? (
                       <div style={{ marginBottom: 14 }}>
                         <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                           Punchout CSV (optional) — Slug-Lookup &amp; Silo-Zuordnung
@@ -3707,9 +3958,69 @@ async function migrateProductsToCT() {
                           onChange={e => { if (e.target.files[0]) handlePunchoutUpload(e.target.files[0]) }} />
                         {punchoutError && <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444' }}>{punchoutError}</div>}
                       </div>
+                    ) : null}
+
+                    {/* ContentSlot-Mapping-Uploads — nur für Hybris HTMLComponent CSV-Pfad */}
+                    {isHybrisHtmlCsv && (
+                      <>
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                            ContentSlotV2.csv (optional) — Slot → Komponenten-Mapping
+                          </div>
+                          <div
+                            onDragOver={e => { e.preventDefault(); setSlotV2DragOver(true) }}
+                            onDragLeave={() => setSlotV2DragOver(false)}
+                            onDrop={e => { e.preventDefault(); setSlotV2DragOver(false); const f = e.dataTransfer.files[0]; if (f) handleSlotV2Upload(f) }}
+                            onClick={() => document.getElementById('slot-v2-input').click()}
+                            style={{
+                              border: `2px dashed ${slotV2DragOver ? '#a5b4fc' : slotV2Map ? '#a5b4fc44' : '#1e293b'}`,
+                              borderRadius: 8, padding: '10px 14px', textAlign: 'center', cursor: 'pointer',
+                              background: slotV2DragOver ? 'rgba(165,180,252,0.05)' : '#080b12', transition: 'all 0.2s',
+                            }}
+                          >
+                            {slotV2Map
+                              ? <div style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>✓ {slotV2File?.name} — {Object.keys(slotV2Map).length} Komponenten gemappt</div>
+                              : <div style={{ fontSize: 12, color: '#64748b' }}>ContentSlotV2.csv hier ablegen</div>}
+                          </div>
+                          <input id="slot-v2-input" type="file" accept=".csv" style={{ display: 'none' }}
+                            onChange={e => { if (e.target.files[0]) handleSlotV2Upload(e.target.files[0]) }} />
+                          {slotV2Error && <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444' }}>{slotV2Error}</div>}
+                        </div>
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                            ContentSlotForPages.csv (optional) — Slot → Page-Mapping
+                          </div>
+                          <div
+                            onDragOver={e => { e.preventDefault(); setSlotForPagesDragOver(true) }}
+                            onDragLeave={() => setSlotForPagesDragOver(false)}
+                            onDrop={e => { e.preventDefault(); setSlotForPagesDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleSlotForPagesUpload(f) }}
+                            onClick={() => document.getElementById('slot-for-pages-input').click()}
+                            style={{
+                              border: `2px dashed ${slotForPagesDragOver ? '#a5b4fc' : slotForPagesMap ? '#a5b4fc44' : '#1e293b'}`,
+                              borderRadius: 8, padding: '10px 14px', textAlign: 'center', cursor: 'pointer',
+                              background: slotForPagesDragOver ? 'rgba(165,180,252,0.05)' : '#080b12', transition: 'all 0.2s',
+                            }}
+                          >
+                            {slotForPagesMap
+                              ? <div style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600 }}>✓ {slotForPagesFile?.name} — {Object.keys(slotForPagesMap).length} Slot→Page Mappings</div>
+                              : <div style={{ fontSize: 12, color: '#64748b' }}>ContentSlotForPages.csv hier ablegen</div>}
+                          </div>
+                          <input id="slot-for-pages-input" type="file" accept=".csv" style={{ display: 'none' }}
+                            onChange={e => { if (e.target.files[0]) handleSlotForPagesUpload(e.target.files[0]) }} />
+                          {slotForPagesError && <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444' }}>{slotForPagesError}</div>}
+                        </div>
+                      </>
                     )}
+
                     <button
-                      onClick={inventory?.source === 'csv' ? migrateCSVContent : inventory?.source === 'url' ? migrateUrlContent : inventory?.source === 'zip' ? migrateZipContent : inventory?.source === 'sap-wcms' ? migrateSapWcmsContent : migrateContentToContentful}
+                      onClick={
+                        isHybrisHtmlCsv ? migrateHybrisHtmlCsv
+                        : inventory?.source === 'csv' ? migrateCSVContent
+                        : inventory?.source === 'url' ? migrateUrlContent
+                        : inventory?.source === 'zip' ? migrateZipContent
+                        : inventory?.source === 'sap-wcms' ? migrateSapWcmsContent
+                        : migrateContentToContentful
+                      }
                       disabled={migratingContentful}
                       style={{
                         width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
@@ -3720,13 +4031,31 @@ async function migrateProductsToCT() {
                       }}
                     >
                       {migratingContentful
-                        ? inventory?.source === 'zip' && csvContentType === 'contentPage'
-                          ? `Migriere... ${(migrateResultsContentful || []).length}${zipTotalHtmlCount > 0 ? `/${zipTotalHtmlCount}` : ''} Seiten`
-                          : 'Migriere Pages...'
+                        ? isHybrisHtmlCsv
+                          ? `Migriere... ${(migrateResultsContentful || []).length}/${csvRawRows.length} Komponenten`
+                          : inventory?.source === 'zip' && csvContentType === 'contentPage'
+                            ? `Migriere... ${(migrateResultsContentful || []).filter(r => r.status !== 'skipped').length} Seiten${punchoutMap ? ` (${(migrateResultsContentful || []).filter(r => r.status === 'skipped').length} übersprungen)` : zipTotalHtmlCount > 0 ? `/${zipTotalHtmlCount}` : ''}`
+                            : 'Migriere Pages...'
                         : migrateResultsContentful
                           ? `[OK] ${(migrateResultsContentful || []).filter(r => r.status === 'success').length}/${(migrateResultsContentful || []).length} Pages migriert`
                           : 'Pages nach Contentful migrieren'}
                     </button>
+                    {/* Bilder-Migrations-Button — nur für ZIP+contentPage */}
+                    {inventory?.source === 'zip' && csvContentType === 'contentPage' && zipFile && (
+                      <button
+                        onClick={migrateImagesFromZip}
+                        disabled={migratingContentful}
+                        style={{
+                          width: '100%', marginTop: 8, padding: '10px 20px', borderRadius: 10, border: '1px solid #1e293b',
+                          cursor: migratingContentful ? 'not-allowed' : 'pointer',
+                          fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                          background: '#080b12', color: '#94a3b8',
+                        }}
+                      >
+                        🖼 Bilder (Image [D2C]) migrieren
+                      </button>
+                    )}
+
                     {migrateResultsContentful && (
                       <div style={{ marginTop: 12, maxHeight: 260, overflowY: 'auto' }}>
                         {wordCountLog.length > 0 && (
