@@ -1,27 +1,45 @@
 // Contentful-spezifische Reset-Route
-// target: 'content' → nur Entries löschen
+//
+// target: 'content' → nur Entries löschen (Default)
 // target: 'model'   → nur Content Types löschen
-// target: 'all'     → beides (Fallback für alte Aufrufe ohne target)
+// target: 'all'     → beides — erfordert zusätzlich confirm: 'DELETE_CONTENT_TYPES'
+//
+// Sicherheitsstufen:
+//   1. target default ist 'content' — leerer POST löscht nie Content Types
+//   2. target 'model' und 'all' erfordern confirm: 'DELETE_CONTENT_TYPES'
+//   3. target 'all' löscht zuerst Entries, dann Content Types
 
 export const runtime = 'nodejs'
+
+const CONFIRM_TOKEN = 'DELETE_CONTENT_TYPES'
 
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
-    // Default: nur Entries löschen. 'all' muss explizit übergeben werden,
-    // um versehentliches Löschen von Content Types zu verhindern.
-    const target = body.target ?? 'content'
+    const target  = body.target  ?? 'content'
+    const confirm = body.confirm ?? ''
 
-    const spaceId = process.env.CONTENTFUL_SPACE_ID
-    const token = process.env.CONTENTFUL_CMA_TOKEN
+    // Guard: Löschen von Content Types erfordert explizite Bestätigung
+    if ((target === 'model' || target === 'all') && confirm !== CONFIRM_TOKEN) {
+      return Response.json(
+        {
+          error: `Content Types löschen erfordert confirm: "${CONFIRM_TOKEN}"`,
+          hint:  `POST { target: "${target}", confirm: "${CONFIRM_TOKEN}" }`,
+        },
+        { status: 403 }
+      )
+    }
+
+    const spaceId     = process.env.CONTENTFUL_SPACE_ID
+    const token       = process.env.CONTENTFUL_CMA_TOKEN
     const environment = process.env.CONTENTFUL_ENVIRONMENT || 'master'
-    const results = { entriesDeleted: 0, contentTypesDeleted: 0, errors: [] }
+    const results     = { entriesDeleted: 0, contentTypesDeleted: 0, errors: [] }
 
     // 1. Entries löschen (wenn target 'content' oder 'all')
     if (target === 'content' || target === 'all') {
-      const entriesRes = await fetch(
+      const entriesRes  = await fetch(
         `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries?limit=1000`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       )
       const entriesData = await entriesRes.json()
 
@@ -30,12 +48,12 @@ export async function POST(request) {
           if (entry.sys.publishedVersion) {
             await fetch(
               `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries/${entry.sys.id}/published`,
-              { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+              { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
             )
           }
           await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/entries/${entry.sys.id}`,
-            { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+            { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
           )
           results.entriesDeleted++
         } catch (e) {
@@ -46,9 +64,9 @@ export async function POST(request) {
 
     // 2. Content Types löschen (wenn target 'model' oder 'all')
     if (target === 'model' || target === 'all') {
-      const ctRes = await fetch(
+      const ctRes  = await fetch(
         `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types?limit=1000`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } }
       )
       const ctData = await ctRes.json()
 
@@ -57,12 +75,12 @@ export async function POST(request) {
           if (ct.sys.publishedVersion) {
             await fetch(
               `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types/${ct.sys.id}/published`,
-              { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+              { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
             )
           }
           await fetch(
             `https://api.contentful.com/spaces/${spaceId}/environments/${environment}/content_types/${ct.sys.id}`,
-            { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+            { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
           )
           results.contentTypesDeleted++
         } catch (e) {
