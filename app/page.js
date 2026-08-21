@@ -1594,50 +1594,56 @@ async function migrateProductsToCT() {
           }
         })
 
-        const BATCH_SIZE = 25
+        // Schritt 1: alle HTML-Dateien lesen, parsen und filtern
         const allResults = []
+        const pagesToMigrate = []
 
-        for (let offset = 0; offset < htmlEntries.length; offset += BATCH_SIZE) {
-          const batch = htmlEntries.slice(offset, offset + BATCH_SIZE)
-          const pages = []
+        for (const { path, entry } of htmlEntries) {
+          const html = await entry.async('string')
+          const parsed = d2cParseHtml(html, path, punchoutMap || null)
 
-          for (const { path, entry } of batch) {
-            const html = await entry.async('string')
-            const parsed = d2cParseHtml(html, path, punchoutMap || null)
-
-            // ── Punchout-Filter (nur wenn Punchout geladen) ──────────
-            // Ohne Punchout: alle Seiten migrieren (Backward-Kompatibilität)
-            // Mit Punchout: nur Klasse A oder B + Zone "Migrieren"
-            if (punchoutMap) {
-              if (!parsed.zone) {
-                // Nicht im Punchout → überspringen
-                allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.path, reason: 'Nicht im Punchout' })
-                continue
-              }
-              if (parsed.zone !== 'Migrieren' || (parsed.klasse !== 'A' && parsed.klasse !== 'B')) {
-                // Im Punchout, aber falsche Zone oder Klasse C/D/E
-                allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.slug, reason: `${parsed.zone} · Klasse ${parsed.klasse}` })
-                continue
-              }
+          // ── Punchout-Filter (nur wenn Punchout geladen) ──────────
+          // Ohne Punchout: alle Seiten migrieren (Backward-Kompatibilität)
+          // Mit Punchout: nur Klasse A oder B + Zone "Migrieren"
+          if (punchoutMap) {
+            if (!parsed.zone) {
+              allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.path, reason: 'Nicht im Punchout' })
+              continue
             }
-
-            console.log(`[D2C] ${parsed.zone || '–'} (${parsed.klasse || '–'}) → ${parsed.slug}`)
-            pages.push(parsed)
+            if (parsed.zone !== 'Migrieren' || (parsed.klasse !== 'A' && parsed.klasse !== 'B')) {
+              allResults.push({ status: 'skipped', title: parsed.title, slug: parsed.slug, reason: `${parsed.zone} · Klasse ${parsed.klasse}` })
+              continue
+            }
           }
 
+          console.log(`[D2C] ${parsed.zone || '–'} (${parsed.klasse || '–'}) → ${parsed.slug}`)
+          pagesToMigrate.push(parsed)
+        }
+
+        // Schritt 2: gefilterte Seiten in Batches à 5 migrieren
+        // 5 Seiten × 5 CF-API-Calls ≈ 10–15s, weit unter dem 60s Vercel-Limit
+        const MIGRATE_BATCH = 5
+        for (let i = 0; i < pagesToMigrate.length; i += MIGRATE_BATCH) {
+          const pages = pagesToMigrate.slice(i, i + MIGRATE_BATCH)
           try {
             const res = await fetch('/api/migrate-html-zip-d2c', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ pages }),
             })
-            const data = await res.json()
-            allResults.push(...(data.results || []))
-            // Live progress update after each batch
-            setMigrateResultsContentful([...allResults])
+            if (!res.ok) {
+              const errText = await res.text().catch(() => `HTTP ${res.status}`)
+              pages.forEach(p => allResults.push({ status: 'error', title: p.title, slug: p.slug, error: errText }))
+            } else {
+              const data = await res.json()
+              allResults.push(...(data.results || []))
+            }
           } catch (e) {
             console.error('D2C batch error:', e)
+            pages.forEach(p => allResults.push({ status: 'error', title: p.title, slug: p.slug, error: e.message || 'Netzwerkfehler' }))
           }
+          // Live-Fortschritt nach jedem Batch
+          setMigrateResultsContentful([...allResults])
         }
       } catch (e) {
         console.error('migrateZipContent (D2C):', e)
@@ -2823,7 +2829,7 @@ async function migrateProductsToCT() {
             FIX: Control Panel, Edge Cases und Mapping-Button sind HIER
                  drin, nicht ausserhalb. Kein null-Zugriff moeglich.
         ════════════════════════════════════════════════════ */}
-        {inventory && !mapping && (
+        {inventory && (
           <div className="fade-up">
 
             {/* Inventar-Karte */}
