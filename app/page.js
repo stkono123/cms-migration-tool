@@ -3665,25 +3665,40 @@ async function migrateProductsToCT() {
               </div>
             )}
 
-            {/* KI MACH-Mapping Button -- EIN EINZIGER, am Ende des Inventar-Blocks */}
-            <button
-              onClick={() => { setReviewConfirmed(true); startMapping(); }}
-              disabled={mappingLoading}
-              style={{
-                width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
-                cursor: mappingLoading ? 'not-allowed' : 'pointer',
-                fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-                background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: mappingLoading ? '#64748b' : '#fff',
-              }}
-            >
-              {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten'}
-            </button>
+            {/* KI MACH-Mapping Button: nur bei neuem Modell. Bei bestehendem Modell direkt zur Migration. */}
+            {modelMode === 'existing' ? (
+              <button
+                onClick={() => { setReviewConfirmed(true); setMapping({ existing: true }) }}
+                style={{
+                  width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
+                  cursor: 'pointer', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                  background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)', color: '#fff',
+                }}
+              >
+                Weiter zur Migration →
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setReviewConfirmed(true); startMapping(); }}
+                  disabled={mappingLoading}
+                  style={{
+                    width: '100%', padding: '18px 24px', borderRadius: 12, border: 'none',
+                    cursor: mappingLoading ? 'not-allowed' : 'pointer',
+                    fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                    background: mappingLoading ? '#1e293b' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                    color: mappingLoading ? '#64748b' : '#fff',
+                  }}
+                >
+                  {mappingLoading ? 'KI analysiert MACH-Struktur...' : 'KI MACH-Mapping starten'}
+                </button>
 
-            {mappingError && (
-              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#1e0a0a', border: '1px solid #7f1d1d', color: '#f87171', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
-                [FEHLER] {mappingError}
-              </div>
+                {mappingError && (
+                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#1e0a0a', border: '1px solid #7f1d1d', color: '#f87171', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
+                    [FEHLER] {mappingError}
+                  </div>
+                )}
+              </>
             )}
 
           </div>
