@@ -1928,6 +1928,8 @@ async function migrateProductsToCT() {
     setExistingModels(items)
     setReviewedCT([])
     setReviewedContentful(items.map(ct => ({ name: ct.name, id: ct.sys.id })))
+    // Bei "Bestehendes Modell" kein manueller Button — automatisch bestätigen
+    setReviewConfirmed(true)
   } catch (e) {
     console.error('Fehler beim Laden der Content Types:', e)
   } finally {
@@ -2681,16 +2683,19 @@ async function migrateProductsToCT() {
                       <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: '#64748b' }}>{ct.sys.id}</span>
                     </div>
                   ))}
-                  <button
-                    onClick={() => setReviewConfirmed(true)}
-                    style={{
-                      marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
-                      border: 'none', background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
-                      cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
-                    }}
-                  >
-                    Weiter zur Migration
-                  </button>
+                  {/* Bei "Bestehendes Modell" kein manueller Button — Auto-Confirm */}
+                  {modelMode !== 'existing' && (
+                    <button
+                      onClick={() => setReviewConfirmed(true)}
+                      style={{
+                        marginTop: 12, width: '100%', padding: '14px 16px', borderRadius: 10,
+                        border: 'none', background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
+                        cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#fff',
+                      }}
+                    >
+                      Weiter zur Migration
+                    </button>
+                  )}
                  </>
               )}
             </div>
