@@ -8,7 +8,9 @@ export const runtime = 'nodejs'
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
-    const target = body.target ?? 'all'
+    // Default: nur Entries löschen. 'all' muss explizit übergeben werden,
+    // um versehentliches Löschen von Content Types zu verhindern.
+    const target = body.target ?? 'content'
 
     const spaceId = process.env.CONTENTFUL_SPACE_ID
     const token = process.env.CONTENTFUL_CMA_TOKEN
