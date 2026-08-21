@@ -377,7 +377,7 @@ export default function Home() {
     }
   }
   // Connection state
-  const [sourceSystem, setSourceSystem] = useState('sap')
+  const [sourceSystem, setSourceSystem] = useState('zip')
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
   const [shopifyDomain, setShopifyDomain] = useState('')
   const [shopifyToken, setShopifyToken] = useState('................................')
@@ -465,7 +465,7 @@ export default function Home() {
   const [resettingCFModel, setResettingCFModel] = useState(false)
   const [resettingCTContent, setResettingCTContent] = useState(false)
   const [resettingCTModel, setResettingCTModel] = useState(false)
-  const [modelMode, setModelMode] = useState('create')
+  const [modelMode, setModelMode] = useState('existing')
   const [uploadedModel, setUploadedModel] = useState(null)
   const [parsingModel, setParsingModel] = useState(false)
   const [modelParseError, setModelParseError] = useState(null)  
