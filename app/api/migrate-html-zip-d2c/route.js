@@ -182,7 +182,9 @@ export async function POST(request) {
 
         results.push({ status: 'success', title: safeTitle, slug })
       } catch (e) {
-        results.push({ status: 'error', title: safeTitle, slug, error: e.message })
+        const errMsg = e?.message || (typeof e === 'string' ? e : null) || e?.toString() || 'Unbekannter Fehler'
+        console.error(`[migrate-html-zip-d2c] Fehler bei "${safeTitle}":`, errMsg, e)
+        results.push({ status: 'error', title: safeTitle, slug, error: errMsg })
       }
     }
 

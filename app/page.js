@@ -4120,8 +4120,8 @@ async function migrateProductsToCT() {
                             <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #1e293b', fontSize: 12 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ color: '#94a3b8' }}>{r.title}</span>
-                                <span style={{ color: r.status === 'success' ? '#22c55e' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                                  {r.status === 'success' ? '[OK]' : `[X] ${r.error}`}
+                                <span style={{ color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#64748b' : '#ef4444', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                                  {r.status === 'success' ? '[OK]' : r.status === 'skipped' ? '[--]' : `[X] ${r.error || 'Fehler'}`}
                                 </span>
                               </div>
                               {wc && (
