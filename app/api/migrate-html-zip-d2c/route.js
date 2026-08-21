@@ -94,8 +94,19 @@ export async function POST(request) {
       { headers: { Authorization: `Bearer ${token}` } }
     )
     const localeData = await localeRes.json()
-    const defaultLocale = (localeData.items || []).find(l => l.default)?.code || 'en'
+    const allLocales    = localeData.items || []
+    const defaultLocale = allLocales.find(l => l.default)?.code || 'en'
     const contentLocale = reqLocale || 'de'
+
+    // Build a field object with value set for ALL locales.
+    // Used for required localized fields (title, seo title) where every locale
+    // must have a value. Product names and page titles are language-neutral
+    // enough to use the same string across locales as a migration default.
+    function allLocaleField(value) {
+      const field = {}
+      for (const loc of allLocales) field[loc.code] = value
+      return field
+    }
 
     const results = []
 
@@ -147,7 +158,7 @@ export async function POST(request) {
         // title, description, canonicalUrl, keywords = localized → contentLocale
         const seoFields = {
           internalName: { [defaultLocale]: `[SEO] ${internalName}` },
-          title: { [contentLocale]: safeTitle },
+          title: allLocaleField(safeTitle),
           description: { [contentLocale]: metaDesc },
           hideFromSearchEnginesNoindex: { [defaultLocale]: false },
           excludeLinksFromRankingsNofollow: { [defaultLocale]: false },
@@ -162,7 +173,7 @@ export async function POST(request) {
         await cfPost(baseUrl, token, 'contentPage', {
           internalName: { [defaultLocale]: internalName },
           slug: { [defaultLocale]: slug },
-          title: { [contentLocale]: safeTitle },
+          title: allLocaleField(safeTitle),
           pageType: { [defaultLocale]: 'family' },
           sections: { [defaultLocale]: [{ sys: { type: 'Link', linkType: 'Entry', id: stEntry.sys.id } }] },
           seoMetadata: { [defaultLocale]: { sys: { type: 'Link', linkType: 'Entry', id: seoEntry.sys.id } } },
